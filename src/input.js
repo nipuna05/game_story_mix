@@ -44,6 +44,8 @@ export class Input {
     });
   }
   lock() {
+    // automated test browsers must never capture the real mouse (it can trap the user's cursor on the desktop)
+    if (navigator.webdriver) return;
     try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch { /* ignore */ }
   }
   unlock() { if (document.pointerLockElement) document.exitPointerLock(); }

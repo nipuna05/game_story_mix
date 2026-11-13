@@ -9,6 +9,7 @@ for (const channel of ['msedge', 'chrome']) {
   try { browser = await chromium.launch({ channel, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); break; } catch { console.log('no', channel); }
 }
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+await page.addInitScript(() => { Element.prototype.requestPointerLock = () => {}; }); // never capture the real mouse
 const errors = [];
 page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('CONSOLE ' + m.text()); });
