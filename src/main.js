@@ -57,6 +57,13 @@ class Game {
     this.state = 'menu'; this.time = 0; this.last = 0;
     this.resetLists();
     this.input.onLockLost = () => { if (this.state === 'playing') this.pause(); };
+    // never keep the mouse captured when the window loses focus, the tab is hidden or the page closes
+    const release = () => { if (this.state === 'playing') this.pause(); this.input.unlock(); };
+    window.addEventListener('blur', release);
+    window.addEventListener('pagehide', () => this.input.unlock());
+    window.addEventListener('beforeunload', () => this.input.unlock());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) release(); });
+    document.addEventListener('pointerlockerror', () => { if (this.state === 'playing') this.pause(); });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && this.state === 'playing' && !this.input.locked) this.pause();
