@@ -42,7 +42,7 @@ export class UI {
     const hasGame = s.unlocked > 1 || s.started;
     this.show(`
       <h1 class="logo">NIGHTFALL<br><span>PROTOCOL</span></h1>
-      <div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING</div>
+      <div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING · RIVERS</div>
       <div class="menu">
         ${hasGame ? `<button class="primary" data-a="continue">Continue campaign<small>${done ? 'Campaign complete - replay any mission' : this.T('Mission ' + s.unlocked + ': ' + CAMPAIGN[s.unlocked - 1].title)}</small></button>` : ''}
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
@@ -145,7 +145,7 @@ export class UI {
       <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
       <label class="f">Volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">
       <label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${s.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>
-      <label class="f">Graphics</label><select id="gfx"><option value="high" ${s.shadows ? 'selected' : ''}>High - shadows on</option><option value="low" ${s.shadows ? '' : 'selected'}>Low - shadows off (faster)</option></select>
+      <label class="f">Graphics</label><select id="gfx"><option value="high" ${s.shadows ? 'selected' : ''}>High - shadows, glow and reflections</option><option value="low" ${s.shadows ? '' : 'selected'}>Low - no shadows or glow (faster)</option></select>
       <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>
       <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="wipe">Erase campaign progress</button></div>`,
     { on: (a) => {
@@ -220,7 +220,7 @@ export class UI {
         <div><label class="f">Enemy leader's name</label><input type="text" id="b_leader" maxlength="28" placeholder="e.g. The Jackal" value="${esc(f.leader)}"></div>
         <div><label class="f">District</label>${sel('b_loc', Object.entries(LOCATIONS).map(([k, l]) => [k, l.name]), f.location)}</div>
         <div><label class="f">Time of day</label>${sel('b_time', Object.entries(THEMES).map(([k, t]) => [k, t.label]), f.time)}</div>
-        <div><label class="f">How you arrive</label>${sel('b_ins', [['foot', 'On foot'], ['car', 'By car'], ['bike', 'By motorbike'], ['parachute', 'Fly in and parachute']], f.insertion)}</div>
+        <div><label class="f">How you arrive</label>${sel('b_ins', [['foot', 'On foot'], ['car', 'By car'], ['bike', 'By motorbike'], ['boat', 'By boat (forest only)'], ['parachute', 'Fly in and parachute']], f.insertion)}</div>
         <div><label class="f">How you leave</label>${sel('b_exit', [['reach', 'Reach the extraction point'], ['flyout', 'Steal a plane and fly out']], f.exit)}</div>
         <div><label class="f">Items / hostages / targets each</label>${sel('b_count', [['1', '1'], ['2', '2'], ['3', '3']], f.count)}</div>
         <div><label class="f">Enemy presence</label>${sel('b_en', [['0.6', 'Light'], ['1', 'Normal'], ['1.4', 'Heavy']], f.enemies)}</div>

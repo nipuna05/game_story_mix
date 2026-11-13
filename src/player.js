@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeHumanoid, animateHumanoid, makeChute } from './characters.js';
+import { makeHumanoid, animateHumanoid, makeChute, reviveHumanoid } from './characters.js';
 import { clamp, damp, angDiff, dist2, rnd } from './util.js';
 
 export const WEAPONS = {
@@ -9,6 +9,7 @@ export const WEAPONS = {
   sniper: { name: 'LR-50 Longbow', dmg: 160, rate: 1.1, mag: 5, spread: 0.03, noise: 95, reload: 2.5, recoil: 0.05, snd: 'sniper', scope: true },
 };
 const ORDER = ['fists', 'pistol', 'rifle', 'sniper'];
+const GUN_MODEL = { pistol: 'usp', rifle: 'm4a1', sniper: 'l118a' };
 const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3();
 
 export class Player {
@@ -20,9 +21,10 @@ export class Player {
     this.hp = 100; this.armor = 0; this.dead = false; this.regenT = 0;
     this.inv = { fists: {}, pistol: { mag: 12, res: 60 }, rifle: null, sniper: null };
     this.cur = 'pistol'; this.grenades = 2; this.fireCd = 0; this.reloadT = 0; this.meleeCd = 0; this.noiseT = 0;
-    this.aiming = false; this.blocking = false; this.lockFists = false; this.speed = 0;
+    this.recoil = 0; this.aiming = false; this.blocking = false; this.lockFists = false; this.speed = 0;
     this.holdT = 0; this.holdObj = null; this.air = { x: 0, z: 0 }; this.fov = 68; this.takedown = null;
-    this.h = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, pack: 0x55663f, gun: true });
+    this.h = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, pack: 0x55663f, gun: true, gunKind: 'usp', tint: 0xb9c8e6 });
+    this.wet = false;
     this.chute = makeChute(); this.h.group.add(this.chute);
     g.scene.add(this.h.group);
   }
@@ -39,9 +41,13 @@ export class Player {
   update(dt) {
     const g = this.g, inp = g.input;
     if (this.dead) { animateHumanoid(this.h, { dead: true }, dt); return; }
-    const sens = g.settings.sens * 0.0022;
+    // slower turning when zoomed in, so the scope and aim-down-sights stay controllable
+    const zoom = Math.tan(this.fov * Math.PI / 360) / Math.tan(34 * Math.PI / 180);
+    const sens = g.settings.sens * 0.0022 * clamp(zoom, 0.12, 1);
     this.yaw -= inp.dx * sens;
     this.pitch = clamp(this.pitch - inp.dy * sens * (g.settings.invertY ? -1 : 1), -1.25, 1.2);
+    // recoil kicks the aim up, then settles back instead of stacking forever
+    if (this.recoil > 0) { const back = Math.min(this.recoil, (this.recoil * 7 + 0.004) * dt); this.recoil -= back; this.pitch -= back; }
     this.fireCd -= dt; this.meleeCd -= dt;
     this.regenT -= dt;
     if (this.regenT <= 0 && this.hp < 45) this.hp = Math.min(45, this.hp + 5 * dt);
@@ -60,6 +66,8 @@ export class Player {
     const sprint = k.ShiftLeft && f > 0 && !this.crouch && !this.aiming;
     let sp = this.crouch ? 2.3 : sprint ? 7.4 : 4.5;
     if (this.aiming || this.blocking) sp *= 0.6;
+    this.wet = w.waters.length > 0 && this.pos.y < 0.3 && w.inWater(this.pos.x, this.pos.z);
+    if (this.wet) sp = Math.min(sp, 2.6);
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx;
     let mx = fx * f + rx * s, mz = fz * f + rz * s; const ml = Math.hypot(mx, mz);
     if (ml > 0) { mx /= ml; mz /= ml; }
@@ -81,7 +89,7 @@ export class Player {
     } else this.grounded = this.pos.y - gy < 0.05;
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.noiseT -= dt;
-    if (this.noiseT <= 0 && this.speed > 3 && !this.crouch) { this.noiseT = 0.45; g.emitNoise(this.pos, sprint ? 9 : 3.5, false); }
+    if (this.noiseT <= 0 && this.speed > 3 && !this.crouch && !this.wet) { this.noiseT = 0.45; g.emitNoise(this.pos, sprint ? 9 : 3.5, false); }
 
     // weapons
     for (let i = 0; i < 4; i++) if (inp.pressed['Digit' + (i + 1)]) this.switchTo(ORDER[i]);
@@ -119,8 +127,10 @@ export class Player {
     const h = this.h;
     h.group.visible = !(this.aiming && wd.scope);
     h.gun.visible = this.cur !== 'fists';
-    animateHumanoid(h, { speed: this.speed, crouch: this.crouch, aim: this.cur !== 'fists' && (this.aiming || this.fireCd > -0.6), pitch: this.pitch, block: this.blocking }, dt);
+    if (this.cur !== 'fists') h.setGun(GUN_MODEL[this.cur]);
+    animateHumanoid(h, { speed: this.speed, crouch: this.crouch && !this.wet, aim: this.cur !== 'fists' && (this.aiming || this.fireCd > -0.6), pitch: this.pitch, block: this.blocking }, dt);
     h.group.position.copy(this.pos); h.group.rotation.set(0, this.yaw, 0);
+    if (this.wet) h.group.position.y -= 0.75;
     this.chute.visible = false;
   }
 
@@ -140,10 +150,10 @@ export class Player {
     const tMin = Math.max(0, head.sub(cam.position).dot(_d));
     const hit = g.shootRay(cam.position, _d, 450, tMin, { dmg: wd.dmg, from: 'player' });
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
-    const mz = new THREE.Vector3(this.pos.x + rx * 0.3 + Math.sin(this.yaw) * 0.7, this.pos.y + (this.crouch ? 1.05 : 1.45), this.pos.z + rz * 0.3 + Math.cos(this.yaw) * 0.7);
+    const mz = new THREE.Vector3(this.pos.x + rx * 0.14 + Math.sin(this.yaw) * 0.9, this.pos.y + (this.wet ? 0.8 : this.crouch ? 1.05 : 1.5), this.pos.z + rz * 0.14 + Math.cos(this.yaw) * 0.9);
     g.fx.tracer(mz, hit, 0xfff0b0);
     if (wd.snd !== 'pistol') g.fx.flash(mz, 0xffc070, 40, 0.06);
-    this.pitch += wd.recoil; this.yaw += rnd(-wd.recoil, wd.recoil) * 0.5;
+    this.pitch += wd.recoil; this.recoil = Math.min(0.2, (this.recoil || 0) + wd.recoil); this.yaw += rnd(-wd.recoil, wd.recoil) * 0.25;
     g.audio.shot(wd.snd, 1);
     g.emitNoise(this.pos, wd.noise, wd.noise > 30);
     g.stats.shots++;
@@ -259,7 +269,7 @@ export class Player {
   }
   revive(x, z) {
     this.dead = false; this.hp = 100; this.mode = 'foot'; this.vehicle = null; this.vy = 0; this.grounded = true;
-    this.pos.set(x, 0, z); this.vel.set(0, 0, 0); this.h.deadT = 0; this.h.group.rotation.set(0, this.yaw, 0); this.h.body.position.y = 0; this.h.group.visible = true;
+    this.pos.set(x, 0, z); this.vel.set(0, 0, 0); reviveHumanoid(this.h); this.h.group.rotation.set(0, this.yaw, 0); this.h.group.visible = true;
     for (const w of ['pistol', 'rifle', 'sniper']) if (this.inv[w]) this.inv[w].res = Math.max(this.inv[w].res, WEAPONS[w].mag * 2);
   }
 
@@ -286,7 +296,7 @@ export class Player {
       _d.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
       const air = this.mode !== 'foot' || this.dead;
       const scope = !air && this.aiming && WEAPONS[this.cur].scope;
-      const hy = this.pos.y + (this.crouch ? 1.12 : 1.6);
+      const hy = this.pos.y + (this.wet ? 0.95 : this.crouch ? 1.12 : 1.6);
       if (scope) { cam.position.set(this.pos.x + _d.x * 0.3, hy, this.pos.z + _d.z * 0.3); fov = 13; }
       else {
         const dist = air ? 9 : this.aiming ? 2.0 : 3.5, side = air ? 0 : this.aiming ? 0.55 : 0.75;

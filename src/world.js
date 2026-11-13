@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { clamp } from './util.js';
 
 export const THEMES = {
-  night: { label: 'Night', top: 0x03050d, horizon: 0x18233f, fog: 0x0b1220, fogNear: 40, fogFar: 640, hemiSky: 0x6f88cc, hemiGround: 0x141a24, hemi: 2.6, sun: 0x9db4ff, sunI: 1.7, sunDir: [-0.5, 0.8, 0.35], stars: true, view: 27, lit: 0.5, exposure: 1.4 },
-  blackout: { label: 'Blackout', top: 0x020308, horizon: 0x251a2c, fog: 0x0a0b14, fogNear: 35, fogFar: 560, hemiSky: 0x6677b0, hemiGround: 0x15131c, hemi: 2.3, sun: 0xa8b8ff, sunI: 1.6, sunDir: [0.4, 0.75, -0.4], stars: true, view: 25, lit: 0.03, exposure: 1.4 },
-  dusk: { label: 'Dusk', top: 0x1c1a40, horizon: 0xff8a4a, fog: 0x5a3a4c, fogNear: 60, fogFar: 800, hemiSky: 0xa594d0, hemiGround: 0x33232a, hemi: 2.3, sun: 0xffa25e, sunI: 2.4, sunDir: [-0.75, 0.34, -0.4], stars: true, view: 36, lit: 0.45, exposure: 1.2 },
-  day: { label: 'Day', top: 0x2f7fd8, horizon: 0xcfe6fa, fog: 0xcfe0ee, fogNear: 140, fogFar: 1300, hemiSky: 0xdcecff, hemiGround: 0x8a7a5a, hemi: 2.1, sun: 0xfff1d6, sunI: 2.5, sunDir: [0.45, 0.85, 0.3], stars: false, view: 48, lit: 0, exposure: 1 },
-  dawn: { label: 'Dawn', top: 0x5a7fb0, horizon: 0xffd2a8, fog: 0xc9d3de, fogNear: 90, fogFar: 950, hemiSky: 0xcfdcf0, hemiGround: 0x8090a0, hemi: 2.0, sun: 0xffd0a0, sunI: 2.0, sunDir: [0.7, 0.36, -0.3], stars: false, view: 42, lit: 0.15, exposure: 1 },
+  night: { label: 'Night', top: 0x03050d, horizon: 0x18233f, fog: 0x0b1220, fogNear: 40, fogFar: 640, hemiSky: 0x6f88cc, hemiGround: 0x141a24, hemi: 2.6, sun: 0x9db4ff, sunI: 1.7, sunDir: [-0.5, 0.8, 0.35], stars: true, view: 27, lit: 0.5, exposure: 1.4, bloom: 0.45, cloud: 0x1c2438, env: 0.9 },
+  blackout: { label: 'Blackout', top: 0x020308, horizon: 0x251a2c, fog: 0x0a0b14, fogNear: 35, fogFar: 560, hemiSky: 0x6677b0, hemiGround: 0x15131c, hemi: 2.3, sun: 0xa8b8ff, sunI: 1.6, sunDir: [0.4, 0.75, -0.4], stars: true, view: 25, lit: 0.03, exposure: 1.4, bloom: 0.5, cloud: 0x16141f, env: 0.8, weather: 'rain' },
+  dusk: { label: 'Dusk', top: 0x1c1a40, horizon: 0xff8a4a, fog: 0x5a3a4c, fogNear: 60, fogFar: 800, hemiSky: 0xa594d0, hemiGround: 0x33232a, hemi: 2.3, sun: 0xffa25e, sunI: 2.4, sunDir: [-0.75, 0.34, -0.4], stars: true, view: 36, lit: 0.45, exposure: 1.2, bloom: 0.28, cloud: 0xc77a5a, env: 1.0 },
+  day: { label: 'Day', top: 0x2f7fd8, horizon: 0xcfe6fa, fog: 0xcfe0ee, fogNear: 140, fogFar: 1300, hemiSky: 0xdcecff, hemiGround: 0x8a7a5a, hemi: 2.1, sun: 0xfff1d6, sunI: 2.5, sunDir: [0.45, 0.85, 0.3], stars: false, view: 48, lit: 0, exposure: 1, bloom: 0.12, cloud: 0xffffff, env: 1.0 },
+  dawn: { label: 'Dawn', top: 0x5a7fb0, horizon: 0xffd2a8, fog: 0xc9d3de, fogNear: 90, fogFar: 950, hemiSky: 0xcfdcf0, hemiGround: 0x8090a0, hemi: 2.0, sun: 0xffd0a0, sunI: 2.0, sunDir: [0.7, 0.36, -0.3], stars: false, view: 42, lit: 0.15, exposure: 1, bloom: 0.15, cloud: 0xffe6d2, env: 1.0 },
 };
 
 const STYLES = {
@@ -14,6 +14,7 @@ const STYLES = {
   port: { base: '#6b5348', win: '#1a1d22', lit: '#ffc56b', tints: [0xffffff, 0xcfc0b0, 0xa8a8b0, 0xb89a88], roof: 0x2b2a2a },
   industrial: { base: '#a08f78', win: '#2b241c', lit: '#ffcf80', tints: [0xffffff, 0xe8d8c0, 0xc8b8a0, 0xb0b0a8], roof: 0x6f6456 },
   mountain: { base: '#7c858c', win: '#20262c', lit: '#ffe0a0', tints: [0xffffff, 0xdde4ea, 0xb8c0c8], roof: 0xe9eef2 },
+  cabin: { base: '#7a5a3c', win: '#22180f', lit: '#ffcf80', tints: [0xffffff, 0xe0c8a8, 0xc8a888, 0xb8b0a0], roof: 0x4a3526 },
   warehouse: { base: '#5a6470', stripes: true, tints: [0xffffff, 0xc0b090, 0x90a8b0, 0xb08070], roof: 0x3a3f45 },
 };
 
@@ -33,11 +34,14 @@ export class World {
     this.zMax = 400;
     this.disposables = [];
     this.geo = {
-      box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 10),
-      cone: new THREE.ConeGeometry(0.5, 1, 7), sph: new THREE.SphereGeometry(0.5, 10, 8),
+      box: new THREE.BoxGeometry(1, 1, 1), cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 18),
+      cone: new THREE.ConeGeometry(0.5, 1, 9), sph: new THREE.SphereGeometry(0.5, 18, 12), ico: new THREE.IcosahedronGeometry(0.5, 1),
       plane: new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
     };
     this.styleMats = {};
+    this.renderer = opts.renderer || null;
+    this.time = 0;
+    this.waters = []; this.bridges = [];
     this._env();
   }
 
@@ -69,28 +73,116 @@ export class World {
     }
     const sd = new THREE.Vector3(...t.sunDir).normalize();
     const orb = new THREE.Mesh(new THREE.SphereGeometry(t.stars && this.themeName !== 'dusk' ? 90 : 150, 16, 12), new THREE.MeshBasicMaterial({ color: t.sun, fog: false }));
+    orb.material.color.multiplyScalar(2.2);
     orb.position.copy(sd).multiplyScalar(3800); this.sky.add(orb);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.radial(), color: t.sun, transparent: true, opacity: t.stars ? 0.35 : 0.6, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    halo.scale.setScalar(1500); halo.position.copy(orb.position); this.sky.add(halo);
+    // environment map from the sky so metal and glass have something to reflect
+    if (this.renderer) {
+      const pm = new THREE.PMREMGenerator(this.renderer), es = new THREE.Scene();
+      es.add(new THREE.Mesh(sg, this.sky.material));
+      this.envRT = pm.fromScene(es, 0, 1, 9000);
+      sc.environment = this.envRT.texture; sc.environmentIntensity = t.env;
+      pm.dispose();
+    }
+    // drifting cloud banks
+    const cm = new THREE.MeshBasicMaterial({ color: t.cloud, transparent: true, opacity: t.stars ? 0.55 : 0.8, fog: false, depthWrite: false });
+    this.disposables.push(cm);
+    this.clouds = new THREE.Group(); this.root.add(this.clouds);
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2, r = 400 + Math.random() * 2600, cy = 480 + Math.random() * 260, cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+      for (let k = 0; k < 5; k++) {
+        const m = new THREE.Mesh(this.geo.sph, cm), s = 90 + Math.random() * 150;
+        m.scale.set(s * 1.7, s * 0.34, s * 1.2); m.position.set(cx + (Math.random() - 0.5) * 260, cy + (Math.random() - 0.5) * 30, cz + (Math.random() - 0.5) * 200);
+        m.renderOrder = -5; this.clouds.add(m);
+      }
+    }
+    if (t.weather) this.setWeather(t.weather);
     this.hemi = new THREE.HemisphereLight(t.hemiSky, t.hemiGround, t.hemi); sc.add(this.hemi);
     this.sun = new THREE.DirectionalLight(t.sun, t.sunI); this.sunDir = sd;
     if (this.shadows) {
       this.sun.castShadow = true;
-      const s = this.sun.shadow; s.mapSize.set(2048, 2048);
+      const s = this.sun.shadow; s.mapSize.set(3072, 3072);
       s.camera.left = -85; s.camera.right = 85; s.camera.top = 85; s.camera.bottom = -85; s.camera.near = 1; s.camera.far = 520;
       s.bias = -0.0006; s.normalBias = 0.4;
     }
     sc.add(this.sun); sc.add(this.sun.target);
   }
 
+  // soft radial gradient used for halos and light pools
+  radial() {
+    if (this._radial) return this._radial;
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    this._radial = new THREE.CanvasTexture(c); this._radial.colorSpace = THREE.SRGBColorSpace; this.disposables.push(this._radial);
+    return this._radial;
+  }
+  // near-white speckled detail texture; tinted by each material's colour
+  grain() {
+    if (this._grain) return this._grain;
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d');
+    x.fillStyle = '#e9e9e9'; x.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 70; i++) {
+      const px = Math.random() * 256, py = Math.random() * 256, r = 14 + Math.random() * 40, dark = Math.random() < 0.6;
+      for (const ox of [-256, 0, 256]) for (const oy of [-256, 0, 256]) {
+        const g = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, r);
+        g.addColorStop(0, dark ? 'rgba(0,0,0,0.13)' : 'rgba(255,255,255,0.16)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g; x.fillRect(px + ox - r, py + oy - r, r * 2, r * 2);
+      }
+    }
+    for (let i = 0; i < 9000; i++) { x.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,' + (Math.random() * 0.16) + ')' : 'rgba(255,255,255,' + (Math.random() * 0.14) + ')'; x.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 1.6, 1 + Math.random() * 1.6); }
+    const t = this._grain = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; this.disposables.push(t);
+    return t;
+  }
+  grainRep(u, v) { const t = this.grain().clone(); t.repeat.set(u, v); t.needsUpdate = true; this.disposables.push(t); return t; }
+
+  setWeather(kind) {
+    if (this.weather) return;
+    const n = kind === 'rain' ? 1400 : 1100, pos = new Float32Array(n * (kind === 'rain' ? 6 : 3));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const off = []; for (let i = 0; i < n; i++) off.push((Math.random() - 0.5) * 70, Math.random() * 40, (Math.random() - 0.5) * 70, 0.7 + Math.random() * 0.6);
+    const obj = kind === 'rain'
+      ? new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.38 }))
+      : new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.14, transparent: true, opacity: 0.9 }));
+    obj.frustumCulled = false; this.root.add(obj); this.disposables.push(g, obj.material);
+    this.weather = { kind, obj, off, n };
+  }
+
+  // rivers: wadeable on foot, impassable for wheels except on a bridge
+  river(x, z, w, d) {
+    const wm = new THREE.MeshStandardMaterial({ color: 0x1f5a66, roughness: 0.08, metalness: 0.75, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
+    const m = new THREE.Mesh(this.geo.plane, wm); m.scale.set(w, 1, d); m.position.set(x, 0.03, z); this.root.add(m); this.disposables.push(wm);
+    this.inst('plane', 0x6a6248, x, 0.02, z, w + 5, 1, d + 5, { layer: 2 });
+    this.waters.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  }
+  bridge(x, z, w, d) {
+    const alongX = w > d;
+    this.inst('box', 0x6b5236, x, 0.2, z, w, 0.4, d);
+    for (const s of [-1, 1]) {
+      if (alongX) this.block(x, z + s * (d / 2 - 0.15), w, 0.3, 1.1, 0x4a3826); else this.block(x + s * (w / 2 - 0.15), z, 0.3, d, 1.1, 0x4a3826);
+    }
+    this.bridges.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2 });
+  }
+  inWater(x, z, ignoreBridges) {
+    if (!ignoreBridges) for (const b of this.bridges) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) return false;
+    for (const w of this.waters) if (x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1) return true;
+    return false;
+  }
+
   ground(color) {
-    const g = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color }));
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color, map: this.grainRep(700, 700) }));
     g.receiveShadow = true; this.root.add(g);
   }
 
   // ---------- batched primitives ----------
   inst(geo, color, x, y, z, sx, sy, sz, o = {}) {
-    const key = geo + '|' + color + '|' + (o.glow ? 1 : 0) + '|' + (o.layer || 0) + '|' + (o.alpha || 1);
+    const key = geo + '|' + color + '|' + (o.glow ? 1 : 0) + '|' + (o.layer || 0) + '|' + (o.alpha || 1) + '|' + (o.add ? 1 : 0);
     let b = this.batches.get(key);
-    if (!b) { b = { geo, color, o: { glow: o.glow, layer: o.layer, alpha: o.alpha }, mats: [] }; this.batches.set(key, b); }
+    if (!b) { b = { geo, color, o: { glow: o.glow, layer: o.layer, alpha: o.alpha, add: o.add }, mats: [] }; this.batches.set(key, b); }
     _e.set(o.rx || 0, o.ry || 0, o.rz || 0); _q.setFromEuler(_e);
     _m.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz));
     b.mats.push(_m.clone());
@@ -103,7 +195,13 @@ export class World {
     if (o.solid !== false) this.solid(x, z, w, d, y0 + h, y0);
   }
   deco(x, y, z, w, h, d, color, o) { this.inst('box', color, x, y, z, w, h, d, o); }
-  flat(x, z, w, d, color, layer = 1) { this.inst('plane', color, x, 0.01 * layer, z, w, 1, d, { layer }); }
+  flat(x, z, w, d, color, layer = 1) {
+    if (w * d < 300) return this.inst('plane', color, x, 0.01 * layer, z, w, 1, d, { layer });
+    const m = new THREE.MeshLambertMaterial({ color, map: this.grainRep(Math.max(1, w / 9), Math.max(1, d / 9)), polygonOffset: true, polygonOffsetFactor: -2 * layer, polygonOffsetUnits: -2 * layer });
+    const mesh = new THREE.Mesh(this.geo.plane, m);
+    mesh.scale.set(w, 1, d); mesh.position.set(x, 0.01 * layer, z); mesh.receiveShadow = true;
+    this.root.add(mesh); this.disposables.push(m);
+  }
 
   _styleMat(style, tint) {
     const key = style + tint;
@@ -112,27 +210,39 @@ export class World {
     let tex = this.styleMats['tex' + style];
     if (!tex) {
       const c = document.createElement('canvas'), e = document.createElement('canvas');
-      c.width = c.height = e.width = e.height = 128;
+      c.width = c.height = e.width = e.height = 512;
       const x = c.getContext('2d'), xe = e.getContext('2d');
-      x.fillStyle = st.base; x.fillRect(0, 0, 128, 128);
-      xe.fillStyle = '#000'; xe.fillRect(0, 0, 128, 128);
-      for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; x.fillRect(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 10, 1); }
+      x.fillStyle = st.base; x.fillRect(0, 0, 512, 512);
+      xe.fillStyle = '#000'; xe.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 2600; i++) { x.fillStyle = Math.random() < 0.6 ? 'rgba(0,0,0,' + (Math.random() * 0.1) + ')' : 'rgba(255,255,255,' + (Math.random() * 0.06) + ')'; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 16, 1 + Math.random() * 2); }
       let lit = false;
       if (st.stripes) {
-        for (let i = 0; i < 128; i += 8) { x.fillStyle = 'rgba(0,0,0,0.16)'; x.fillRect(i, 0, 2, 128); x.fillStyle = 'rgba(255,255,255,0.05)'; x.fillRect(i + 3, 0, 1, 128); }
+        for (let i = 0; i < 512; i += 16) { x.fillStyle = 'rgba(0,0,0,0.2)'; x.fillRect(i, 0, 4, 512); x.fillStyle = 'rgba(255,255,255,0.07)'; x.fillRect(i + 6, 0, 3, 512); }
+        x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(0, 0, 512, 10); x.fillRect(0, 250, 512, 6);
       } else {
-        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
-          const on = Math.random() < this.theme.lit;
-          x.fillStyle = 'rgba(0,0,0,0.25)'; x.fillRect(i * 32 + 5, j * 32 + 6, 22, 20);
-          x.fillStyle = on ? st.lit : st.win; x.fillRect(i * 32 + 7, j * 32 + 8, 18, 16);
-          if (on) { lit = true; xe.fillStyle = st.lit; xe.fillRect(i * 32 + 7, j * 32 + 8, 18, 16); }
+        // 8 x 4 windows per 12 m tile: paired 1.5 m windows on 3 m floors
+        for (let j = 0; j < 4; j++) { x.fillStyle = 'rgba(0,0,0,0.22)'; x.fillRect(0, j * 128, 512, 7); x.fillStyle = 'rgba(255,255,255,0.08)'; x.fillRect(0, j * 128 + 7, 512, 3); }
+        for (let i = 0; i < 8; i++) for (let j = 0; j < 4; j++) {
+          const on = Math.random() < this.theme.lit, wx = i * 64 + 9, wy = j * 128 + 30, ww = 46, wh = 74;
+          x.fillStyle = 'rgba(0,0,0,0.35)'; x.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+          if (on) {
+            const g = x.createLinearGradient(0, wy, 0, wy + wh); g.addColorStop(0, st.lit); g.addColorStop(1, '#b8863e');
+            x.fillStyle = g; x.fillRect(wx, wy, ww, wh); xe.fillStyle = g; xe.fillRect(wx, wy, ww, wh);
+            if (Math.random() < 0.4) { const bh = wh * (0.2 + Math.random() * 0.4); x.fillStyle = 'rgba(40,30,20,0.55)'; x.fillRect(wx, wy, ww, bh); xe.fillStyle = 'rgba(0,0,0,0.6)'; xe.fillRect(wx, wy, ww, bh); }
+            lit = true;
+          } else {
+            const g = x.createLinearGradient(wx, wy, wx + ww, wy + wh); g.addColorStop(0, '#3b5068'); g.addColorStop(0.5, st.win); g.addColorStop(1, '#0d141c');
+            x.fillStyle = g; x.fillRect(wx, wy, ww, wh);
+          }
+          x.fillStyle = 'rgba(0,0,0,0.45)'; x.fillRect(wx + ww / 2 - 1, wy, 2, wh);
         }
       }
       const mk = (cv) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; this.disposables.push(t); return t; };
       tex = this.styleMats['tex' + style] = { map: mk(c), em: lit ? mk(e) : null };
     }
-    const m = new THREE.MeshLambertMaterial({ map: tex.map, color: tint });
-    if (tex.em) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex.em; m.emissiveIntensity = 1.1; }
+    const glassy = style === 'city';
+    const m = new THREE.MeshStandardMaterial({ map: tex.map, color: tint, roughness: glassy ? 0.32 : 0.85, metalness: glassy ? 0.45 : 0.05 });
+    if (tex.em) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = tex.em; m.emissiveIntensity = 1.35; }
     this.disposables.push(m);
     return (this.styleMats[key] = m);
   }
@@ -155,27 +265,45 @@ export class World {
     this.root.add(mesh); this.disposables.push(geo);
     this.solid(x, z, w, d, h);
     if (h > 8 && r() < 0.6) this.deco(x + (r() - 0.5) * w * 0.4, h + 0.7, z + (r() - 0.5) * d * 0.4, 2.5, 1.4, 2.5, 0x555b63);
+    this.deco(x, h + 0.25, z, w + 0.5, 0.5, d + 0.5, st.roof);
+    if (style !== 'warehouse') this.deco(x, 0.5, z, w + 0.3, 1, d + 0.3, 0x2a2c30);
+    const dark = this.theme.lit > 0.1;
+    if (style === 'city') {
+      if (dark && r() < 0.45) {
+        const col = [0xff2e7a, 0x24d6ff, 0xffb020, 0x8a5cff, 0x3dff9a][Math.floor(r() * 5)], sx = r() < 0.5 ? -1 : 1, sh = Math.min(11, h * 0.35);
+        if (r() < 0.5) this.inst('box', col, x + sx * (w / 2 + 0.35), 5 + sh / 2, z + (r() - 0.5) * d * 0.5, 0.3, sh, 1.5, { glow: true });
+        else this.inst('box', col, x + (r() - 0.5) * w * 0.5, 5 + sh / 2, z + sx * (d / 2 + 0.35), 1.5, sh, 0.3, { glow: true });
+      }
+      if (h > 38) { this.inst('cyl', 0x555b63, x, h + 4, z, 0.3, 8, 0.3); this.inst('sph', 0xff2020, x, h + 8.2, z, 0.9, 0.9, 0.9, { glow: dark }); }
+    }
     return mesh;
   }
 
   // ---------- props ----------
   tree(x, z, kind = 'leaf', s = 1) {
-    if (kind === 'pine') {
+    if (kind === 'pine' || kind === 'fir') {
       this.inst('cyl', 0x4a3520, x, 1.2 * s, z, 0.5 * s, 2.4 * s, 0.5 * s);
-      this.inst('cone', 0x1f4a2e, x, 4.2 * s, z, 4.4 * s, 5 * s, 4.4 * s);
-      this.inst('cone', this.themeName === 'day' ? 0x2a5c38 : 0xdfe8ee, x, 6.8 * s, z, 3 * s, 3.6 * s, 3 * s);
+      this.inst('cone', 0x1b4229, x, 3.4 * s, z, 4.8 * s, 3.6 * s, 4.8 * s, { ry: x });
+      this.inst('cone', 0x21502f, x, 5.4 * s, z, 3.7 * s, 3.3 * s, 3.7 * s, { ry: z });
+      this.inst('cone', 0x286038, x, 7.2 * s, z, 2.6 * s, 3 * s, 2.6 * s, { ry: x + z });
+      if (kind === 'pine') this.inst('cone', 0xeef4f8, x, 8.3 * s, z, 1.35 * s, 1.4 * s, 1.35 * s);
     } else if (kind === 'palm') {
       this.inst('cyl', 0x7a6040, x, 3 * s, z, 0.4 * s, 6 * s, 0.4 * s, { rz: 0.08 });
       for (let i = 0; i < 5; i++) this.inst('box', 0x3f7a35, x + Math.sin(i * 1.26) * 1.4 * s, 6 * s, z + Math.cos(i * 1.26) * 1.4 * s, 1.3 * s, 0.12, 3.4 * s, { ry: i * 1.26, rx: 0.35 });
     } else {
-      this.inst('cyl', 0x4a3520, x, 1.4 * s, z, 0.5 * s, 2.8 * s, 0.5 * s);
-      this.inst('sph', 0x2d5a2a, x, 4.4 * s, z, 4.6 * s, 4.2 * s, 4.6 * s);
+      this.inst('cyl', 0x4a3520, x, 1.5 * s, z, 0.5 * s, 3 * s, 0.5 * s);
+      this.inst('ico', 0x2d5a2a, x, 4.4 * s, z, 4.4 * s, 3.8 * s, 4.4 * s, { ry: x });
+      this.inst('ico', 0x35682f, x + 1.3 * s, 5.2 * s, z + 0.6 * s, 3 * s, 2.8 * s, 3 * s, { ry: z });
+      this.inst('ico', 0x264e25, x - 1.2 * s, 4.0 * s, z - 0.9 * s, 3.2 * s, 2.6 * s, 3.2 * s, { ry: x + z });
     }
     this.solid(x, z, 0.7, 0.7, 3);
   }
   lamp(x, z) {
     this.inst('cyl', 0x30343a, x, 3, z, 0.18, 6, 0.18);
-    this.inst('sph', this.theme.lit > 0.1 ? 0xffe2a0 : 0x8a8a80, x, 6.1, z, 0.7, 0.5, 0.7, { glow: this.theme.lit > 0.1 });
+    const on = this.theme.lit > 0.1;
+    this.inst('box', 0x30343a, x - 0.7, 6, z, 1.5, 0.12, 0.2);
+    this.inst('sph', on ? 0xffe2a0 : 0x8a8a80, x - 1.4, 5.9, z, 0.6, 0.3, 0.6, { glow: on });
+    if (on) this.inst('plane', 0xffc878, x - 1.4, 0.05, z, 26, 1, 26, { layer: 4, add: true });
   }
   crate(x, z, s = 1.4, color = 0x7a5a36) { this.block(x, z, s, s, s, color); }
   container(x, z, alongX, color, levels = 1) {
@@ -210,7 +338,9 @@ export class World {
     }
   }
   water(z0) {
-    this.inst('plane', 0x12324a, 0, 0.06, z0 + 2000, 9000, 1, 4000, { layer: 3 });
+    const wm = new THREE.MeshStandardMaterial({ color: 0x0d2f47, roughness: 0.1, metalness: 0.85, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
+    const wmesh = new THREE.Mesh(this.geo.plane, wm); wmesh.scale.set(9000, 1, 4000); wmesh.position.set(0, 0.06, z0 + 2000);
+    this.root.add(wmesh); this.disposables.push(wm);
     this.zMax = z0 - 4;
   }
 
@@ -218,21 +348,38 @@ export class World {
     for (const b of this.batches.values()) {
       const o = b.o;
       let mat;
-      if (o.glow) mat = new THREE.MeshBasicMaterial({ color: b.color });
-      else mat = new THREE.MeshLambertMaterial({ color: b.color });
+      if (o.add) mat = new THREE.MeshBasicMaterial({ color: b.color, map: this.radial(), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
+      else if (o.glow) { mat = new THREE.MeshBasicMaterial({ color: b.color }); mat.color.multiplyScalar(2.6); }
+      else mat = new THREE.MeshLambertMaterial({ color: b.color, map: b.geo === 'box' && !o.layer ? this.grain() : null, flatShading: b.geo === 'ico' });
       if (o.layer) { mat.polygonOffset = true; mat.polygonOffsetFactor = -2 * o.layer; mat.polygonOffsetUnits = -2 * o.layer; }
       if (o.alpha && o.alpha < 1) { mat.transparent = true; mat.opacity = o.alpha; }
       const im = new THREE.InstancedMesh(this.geo[b.geo], mat, b.mats.length);
       b.mats.forEach((m, i) => im.setMatrixAt(i, m));
       im.instanceMatrix.needsUpdate = true;
-      im.castShadow = !o.layer && !o.glow; im.receiveShadow = true; im.frustumCulled = false;
+      im.castShadow = !o.layer && !o.glow; im.receiveShadow = !o.add && !o.glow; im.frustumCulled = false;
       this.root.add(im); this.disposables.push(mat);
     }
     this.batches.clear();
     this._buildNav();
   }
 
-  update(focus) {
+  update(focus, dt = 0, cam = null) {
+    this.time += dt;
+    if (this.clouds) { this.clouds.position.x = ((this.time * 6) % 600) - 300; }
+    const W = this.weather;
+    if (W && cam) {
+      const p = W.obj.geometry.attributes.position.array, o = W.off, rain = W.kind === 'rain';
+      for (let i = 0; i < W.n; i++) {
+        const k = i * 4;
+        o[k + 1] -= (rain ? 34 : 2.4) * o[k + 3] * dt;
+        if (!rain) o[k] += Math.sin(this.time + i) * 0.6 * dt;
+        if (o[k + 1] < -6) o[k + 1] += 40;
+        const x = cam.x + o[k], y = Math.max(0.05, cam.y + o[k + 1] - 10), z = cam.z + o[k + 2];
+        if (rain) { p[i * 6] = x; p[i * 6 + 1] = y; p[i * 6 + 2] = z; p[i * 6 + 3] = x + 0.12; p[i * 6 + 4] = y + 0.9; p[i * 6 + 5] = z; }
+        else { p[i * 3] = x; p[i * 3 + 1] = y; p[i * 3 + 2] = z; }
+      }
+      W.obj.geometry.attributes.position.needsUpdate = true;
+    }
     this.sky.position.set(focus.x, 0, focus.z);
     this.sun.target.position.set(focus.x, 0, focus.z);
     this.sun.position.set(focus.x + this.sunDir.x * 220, this.sunDir.y * 220, focus.z + this.sunDir.z * 220);
@@ -247,6 +394,7 @@ export class World {
     for (const d of this.disposables) d.dispose();
     for (const k in this.geo) this.geo[k].dispose();
     this.sky.geometry.dispose();
+    if (this.envRT) this.envRT.dispose();
     this.scene.remove(this.root);
   }
 

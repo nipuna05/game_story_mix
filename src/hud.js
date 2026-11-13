@@ -56,7 +56,7 @@ export class Hud {
     this.set('hpBar', 'width', Math.round(clamp(p.hp, 0, 100)) + '%');
     this.set('arBar', 'width', Math.round(clamp(p.armor, 0, 100)) + '%');
     const foot = p.mode === 'foot';
-    this.set('stance', 'text', p.mode === 'chute' ? 'PARACHUTE' : p.mode === 'fall' ? 'FREEFALL' : !foot ? '' : p.crouch ? 'CROUCHED · QUIET' : 'STANDING');
+    this.set('stance', 'text', p.mode === 'chute' ? 'PARACHUTE' : p.mode === 'fall' ? 'FREEFALL' : !foot ? '' : p.wet ? 'WADING · HIDDEN' : p.crouch ? 'CROUCHED · QUIET' : 'STANDING');
     const wd = WEAPONS[p.cur], st = p.inv[p.cur];
     this.set('weapon', 'display', foot ? '' : 'none');
     this.set('wName', 'text', wd.name.toUpperCase());

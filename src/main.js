@@ -13,6 +13,11 @@ import { UI } from './ui.js';
 import { CAMPAIGN, DEFAULT_CAST, fill } from './story.js';
 import { clamp, dist2, rng } from './util.js';
 import { cmat } from './characters.js';
+import { loadAssets } from './assets.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const SAVE_KEY = 'nightfall_protocol_save_v1';
 const DIFFS = { easy: { acc: 0.7, dmg: 0.65 }, normal: { acc: 1, dmg: 1 }, hard: { acc: 1.25, dmg: 1.4 } };
@@ -41,6 +46,11 @@ class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.camera = new THREE.PerspectiveCamera(68, 1, 0.25, 9000);
+    // post-processing: HDR render -> bloom -> tone mapping
+    this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
+    this.renderPass = new RenderPass(new THREE.Scene(), this.camera);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.55, 1.0);
+    this.composer.addPass(this.renderPass); this.composer.addPass(this.bloom); this.composer.addPass(new OutputPass());
     this.save = loadSave(); this.settings = this.save.settings; this.cast = this.save.cast;
     this.input = new Input(this.canvas); this.audio = new Sfx();
     this.hud = new Hud(this); this.ui = new UI(this);
@@ -64,10 +74,12 @@ class Game {
   applySettings() {
     this.audio.setVol(this.settings.vol);
     this.renderer.shadowMap.enabled = !!this.settings.shadows;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.settings.shadows ? 1.75 : 1.25));
+    const pr = Math.min(window.devicePixelRatio || 1, this.settings.shadows ? 1.5 : 1.25);
+    this.renderer.setPixelRatio(pr); this.composer.setPixelRatio(pr); this.composer.setSize(window.innerWidth, window.innerHeight);
   }
   resize() {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
     this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix();
   }
 
@@ -77,8 +89,9 @@ class Game {
     this.audio.quiet();
     this.scene = new THREE.Scene();
     this.resetLists();
-    this.world = new World(this.scene, time, { shadows: this.settings.shadows });
+    this.world = new World(this.scene, time, { shadows: this.settings.shadows, renderer: this.renderer });
     this.renderer.toneMappingExposure = this.world.theme.exposure;
+    this.renderPass.scene = this.scene; this.bloom.strength = this.world.theme.bloom;
     this.P = LOCATIONS[location].build(this.world, rng(location.length * 7919 + 13));
     this.world.finalize();
     this.fx = new FX(this.scene);
@@ -102,6 +115,7 @@ class Game {
   spawnPickup(type, x, z) {
     const d = PICKUPS[type];
     const mesh = new THREE.Mesh(this.world.geo.box, new THREE.MeshBasicMaterial({ color: d.color }));
+    if (d.key) mesh.material.color.multiplyScalar(2.2);
     mesh.scale.set(d.key ? 0.5 : 0.45, d.key ? 0.3 : 0.4, d.key ? 0.36 : 0.45);
     const pk = { type, pos: new THREE.Vector3(x, 0.9, z), mesh, taken: false, key: !!d.key, seed: Math.random() * 6 };
     mesh.position.copy(pk.pos); this.scene.add(mesh); this.pickups.push(pk); return pk;
@@ -109,7 +123,7 @@ class Game {
   spawnTarget(x, z, kind) {
     const grp = new THREE.Group(), u = this.world.geo.box;
     const add = (geo, color, sx, sy, sz, px, py, pz, rz) => { const m = new THREE.Mesh(geo, cmat(color)); m.scale.set(sx, sy, sz); m.position.set(px, py, pz); if (rz) m.rotation.x = rz; m.castShadow = true; grp.add(m); return m; };
-    if (kind === 'uplink') {
+    if (kind === 'uplink' || kind === 'jammer') {
       add(u, 0x4a525c, 2.4, 2.2, 2.4, 0, 1.1, 0); add(this.world.geo.cyl, 0x8a929c, 0.25, 3.4, 0.25, 0, 3.9, 0);
       add(this.world.geo.cone, 0xd8dde2, 2.6, 1, 2.6, 0, 5.6, 0.3, 1.9);
       this.world.solid(x, z, 2.4, 2.4, 2.2);
@@ -160,7 +174,10 @@ class Game {
     if (ins === 'parachute') {
       const f = P.flyStart, pl = this.spawnPlane(f.x, f.y, f.z, f.yaw, true);
       p.pos.copy(pl.pos); p.enterVehicle(pl);
-    } else if (ins === 'car' || ins === 'bike') {
+    } else if (ins === 'boat' && P.boatSpawn) {
+      const s = P.boatSpawn, bt = this.spawnCar(s.x, s.z, s.yaw, 'boat');
+      p.pos.copy(bt.pos); p.enterVehicle(bt);
+    } else if (ins === 'car' || ins === 'bike' || ins === 'boat') {
       const s = P.carSpawn; this.spawnCar(s.x, s.z, s.yaw, ins === 'bike' ? 'bike' : 'sedan');
       p.pos.set(s.x + Math.cos(s.yaw) * 2.8, 0, s.z - Math.sin(s.yaw) * 2.8); p.yaw = s.yaw;
     } else { p.pos.set(P.footSpawn.x, 0, P.footSpawn.z); p.yaw = P.footSpawn.yaw; }
@@ -301,9 +318,9 @@ class Game {
     } else if (this.state === 'menu') {
       const a = t * 0.00004;
       this.camera.position.set(Math.cos(a) * 360, 95, Math.sin(a) * 360); this.camera.lookAt(120, 50, 120);
-      this.world.update(this.camera.position);
+      this.world.update(this.camera.position, dt, this.camera.position);
     }
-    this.renderer.render(this.scene, this.camera);
+    if (this.settings.shadows) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     this.input.frameEnd();
   }
 
@@ -372,7 +389,7 @@ class Game {
 
     this.fx.update(dt);
     p.updateCamera(dt);
-    w.update(p.vehicle ? p.vehicle.pos : p.pos);
+    w.update(p.vehicle ? p.vehicle.pos : p.pos, dt, this.camera.position);
     this.camera.updateMatrixWorld();
     this.hud.update(dt);
   }
@@ -416,4 +433,8 @@ class Game {
   }
 }
 
-window.game = new Game();
+// load the optional model files first; the game still starts (with built-in shapes) if any are missing
+const boot = document.createElement('div');
+boot.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#ffb23e;font:600 14px Consolas,monospace;letter-spacing:4px;background:#05070a';
+boot.textContent = 'LOADING MODELS...'; document.body.appendChild(boot);
+loadAssets().catch(() => null).then(() => { boot.remove(); window.game = new Game(); });

@@ -7,7 +7,7 @@ export class Input {
     this.pressed = {};
     this.buttons = {};
     this.btnPressed = {};
-    this.dx = 0; this.dy = 0; this.wheel = 0;
+    this.dx = 0; this.dy = 0; this.wheel = 0; this.lockedAt = 0;
     this.locked = false;
     this.active = false; // true while gameplay wants input
     this.onLockLost = null;
@@ -28,13 +28,18 @@ export class Input {
     window.addEventListener('mouseup', (e) => { this.buttons[e.button] = false; });
     window.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
-      this.dx += e.movementX || 0; this.dy += e.movementY || 0;
+      // ignore the first moments after capture and any impossible jump (a known browser glitch)
+      if (performance.now() - this.lockedAt < 120) return;
+      const x = e.movementX || 0, y = e.movementY || 0;
+      if (Math.abs(x) > 250 || Math.abs(y) > 250) return;
+      this.dx += x; this.dy += y;
     });
     window.addEventListener('wheel', (e) => { if (this.active) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', () => {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
+      if (this.locked) { this.lockedAt = performance.now(); this.dx = this.dy = 0; }
       if (was && !this.locked) { this.buttons = {}; if (this.onLockLost) this.onLockLost(); }
     });
   }

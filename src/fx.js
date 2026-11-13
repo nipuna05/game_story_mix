@@ -18,6 +18,7 @@ export class FX {
   tracer(a, b, color = 0xfff0b0) {
     const g = new THREE.BufferGeometry().setFromPoints([a.clone(), b.clone()]);
     const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 });
+    m.color.multiplyScalar(3);
     const o = new THREE.Line(g, m); o.frustumCulled = false;
     this.scene.add(o);
     this.items.push({ o, t: 0, life: 0.08, kind: 'fade' });
@@ -37,12 +38,14 @@ export class FX {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(p, 3));
     const o = new THREE.Points(g, new THREE.PointsMaterial({ color, size, transparent: true }));
+    if (speed > 10) o.material.color.multiplyScalar(2.5);
     o.frustumCulled = false;
     this.scene.add(o);
     this.items.push({ o, t: 0, life, kind: 'pts', v });
   }
   explosion(pos, r = 8) {
     const ball = new THREE.Mesh(this.sphere, new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.95 }));
+    ball.material.color.multiplyScalar(3);
     ball.position.copy(pos); this.scene.add(ball);
     this.items.push({ o: ball, t: 0, life: 0.45, kind: 'boom', r });
     for (let i = 0; i < 5; i++) {

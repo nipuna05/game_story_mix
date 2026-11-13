@@ -106,6 +106,26 @@ export const CAMPAIGN = [
     outro: ["{lt}'s map shows a hidden base on the Mountain Road, above the snow line. {friend} is being held there.", "And it shows something else: a signature on every order. {villain} - the commander who planned the mission that ended {hero}'s career. He did not fail that day. He sold them out."],
   },
   {
+    id: 'm3b', title: 'Riverline', location: 'forest', time: 'day', insertion: 'car', enemies: 1.0, loadout: ['sniper', 'rifle'],
+    place: 'Greenwater Forest - jammer camp',
+    brief: [
+      "Nobody gets near the mountain while the jammers run. {org} hid three of them in a camp deep in Greenwater Forest, and as long as they hum {hacker} is blind and every patrol on the mountain road can hear you coming.",
+      "Two rivers cut the forest. The road bridge is the obvious way across - and it is watched. The water is slow and waist deep: wade it and the trees will hide you, or take one of the boats tied up on the bank.",
+      "Grab the three codebooks so {hacker} can read their traffic, blow the jammers, then get back across the river to the village.",
+    ],
+    objectives: [
+      { type: 'collect', count: 3, text: 'Cross the river and take the 3 codebooks from the camp',
+        radio: [R('{hacker}', 'Camp is north of the river. Bridge straight ahead is guarded. In the water they see you from a lot less far - your call.')],
+        done: [R('{hacker}', 'Codebooks are gold. Now kill that noise.')] },
+      { type: 'destroy', count: 3, kind: 'jammer', text: 'Plant charges on the 3 jammer masts',
+        radio: [R('{hacker}', 'Three masts on the marked pads. Hold [E], then get clear.')],
+        done: [R('{hacker}', 'Signal is clean. I can see the whole mountain road now.')] },
+      { type: 'reach', at: 'extract', text: 'Get back across the river to the village',
+        done: [R('{ally}', 'Nice work in the green. Next stop is uphill.')] },
+    ],
+    outro: ["With the jammers gone {hacker} maps every patrol between the city and the snow line. There is a gap in the sweep on the mountain road - eighty seconds wide.", "It will have to be enough."],
+  },
+  {
     id: 'm4', title: 'Mountain Run', location: 'mountain', time: 'dawn', insertion: 'bike', enemies: 1.0, loadout: ['sniper', 'rifle'],
     place: 'Mountain Road - ridge base',
     brief: [
@@ -128,6 +148,26 @@ export const CAMPAIGN = [
         done: [R('{friend}', "We're clear. {hero} - {villain} is going to black out the whole city. We have one night.")] },
     ],
     outro: ["{friend} fills in the rest on the flight home. She found {project} first and tried to stop it alone. {villain} let her live only because he wanted {hero} to come.", "Tomorrow night {villain} will kill the power, cut the networks and take the city's defence satellites from the top of the Aegis Spire. There is one way in that he is not watching: the sky."],
+  },
+  {
+    id: 'm4b', title: 'Dead Drop', location: 'forest', time: 'day', insertion: 'boat', enemies: 1.1, loadout: ['rifle', 'sniper'],
+    place: 'Greenwater Forest - the river',
+    brief: [
+      "The parachute rig and fuel for tomorrow night's jump were coming up the Greenwater by river. They never arrived. {org} trackers hit {ally}'s couriers at the forest camp and are holding two of them.",
+      "Go in by boat in broad daylight - loud is fine, fast is better. Free both couriers and bring them back down to the village.",
+      "The trackers answer to a hunter they call the Warden. As long as he is breathing he will follow the trail straight back to {friend}. End it here.",
+    ],
+    objectives: [
+      { type: 'rescue', count: 2, at: 'extract', text: 'Free the 2 couriers and get them back to the village',
+        radio: [R('{ally}', 'You have the boat. Follow the river east, beach it near the camp. My people are in the sheds. They can ride with you.')],
+        done: [R('{ally}', 'Both breathing. I owe you a drink and a parachute.')] },
+      { type: 'kill', enemy: 'boss', name: 'The Warden', text: 'Hunt down the Warden at the camp',
+        radio: [R('{hacker}', 'The Warden is at the camp office with two heavies. He will not run - he thinks he is the hunter.')],
+        done: [R('{hacker}', 'Trail ends here. Nobody is following you home.')] },
+      { type: 'reach', at: 'extract', text: 'Return to the village',
+        done: [R('{friend}', 'Rig is packed, plane is fuelled. Get some sleep. Tomorrow night we jump.')] },
+    ],
+    outro: [],
   },
   {
     id: 'm5', title: 'Nightfall', location: 'downtown', time: 'blackout', insertion: 'parachute', enemies: 1.2, loadout: ['rifle', 'sniper'], decision: 'ending',

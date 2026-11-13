@@ -13,6 +13,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('CONSOLE ' + m.text()); });
 await page.goto(URL);
+await page.waitForFunction(() => window.game, null, { timeout: 60000 });
 await page.waitForTimeout(2500);
 await page.screenshot({ path: 'test-shots/00-menu.png' });
 const run = async (name, fn, arg) => {
@@ -22,7 +23,7 @@ const shot = async (name, wait = 600) => { await page.waitForTimeout(wait); awai
 
 const inject = () => page.evaluate(async () => {
   const S = await import('/src/story.js');
-  window.S = S;
+  window.S = S; window.M = (id) => S.CAMPAIGN.find((m) => m.id === id);
   const g = window.game;
   window.tick = (n, dt = 1 / 30) => { for (let i = 0; i < n && g.state === 'playing'; i++) { g.update(dt); g.input.frameEnd(); } };
   window.info = () => ({
@@ -47,7 +48,7 @@ const inject = () => page.evaluate(async () => {
 });
 await inject();
 
-for (let i = 0; i < 5; i++) {
+for (let i = 0; i < 7; i++) {
   await run('load m' + (i + 1), (n) => { const g = window.game; g.save.flags.ending = 'truth'; g.startMission(window.S.CAMPAIGN[n], { approach: n % 2 ? 'storm' : 'ghost' }); window.tick(90); return window.info(); }, i);
   await shot(`m${i + 1}-start`);
 }
@@ -103,7 +104,7 @@ await shot('m2-race');
 
 // ---- M4: bike time trial, rescue, take-off, fly out
 await run('m4 bike', () => {
-  const g = window.game; g.startMission(window.S.CAMPAIGN[3], {}); g.god = true; const p = g.player, o = g.mission.cur, s = o.st;
+  const g = window.game; g.startMission(window.M('m4'), {}); g.god = true; const p = g.player, o = g.mission.cur, s = o.st;
   p.pos.set(s.car.pos.x + 2, 0, s.car.pos.z); window.tick(2); g.findInteract().act();
   const frames = window.autoRace(o);
   return { frames, cp: s.cp, time: Math.round(s.time), ...window.info() };
@@ -134,7 +135,7 @@ await shot('m4-end', 3000);
 
 // ---- M5: fly in, bail out, parachute, land, shoot
 await run('m5 jump', () => {
-  const g = window.game; g.save.flags.ending = 'savior'; g.startMission(window.S.CAMPAIGN[4], {}); g.god = true; const p = g.player;
+  const g = window.game; g.save.flags.ending = 'savior'; g.startMission(window.M('m5'), {}); g.god = true; const p = g.player;
   let f = 0; while (g.mission.cur.type === 'fly' && f < 2000) { window.tick(1); f++; }
   const a = window.info();
   p.exitVehicle(); window.tick(60); const fall = window.info();
@@ -156,7 +157,7 @@ await run('m5 shoot', () => {
   return { hp0, hp1: e.hp, dead: e.dead, shots: g.stats.shots, hits: g.stats.hits, cur: p.cur };
 });
 await shot('m5-combat');
-for (const e of ['savior', 'vengeance', 'truth']) await run('ending ' + e, (k) => window.S.CAMPAIGN[4].objectives({ ending: k }).map((o) => o.type).join(','), e);
+for (const e of ['savior', 'vengeance', 'truth']) await run('ending ' + e, (k) => window.M('m5').objectives({ ending: k }).map((o) => o.type).join(','), e);
 
 
 // ---- combat: guards shoot back, death -> fail screen -> continue from checkpoint; grenades; charges
@@ -167,9 +168,9 @@ await run('combat death', () => {
   let f = 0; while (g.state === 'playing' && f < 3000) { window.tick(1); f++; }
   return { f, hp: Math.round(p.hp), dead: p.dead, state: g.state, alerted: g.enemies.filter((x) => x.alerted).length, alarms: g.stats.alarms };
 });
-await page.waitForTimeout(2500); await page.screenshot({ path: 'test-shots/fail.png' });
+await page.waitForSelector('#ui h2', { timeout: 60000 }); await page.screenshot({ path: 'test-shots/fail.png' });
 await run('fail ui', () => document.querySelector('#ui h2') && document.querySelector('#ui h2').textContent);
-await page.click('button[data-a="cp"]');
+await page.click('button[data-a="cp"]', { timeout: 60000 });
 await run('after continue', () => { const g = window.game; g.god = true; window.tick(10); return window.info(); });
 await run('grenade + charge', () => {
   const g = window.game, p = g.player; const t = g.targets[0];
@@ -187,7 +188,7 @@ await run('hostage ride', () => {
 });
 
 // ---- real UI flow with mouse clicks
-await page.reload(); await page.waitForTimeout(2000);
+await page.reload(); await page.waitForFunction(() => window.game, null, { timeout: 60000 }); await page.waitForTimeout(2000);
 await page.click('button[data-a="new"]');
 await page.fill('input[data-k="hero"]', 'Test <b>Hero</b>');
 await shot('ui-cast', 300);
@@ -215,8 +216,36 @@ await shot('ui-ending', 300);
 await page.evaluate(() => { localStorage.clear(); });
 await inject();
 
+
+// ---- forest: wading, river blocks wheels, boats, boat insertion
+await run('forest wade+car', () => {
+  const g = window.game; g.startMission(window.M('m3b'), {}); g.god = true; const p = g.player;
+  const car = g.vehicles.find((v) => v.type === 'car' && v.kind === 'sedan');
+  p.pos.set(0, 0, -90); window.tick(5); const wet = p.wet, spd = (() => { g.input.keys.KeyW = true; window.tick(30); g.input.keys.KeyW = false; return +p.speed.toFixed(1); })();
+  car.teleport(-100, -130, 0); p.pos.set(-97.4, 0, -130); window.tick(2); g.findInteract().act(); g.input.keys.KeyW = true; window.tick(150); g.input.keys.KeyW = false;
+  const carZ = Math.round(car.pos.z); p.exitVehicle();
+  const boat = g.vehicles.find((v) => v.kind === 'boat'); p.pos.set(boat.pos.x + 2.6, 0, boat.pos.z); window.tick(2); g.findInteract().act();
+  const bx = boat.pos.x; g.input.keys.KeyW = true; window.tick(150); g.input.keys.KeyW = false;
+  return { wet, wadeSpeed: spd, carStoppedAtZ: carZ, boatMoved: Math.round(boat.pos.x - bx), boatZ: Math.round(boat.pos.z), ...window.info() };
+});
+await shot('forest-boat');
+await run('forest bridge', () => {
+  const g = window.game, p = g.player; p.exitVehicle();
+  const car = g.vehicles.find((v) => v.type === 'car' && v.kind === 'sedan'); car.teleport(-200, -150, 0); car.hp = 999;
+  p.pos.set(-197.4, 0, -150); window.tick(2); g.findInteract().act(); g.input.keys.KeyW = true; window.tick(120); g.input.keys.KeyW = false;
+  return { carZ: Math.round(car.pos.z) };
+});
+await run('m4b boat start', () => { const g = window.game; g.startMission(window.M('m4b'), { approach: 'storm' }); window.tick(60); return { kind: g.player.vehicle && g.player.vehicle.kind, ...window.info() }; });
+await shot('m4b-start');
+await run('forest stand', () => { const g = window.game, p = g.player; g.god = true; p.exitVehicle(); p.pos.set(-200, 0, -40); p.yaw = 0; p.pitch = 0; window.tick(40); return window.info(); });
+await shot('forest-foot');
+await run('pose aim', () => { const g = window.game, p = g.player; p.cur = 'rifle'; g.input.buttons[2] = true; p.yaw = 2.6; window.tick(20); return p.cur; });
+await shot('pose-aim');
+await run('pose crouch', () => { const g = window.game, p = g.player; g.input.buttons[2] = false; g.input.pressed.KeyC = true; window.tick(20); return p.crouch; });
+await shot('pose-crouch');
+
 // ---- custom builder mission in every district
-for (const loc of ['harbor', 'downtown', 'industrial', 'mountain']) {
+for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {
     const g = window.game;
     const def = window.S.buildCustom({ title: 'T', story: 'x', location: l, time: 'day', insertion: 'parachute', exit: 'flyout', objectives: ['fight', 'race', 'collect', 'rescue', 'destroy', 'kill'], count: 3, enemies: 1.4 });

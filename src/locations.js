@@ -265,6 +265,7 @@ export const LOCATIONS = {
     defaultTime: 'dawn', compound: 'the ridge base',
     build(w, rng) {
       w.ground(0xe2e9ef);
+      w.setWeather('snow');
       const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 20, cz: 80, w: 250, d: 230, wall: 0x6a727a, floor: 0x8a9298, style: 'mountain', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'e', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
@@ -279,6 +280,37 @@ export const LOCATIONS = {
         flyStart: { x: -160, y: 340, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [3, 0], [3, 3], [0, 3]],
         parked: [[1, 0, 'jeep'], [2, 2, 'bike']],
       });
+    },
+  },
+
+  forest: {
+    name: 'Greenwater Forest', tagline: 'Thick woodland cut by two rivers. The bridges are watched - the water is not.',
+    defaultTime: 'day', compound: 'the jammer camp',
+    build(w, rng) {
+      w.ground(0x4f6f3c);
+      const dirt = 0x6a5c44;
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
+      const C = compound(w, { cx: -120, cz: 170, w: 240, d: 220, wall: 0x5a4a36, floor: 0x6a6248, style: 'cabin', containers: false, rng,
+        gates: [{ side: 's', off: -80, width: 14 }, { side: 'e', off: 80, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
+        pattern: ['SCTO', 'WC.W', 'TSCC', 'MWST'] });
+      const air = airstrip(w, { x: 330, z0: 20, z1: 380 });
+      // the main river runs west-east, a tributary joins it from the north
+      w.river(0, -90, 840, 30); w.river(150, 168, 20, 490);
+      w.bridge(-200, -90, 10, 38); w.bridge(280, -90, 5, 38); w.bridge(150, 250, 28, 9);
+      w.flat(-200, -150, 10, 100, dirt, 1); w.flat(-200, -7, 10, 136, dirt, 1); w.flat(75, 250, 150, 8, dirt, 1); w.flat(245, 250, 150, 8, dirt, 1);
+      for (const [x, z] of [[-214, -112], [-186, -68], [272, -112], [165, 238]]) w.sandbags(x, z, 5);
+      arenaRing(w, town.block(1, 0), 0x5a4a36);
+      const avoid = [town.rect, C.rect, air.rect, [-425, 425, -108, -72], [137, 163, -80, 415], [-208, -192, -205, 65], [0, 325, 243, 257], [50, 115, 90, 150], [-372, -332, -190, -150]];
+      scatter(rng, 560, avoid, (x, z) => { const k = rng(); if (k < 0.5) w.tree(x, z, 'fir', rr(rng, 0.9, 1.7)); else if (k < 0.9) w.tree(x, z, 'leaf', rr(rng, 0.9, 1.5)); else w.rock(x, z, rr(rng, 1.2, 3)); });
+      w.mountains(26, 1500, 2200, 180, 420, 0x3f5a3a, null);
+      const P = finish(C, town, air, {
+        lz: { x: 82, z: 120 }, extract: { x: -352, z: -170 }, footSpawn: { x: -120, z: -200, yaw: 0 }, carSpawn: { x: -200, z: -185, yaw: 0 },
+        boatSpawn: { x: -385, z: -90, yaw: Math.PI / 2 },
+        flyStart: { x: 82, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 0], raceIdx: [[0, 0], [3, 0], [3, 2], [0, 2]],
+        parked: [[1, 1, 'jeep'], [2, 1, 'bike']],
+      });
+      P.cars.push({ x: -120, z: -90, yaw: Math.PI / 2, kind: 'boat' }, { x: 225, z: -90, yaw: -Math.PI / 2, kind: 'boat' });
+      return P;
     },
   },
 };

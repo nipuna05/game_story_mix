@@ -1,23 +1,31 @@
 import * as THREE from 'three';
 import { clamp, damp, angDiff, turnToward, dist2 } from './util.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { cmat, makeHumanoid, animateHumanoid } from './characters.js';
+import { ASSETS } from './assets.js';
 
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const GEO = {
-  wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 12).rotateZ(Math.PI / 2),
-  bwheel: new THREE.CylinderGeometry(0.4, 0.4, 0.16, 14).rotateZ(Math.PI / 2),
-  u: box(1, 1, 1),
+  wheel: new THREE.CylinderGeometry(0.42, 0.42, 0.3, 20).rotateZ(Math.PI / 2),
+  rim: new THREE.CylinderGeometry(0.24, 0.24, 0.32, 12).rotateZ(Math.PI / 2),
+  bwheel: new THREE.CylinderGeometry(0.4, 0.4, 0.16, 18).rotateZ(Math.PI / 2),
+  u: new RoundedBoxGeometry(1, 1, 1, 3, 0.12),
   prop: box(3.4, 0.16, 0.06),
 };
-const glow = new THREE.MeshBasicMaterial({ color: 0xfff2c0 });
-const tail = new THREE.MeshBasicMaterial({ color: 0xff2a1a });
-const glass = new THREE.MeshLambertMaterial({ color: 0x2c3e4e });
+const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xfff2c0).multiplyScalar(2.6) });
+const tail = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff2a1a).multiplyScalar(2.2) });
+const rimMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.9, roughness: 0.25 });
+const paints = new Map();
+// glossy car paint that reflects the sky
+const vmat = (c, rough = 0.3, metal = 0.6) => { const k = c + '|' + rough; let m = paints.get(k); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal }); paints.set(k, m); } return m; };
+const glass = new THREE.MeshStandardMaterial({ color: 0x1c2a36, roughness: 0.08, metalness: 0.9 });
 
 export const CAR_KINDS = {
   sedan: { name: 'Sedan', max: 34, accel: 13, hp: 180, r: 1.5, colors: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a] },
   sports: { name: 'Street racer', max: 47, accel: 19, hp: 160, r: 1.5, colors: [0xd22b2b, 0xe8b020, 0x2a7ad2, 0x30a860, 0xb040c0] },
   jeep: { name: 'Jeep', max: 31, accel: 12, hp: 280, r: 1.6, colors: [0x4d5a3a, 0x6a6048] },
   bike: { name: 'Motorbike', max: 44, accel: 22, hp: 110, r: 0.8, colors: [0x202020, 0x8a1c1c, 0x1c3c8a] },
+  boat: { name: 'Boat', max: 21, accel: 9, hp: 220, r: 1.7, water: true, colors: [0x6a7a52, 0x7a6a4a] },
 };
 
 function part(parent, w, h, d, mat, x, y, z) {
@@ -34,16 +42,23 @@ export class Car {
     const c = color ?? this.def.colors[Math.floor(Math.random() * this.def.colors.length)];
     const grp = this.mesh = new THREE.Group(); grp.rotation.order = 'YXZ';
     const body = this.body = new THREE.Group(); grp.add(body);
-    const bm = cmat(c), dk = cmat(0x15171a);
+    const bm = vmat(c), dk = vmat(0x15171a, 0.7, 0.2);
     this.wheels = [];
-    if (kind === 'bike') {
+    if (kind === 'boat') {
+      part(body, 2.3, 0.8, 5.2, vmat(c, 0.7, 0.1), 0, 0.35, 0); part(body, 1.5, 0.75, 1.6, vmat(c, 0.7, 0.1), 0, 0.36, 3.0);
+      part(body, 1.9, 0.12, 4.6, vmat(0x3a2e22, 0.9, 0), 0, 0.72, 0); part(body, 1.7, 0.5, 0.3, dk, 0, 1.0, 1.2);
+      part(body, 0.5, 0.9, 0.5, dk, 0, 0.8, -2.8);
+    } else if (kind === 'bike' && ASSETS.bike) {
+      const m = ASSETS.bike.clone(true); body.add(m);
+      this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, tint: 0xb9c8e6 });
+      this.rider.group.position.set(0, 0.18, -0.3); this.rider.group.visible = false; body.add(this.rider.group);
+    } else if (kind === 'bike') {
       part(body, 0.34, 0.5, 1.5, bm, 0, 0.78, 0); part(body, 0.3, 0.16, 0.7, dk, 0, 1.08, -0.35);
       part(body, 0.7, 0.08, 0.08, dk, 0, 1.25, 0.55); part(body, 0.12, 0.6, 0.12, dk, 0, 0.9, 0.62);
       part(body, 0.2, 0.16, 0.06, glow, 0, 1.08, 0.78);
       for (const z of [0.85, -0.8]) { const w = new THREE.Mesh(GEO.bwheel, dk); w.position.set(0, 0.4, z); w.castShadow = true; body.add(w); this.wheels.push(w); }
-      this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, hat: 0x101010 });
-      this.rider.group.position.set(0, -0.05, -0.25); this.rider.group.visible = false; body.add(this.rider.group);
-      animateHumanoid(this.rider, { kneel: true, hands: 'drive' }, 1);
+      this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, hat: 0x101010, tint: 0xb9c8e6 });
+      this.rider.group.position.set(0, 0.18, -0.3); this.rider.group.visible = false; body.add(this.rider.group);
     } else {
       const L = kind === 'jeep' ? 4.2 : 4.4, Wd = kind === 'jeep' ? 2.0 : 1.9, lo = kind === 'sports' ? 0.5 : kind === 'jeep' ? 0.95 : 0.65;
       part(body, Wd, lo, L, bm, 0, 0.42 + lo / 2, 0);
@@ -54,6 +69,7 @@ export class Car {
       if (kind === 'sports') part(body, Wd, 0.06, 0.4, dk, 0, 1.2, -L / 2 + 0.2);
       for (const sx of [-1, 1]) for (const sz of [1, -1]) {
         const w = new THREE.Mesh(GEO.wheel, dk); w.position.set(sx * (Wd / 2 - 0.05), 0.42, sz * L * 0.32); w.castShadow = true; grp.add(w);
+        w.add(new THREE.Mesh(GEO.rim, rimMat));
         if (sz > 0) this.wheels.push(w);
       }
     }
@@ -85,6 +101,14 @@ export class Car {
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
     const bx = this.pos.x, bz = this.pos.z;
     this.pos.x += fx * this.speed * dt; this.pos.z += fz * this.speed * dt;
+    // wheels cannot enter the river; boats cannot leave it
+    if (g.world.waters.length) {
+      const wet = this.def.water ? g.world.inWater(this.pos.x, this.pos.z, true) : g.world.inWater(this.pos.x, this.pos.z);
+      if (this.def.water ? !wet : wet) {
+        this.pos.x = bx; this.pos.z = bz; this.speed *= -0.15;
+        if (this.driver && !this.def.water && g.time - (this.wetWarn || -9) > 5) { this.wetWarn = g.time; g.hud.banner('TOO DEEP TO DRIVE', 'Use a bridge, a boat, or wade across on foot'); }
+      }
+    }
     const ax = this.pos.x, az = this.pos.z;
     if (g.world.resolveCircle(this.pos, this.r, 0, 1.6)) {
       let nx = this.pos.x - ax, nz = this.pos.z - az; const nl = Math.hypot(nx, nz);
@@ -105,8 +129,8 @@ export class Car {
     this.mesh.position.set(this.pos.x, 0, this.pos.z);
     this.mesh.rotation.y = this.yaw; this.body.rotation.z = this.lean;
     if (this.kind !== 'bike') for (const w of this.wheels) w.rotation.y = this.steer * 0.45;
-    if (this.rider) this.rider.group.visible = !!this.driver;
-    void bx; void bz;
+    if (this.rider) { this.rider.group.visible = !!this.driver; if (this.driver) animateHumanoid(this.rider, { crouch: true, hands: 'drive' }, dt); }
+    if (this.def.water) this.mesh.position.y = -0.12 + Math.sin(g.time * 1.7 + this.pos.x) * 0.05;
   }
 
   aiDrive(dt) {
@@ -150,7 +174,7 @@ export class Plane {
     this.speed = airborne ? 58 : 0; this.throttle = airborne ? 0.6 : 0; this.onGround = !airborne;
     this.vy = 0; this.driver = null; this.autopilot = false; this.dead = false; this.r = 3; this.hp = 200; this.gone = 0; this.warnT = 0;
     const grp = this.mesh = new THREE.Group(); grp.rotation.order = 'YXZ';
-    const bm = cmat(0x8a9298), dk = cmat(0x2a3a4a);
+    const bm = vmat(0x9aa2a8, 0.35, 0.7), dk = vmat(0x2a3a4a, 0.4, 0.5);
     part(grp, 1.3, 1.3, 7, bm, 0, 0, 0); part(grp, 1.0, 1.0, 1.4, dk, 0, 0, 4.0);
     part(grp, 11, 0.16, 1.7, bm, 0, 0.55, 0.9); part(grp, 1.1, 0.7, 1.6, glass, 0, 0.75, 0.9);
     part(grp, 3.8, 0.12, 1.0, bm, 0, 0.3, -3.1); part(grp, 0.14, 1.5, 1.1, dk, 0, 0.95, -3.1);

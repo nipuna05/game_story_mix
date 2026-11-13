@@ -4,8 +4,9 @@ A 3D story-driven stealth/action game that runs in the browser. One campaign mix
 sneaking, shooting, bare-knuckle fighting, street racing, motorbike riding, flying a plane and
 parachuting into a blacked-out city.
 
-Built with [three.js](https://threejs.org/) and Vite. All graphics are generated in code and all sound is
-synthesised, so there are no asset files to download.
+Built with [three.js](https://threejs.org/) and Vite. Soldiers, weapons and the motorbike use 3D models in
+`public/models` (credits below); everything else is generated in code and all sound is synthesised.
+If a model file is missing the game falls back to built-in shapes.
 
 ## Run it
 
@@ -35,7 +36,9 @@ and endings use whatever you type.
 | 1 | The Last Signal | Old Harbor, night | Sneak into a freight yard, collect evidence drives, steal a jeep or bike and escape |
 | 2 | Broken Trust | Downtown, dusk | Win a bare-knuckle fight, win a street race, steal keycards from a guarded plaza |
 | 3 | Rust and Chains | Industrial Zone, day | Free three hostages, blow up fuel convoys, eliminate the enemy lieutenant |
+| 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
+| 4b | Dead Drop | Greenwater Forest, day | Arrive by boat, rescue couriers, hunt the Warden |
 | 5 | Nightfall | Downtown, blackout | Fly in, parachute into the dark city and face the commander |
 
 Before the final mission you choose how the night goes, which changes the objectives and the ending:
@@ -121,3 +124,9 @@ tools/smoke.mjs     headless test that plays through every mission
 
 To run the automated test, start `npm run dev` and then run `node tools/smoke.mjs` (uses the installed
 Edge or Chrome).
+
+## Credits
+
+- Soldier Cole - Grigory Petrov - royalty-free for games, do not resell the raw model.
+- Guns (USP, Glock, M4A1, AK-47, L118A) - models supplied by the project owner, who confirmed usage rights.
+- Military motorbike - Zsky (Poly Pizza).
