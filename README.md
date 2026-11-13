@@ -96,6 +96,25 @@ sabotage, eliminate. Your operations are saved in the browser and can be edited 
 
 Tab toggles the objective list, H opens the field manual, Esc pauses.
 
+## Profile, armory and backpack
+
+Open **Profile & armory** from the main menu (or **Loadout & backpack** on any mission briefing).
+
+- **Profile:** your callsign (the hero's name), rank and level, service record and best mission ranks. Missions pay credits and XP.
+- **Weapons:** you carry one gun per slot - sidearm, primary and heavy - plus fists and a kick. Buy better guns (G-17, AK-47), fit attachments (suppressor, extended magazine, stabiliser grip, optic) and pick a finish colour. A live 3D preview shows your soldier with the gun.
+- **Armour & outfit:** body armour tiers worn at the start of every mission, and an outfit colour for the soldier.
+- **Backpack:** medkits, armour plates, noisemakers, ammo boxes and grenades. Capacity is limited and can be upgraded. Use them in the field with Q, X, T and Y.
+
+In the field, **enemies drop their guns**. Press the use key next to a gun to take it - it swaps with the gun you carry in that slot, and yours is dropped. U drops the gun you hold. Weapon racks with guns, ammo and medkits are hidden in compounds and in some buildings. Medkits and plates you find are free; the ones from your own stock are only used up when you use them.
+
+## Stealth movement and cover
+
+Crouch (C) for slow quiet walking, hold V to sneak while standing, or crawl prone (Z) to be quietest and hardest to see. Bushes hide you - crouch or crawl inside one and guards see you from much less far. Some buildings can be entered through a door; their walls block line of sight and you can shoot out of the windows.
+
+## Controls
+
+Every key can be changed: **Settings -> Customize controls**. Click an action, press the new key. If the key is already used the two actions swap. Press **K** in game to see the key list, **H** for the full manual, **B** to change brightness.
+
 ## How stealth works
 
 - The diamond above an enemy shows what they know: yellow is suspicious, red means they have seen you.
@@ -111,6 +130,9 @@ Tab toggles the objective list, H opens the field manual, Esc pauses.
 index.html          page shell and HUD markup
 src/main.js         game loop, spawning, combat helpers, mission flow
 src/world.js        scene, lighting themes, collision, ray casting, navigation graph
+src/gear.js         weapons, attachments, armour, backpack items and the profile data
+src/armory.js       profile / armory / backpack and key-binding screens
+src/input.js        keyboard and mouse with rebindable keys
 src/locations.js    the four districts (town grids, walled compounds, airstrips)
 src/player.js       on-foot, parachute and vehicle control, weapons, camera
 src/enemies.js      guard / sniper / thug / boss AI and hostages

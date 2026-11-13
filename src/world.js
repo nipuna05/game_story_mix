@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clamp } from './util.js';
 
 export const THEMES = {
@@ -42,6 +43,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
+    this.bushes = []; this.interiors = [];
     this._env();
   }
 
@@ -280,6 +282,65 @@ export class World {
   }
 
   // ---------- props ----------
+  // a walk-in building: four walls with a door and a window per wall, a roof you can stand on, cover inside
+  hollow(x, z, w, d, h, style, r = Math.random, doorSide = 's') {
+    const st = STYLES[style] || STYLES.city;
+    const tint = st.tints[Math.floor(r() * st.tints.length)];
+    const side = this._styleMat(STYLES[style] ? style : 'city', tint);
+    const T = 0.7, parts = [];
+    const piece = (cx, cz, pw, pd, y0, y1) => {
+      if (pw < 0.05 || pd < 0.05 || y1 - y0 < 0.05) return;
+      const g = new THREE.BoxGeometry(pw, y1 - y0, pd), uv = g.attributes.uv;
+      for (let i = 0; i < 24; i++) {
+        const face = i >> 2; if (face === 2 || face === 3) continue;
+        const fw = face < 2 ? pd : pw;
+        uv.setXY(i, uv.getX(i) * Math.max(0.25, Math.round(fw / 3) / 4), uv.getY(i) * (y1 - y0) / 12);
+      }
+      g.translate(cx, (y0 + y1) / 2, cz); parts.push(g);
+      this.solid(cx, cz, pw, pd, y1, y0);
+    };
+    const walls = {
+      s: { horiz: true, fixed: z - d / 2 + T / 2, L: w, c0: x }, n: { horiz: true, fixed: z + d / 2 - T / 2, L: w, c0: x },
+      w: { horiz: false, fixed: x - w / 2 + T / 2, L: d - 2 * T, c0: z }, e: { horiz: false, fixed: x + w / 2 - T / 2, L: d - 2 * T, c0: z },
+    };
+    for (const k in walls) {
+      const W = walls[k];
+      const o = k === doorSide ? { c: 0, w: 3, y0: 0, y1: 3.3 } : { c: (r() - 0.5) * W.L * 0.35, w: 2.2, y0: 1.1, y1: 2.3 };
+      const at = (m, len, y0, y1) => (W.horiz ? piece(W.c0 + m, W.fixed, len, T, y0, y1) : piece(W.fixed, W.c0 + m, T, len, y0, y1));
+      const a = o.c - o.w / 2, b = o.c + o.w / 2;
+      if (a + W.L / 2 > 0.05) at((a - W.L / 2) / 2, a + W.L / 2, 0, h);
+      if (o.y0 > 0) at(o.c, o.w, 0, o.y0);
+      at(o.c, o.w, o.y1, h);
+      if (W.L / 2 - b > 0.05) at((b + W.L / 2) / 2, W.L / 2 - b, 0, h);
+    }
+    const merged = mergeGeometries(parts, false);
+    parts.forEach((g) => g.dispose());
+    const mesh = new THREE.Mesh(merged, side); mesh.castShadow = true; mesh.receiveShadow = true;
+    this.root.add(mesh); this.disposables.push(merged);
+    // roof (you can stand on it), floor, ceiling lamp
+    this.inst('box', st.roof, x, h + 0.15, z, w + 0.6, 0.5, d + 0.6);
+    this.solid(x, z, w + 0.6, d + 0.6, h + 0.4, h - 0.1); this.boxes[this.boxes.length - 1].roof = true;
+    this.flat(x, z, w - 2 * T, d - 2 * T, 0x3a3632, 3);
+    this.inst('box', 0xffe6b0, x, h - 0.45, z, 1.6, 0.1, 1.6, { glow: true });
+    // cover inside, kept clear of the door
+    const [nx, nz] = { s: [0, -1], n: [0, 1], w: [-1, 0], e: [1, 0] }[doorSide];
+    const halfN = nx ? w / 2 : d / 2, halfL = nx ? d / 2 : w / 2;
+    for (let i = 0; i < 2; i++) {
+      const u = (i ? 1 : -1) * (halfL - 2.8 - r() * 1.2);
+      this.crate(x - nx * (halfN - 2.3) + (nx ? 0 : u), z - nz * (halfN - 2.3) + (nx ? u : 0), 1.4 + r() * 0.6);
+    }
+    this.interiors.push({ x: x - nx * (halfN - 3.6), z: z - nz * (halfN - 3.6), cx: x, cz: z, w, d, door: { x: x + nx * (halfN + 2.4), z: z + nz * (halfN + 2.4), nx, nz } });
+  }
+  // walkable brush: stand in it crouched or prone and guards struggle to see you
+  bush(x, z, s = 1) {
+    const cols = [0x2f6a2c, 0x3a7a34, 0x285a28];
+    for (let i = 0; i < 3; i++) this.inst('ico', cols[i], x + (i - 1) * 0.9 * s, 0.65 * s, z + (((i * 7) % 3) - 1) * 0.7 * s, 1.9 * s, 1.3 * s, 1.9 * s, { ry: i * 2 });
+    this.bushes.push({ x, z, r: 1.7 * s });
+  }
+  inBush(x, z) {
+    for (const b of this.bushes) if (Math.hypot(x - b.x, z - b.z) < b.r) return true;
+    return false;
+  }
   tree(x, z, kind = 'leaf', s = 1) {
     if (kind === 'pine' || kind === 'fir') {
       this.inst('cyl', 0x4a3520, x, 1.2 * s, z, 0.5 * s, 2.4 * s, 0.5 * s);
@@ -420,7 +481,7 @@ export class World {
   }
   groundAt(x, z, y) {
     let g = 0;
-    for (const b of this.boxes) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && b.y0 === 0 && b.y1 <= y + 0.55 && b.y1 > g) g = b.y1;
+    for (const b of this.boxes) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && (b.y0 === 0 || b.roof) && b.y1 <= y + 0.55 && b.y1 > g) g = b.y1;
     return g;
   }
   inside(x, y, z, pad = 0) {

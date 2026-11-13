@@ -79,6 +79,9 @@ export class Enemy extends Walker {
     const g = this.g;
     let r = g.world.theme.view * (this.type === 'sniper' ? 2.2 : 1) * g.mods.view;
     if (p.crouch && p.mode === 'foot') r *= 0.6;
+    if (p.prone && p.mode === 'foot') r *= 0.55;
+    if (p.sneaking) r *= 0.85;
+    if (p.hidden) r *= (p.crouch || p.prone) ? 0.3 : 0.65;
     if (p.wet) r *= 0.65;
     if (p.mode === 'car' || p.mode === 'chute') r *= 1.5;
     if (g.alarm) r *= 1.25;

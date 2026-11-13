@@ -245,6 +245,118 @@ await shot('pose-aim');
 await run('pose crouch', () => { const g = window.game, p = g.player; g.input.buttons[2] = false; g.input.pressed.KeyC = true; window.tick(20); return p.crouch; });
 await shot('pose-crouch');
 
+
+// ---- cover: walk-in buildings, brush, crawling, sneaking
+await run('interiors', () => {
+  const g = window.game; g.startMission(window.M('m1'), {}); g.god = true; const p = g.player, W = g.world;
+  const I = W.interiors, it = I[0];
+  const out = { count: I.length, bushes: W.bushes.length, boxes: W.boxes.length };
+  // walk through the door
+  p.pos.set(it.door.x, 0, it.door.z); p.yaw = Math.atan2(-it.door.nx, -it.door.nz); window.tick(3);
+  g.input.keys.KeyW = true; window.tick(60); g.input.keys.KeyW = false;
+  out.insideAfterWalk = Math.abs(p.pos.x - it.cx) < it.w / 2 && Math.abs(p.pos.z - it.cz) < it.d / 2;
+  // walls block sight from the far side, an open door does not
+  const back = { x: it.cx - it.door.nx * (it.w / 2 + 4) * (it.door.nx ? 1 : 0) - 0, z: it.cz - it.door.nz * (it.d / 2 + 4) * (it.door.nz ? 1 : 0) };
+  out.backBlocked = !W.los(back.x, 1.6, back.z, it.cx, 1.2, it.cz);
+  // every interior can be entered and left (no building sealed shut)
+  out.sealed = I.filter((q) => { const a = { x: q.door.x, z: q.door.z }; return !W.segClear(a.x, a.z, q.door.x - q.door.nx * 3, q.door.z - q.door.nz * 3, 0.5); }).length;
+  p.pos.set(it.door.x - it.door.nx * 3, 0, it.door.z - it.door.nz * 3); window.tick(10);
+  window.__door = it; return out;
+});
+await shot('inside-building');
+await run('on the roof', () => {
+  const g = window.game, p = g.player, it = window.__door, W = g.world;
+  // drop onto the roof from above: should land on it, not fall into the building
+  p.pos.set(it.cx, 12, it.cz); p.vy = 0; window.tick(60);
+  return { y: +p.pos.y.toFixed(2), roofTop: W.groundAt(it.cx, it.cz, 9) };
+});
+await run('brush + crawl', () => {
+  const g = window.game, p = g.player, W = g.world; p.pos.set(0, 0, 0); p.vy = 0; window.tick(5);
+  const e = g.enemies.find((x) => !x.dead && x.type === 'guard');
+  const b = W.bushes[0]; p.pos.set(b.x, 0, b.z); window.tick(2);
+  const r = {}; r.stand = +e.viewRange(p).toFixed(1); r.hiddenFlag = p.hidden;
+  g.input.pressed.KeyC = true; window.tick(2); r.crouchBush = +e.viewRange(p).toFixed(1);
+  g.input.pressed.KeyZ = true; window.tick(2); r.prone = p.prone; r.proneBush = +e.viewRange(p).toFixed(1);
+  p.pos.set(0, 0, 0); window.tick(2); r.proneOpen = +e.viewRange(p).toFixed(1);
+  g.input.keys.KeyW = true; window.tick(60); g.input.keys.KeyW = false; r.crawlSpeed = +p.speed.toFixed(2); r.proneK = +p.proneK.toFixed(2);
+  g.input.pressed.Space = true; window.tick(2); r.standUp = !p.prone;
+  g.input.pressed.KeyC = false; if (p.crouch) { g.input.pressed.KeyC = true; window.tick(2); }
+  g.input.keys.KeyV = true; g.input.keys.KeyW = true; window.tick(40); r.sneakSpeed = +p.speed.toFixed(2); r.sneaking = p.sneaking; g.input.keys.KeyV = g.input.keys.KeyW = false;
+  g.hud.keysT = 20; window.tick(3); r.keysPanel = document.getElementById('keys').style.display;
+  return r;
+});
+await run('crawl pose', () => { const g = window.game, p = g.player; p.give('rifle'); p.switchTo('rifle'); g.input.pressed.KeyZ = true; window.tick(30); g.input.keys.KeyW = true; window.tick(25); g.input.keys.KeyW = false; return { prone: p.prone }; });
+await shot('crawl');
+
+
+// ---- profile, armory, backpack, pickups, controls
+await run('profile after missions', () => { const pr = window.game.save.profile; return { credits: pr.credits, xp: pr.xp, missions: pr.totals.missions, kills: pr.totals.kills }; });
+await run('armory screens', () => {
+  const g = window.game, out = {};
+  g.save.profile.credits = 5000; g.toMenu(true);
+  for (const [t, sl] of [['profile', 'rifle'], ['weapons', 'pistol'], ['weapons', 'rifle'], ['weapons', 'sniper'], ['armour', 'rifle'], ['pack', 'rifle']]) { g.ui.armory(t, sl, () => g.ui.title()); out[t + ':' + sl] = document.querySelectorAll('#ui [data-a]').length; }
+  g.ui.armory('weapons', 'rifle', () => g.ui.title());
+  return out;
+});
+await shot('armory-weapons', 1500);
+await page.click('[data-a="buy:ak47"]');
+await page.click('[data-a="att:supp"]');
+await page.click('[data-a="att:grip"]');
+await page.click('[data-a="fin:3"]');
+await run('after buying', () => { const pr = window.game.save.profile; return { owns: pr.own.variants, rifle: pr.equip.rifle, att: pr.equip.att.rifle, finish: pr.equip.finish.rifle, credits: pr.credits }; });
+await shot('armory-ak', 1200);
+await page.click('[data-a="tab:armour"]'); await page.click('[data-a="abuy:2"]'); await page.click('[data-a="outfit:1"]');
+await shot('armory-armour', 1200);
+await page.click('[data-a="tab:pack"]'); await page.click('[data-a="cap"]'); await page.click('[data-a="stock:med"]'); await page.click('[data-a="pk+:med"]'); await page.click('[data-a="pk+:med"]');
+await shot('armory-pack', 1000);
+await page.click('[data-a="tab:profile"]');
+await shot('armory-profile', 1000);
+await run('profile state', () => { const pr = window.game.save.profile; return { armor: pr.equip.armor, outfit: pr.equip.outfit, cap: pr.own.pack, stock: pr.stock, carry: pr.carry }; });
+await run('loadout applies', () => {
+  const g = window.game; g.startMission(window.M('m3'), { approach: 'storm' }); g.god = false; const p = g.player; window.tick(5);
+  const out = { rifle: p.W.rifle.name, dmg: +p.W.rifle.dmg.toFixed(1), supp: p.W.rifle.supp, noise: +p.W.rifle.noise.toFixed(1), armor: p.armor, pack: { ...p.pack }, cap: p.packCap };
+  // medkit: take damage, press the key, health goes up and stock goes down
+  const before = g.save.profile.stock.med; p.hp = 40; g.input.pressed.KeyQ = true; window.tick(2);
+  out.hpAfterMed = Math.round(p.hp); out.stockAfter = g.save.profile.stock.med - before; out.packMed = p.pack.med;
+  p.armor = 10; g.input.pressed.KeyX = true; window.tick(2); out.plate = p.armor;
+  return out;
+});
+await run('decoy', () => {
+  const g = window.game, p = g.player; p.pack.noise = 1; p.packStock.noise = 1; const n0 = g.save.profile.stock.noise;
+  g.input.pressed.KeyT = true; window.tick(2); const thrown = g.grenades.length; window.tick(70);
+  return { thrown, stockUsed: n0 - g.save.profile.stock.noise };
+});
+await run('weapon drops, racks, swap', () => {
+  const g = window.game, p = g.player, W0 = g.pickups.filter((k) => k.type === 'weapon').length;
+  const e = g.enemies.find((x) => !x.dead && x.type === 'guard' && x.pos.y < 1);
+  e.die({ from: 'player' });
+  const drop = g.pickups.filter((k) => k.type === 'weapon' && !k.taken).slice(-1)[0];
+  const out = { racksAndLoot: W0, dropVariant: drop && drop.variant };
+  // stand on the dropped ak47, swap with the carried m4a1-slot gun
+  p.give('rifle'); p.switchTo('rifle'); p.var.rifle = 'm4a1'; p.rebuildW('rifle');
+  p.pos.set(drop.pos.x + 0.8, 0, drop.pos.z); window.tick(2);
+  const it = g.findInteract(); out.prompt = it && it.text; it.act();
+  out.now = p.var.rifle; out.cur = p.cur; out.droppedOld = g.pickups.some((k) => k.type === 'weapon' && !k.taken && k.variant === 'm4a1' && Math.hypot(k.pos.x - p.pos.x, k.pos.z - p.pos.z) < 3);
+  g.input.pressed.KeyU = true; window.tick(2); out.afterDrop = p.inv.rifle === null; out.curAfterDrop = p.cur;
+  return out;
+});
+await run('rebind', () => {
+  const g = window.game; g.settings.keys = {}; const r = g.input.rebind(g.settings.keys, 'KeyW', 'ArrowUp'); g.settings.keys = r.map; g.input.setBindings(g.settings.keys);
+  const r2 = g.input.rebind(g.settings.keys, 'KeyS', 'ArrowUp'); // takes a key used by forward: they swap
+  return { first: r.map, swapped: r2.swapped, map: r2.map, bad: g.input.rebind(g.settings.keys, 'KeyQ', 'Escape').error };
+});
+await run('rebind setup', () => { const g = window.game; g.settings.keys = { KeyW: 'KeyP' }; g.input.setBindings(g.settings.keys); g.state = 'playing'; g.input.active = true; return g.input.label('KeyW'); });
+await page.keyboard.down('KeyP');
+await run('physical P acts as forward', () => ({ forward: !!window.game.input.keys.KeyW }));
+await page.keyboard.up('KeyP'); await page.keyboard.down('KeyW');
+await run('physical W no longer forward', () => ({ forward: !!window.game.input.keys.KeyW }));
+await page.keyboard.up('KeyW');
+await run('controls screen', () => { const g = window.game; g.settings.keys = {}; g.input.setBindings({}); g.state = 'menu'; g.ui.controls(() => g.ui.title()); return document.querySelectorAll('#ui .keybtn').length; });
+await page.click('button[data-a="rb:KeyG"]'); await page.keyboard.press('KeyL');
+await run('rebound via screen', () => { const g = window.game; return { label: g.input.label('KeyG'), saved: g.settings.keys }; });
+await shot('controls', 800);
+await run('reset keys', () => { const g = window.game; g.settings.keys = {}; g.input.setBindings({}); return g.input.label('KeyG'); });
+
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {

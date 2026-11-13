@@ -1,16 +1,19 @@
 import { esc, fmtTime } from './util.js';
+import { armoryScreen, controlsScreen } from './armory.js';
 import { GAME_TITLE, CAMPAIGN, INTRO, DECISIONS, ENDINGS, APPROACHES, DEFAULT_CAST, CAST_LABELS, BUILDER_OBJECTIVES, fill, buildCustom } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { THEMES } from './world.js';
 
-const CONTROLS = [
-  ['On foot', [['W A S D', 'Move'], ['Mouse', 'Look / aim'], ['Shift', 'Sprint (noisy)'], ['C', 'Crouch - quieter and harder to see'], ['Space', 'Jump'],
-    ['Left mouse', 'Fire / punch'], ['Right mouse', 'Aim · sniper scope · block (fists)'], ['R', 'Reload'], ['1 2 3 4 / wheel', 'Fists · pistol · rifle · sniper'],
-    ['F', 'Kick - silent takedown from behind'], ['G', 'Throw grenade'], ['E', 'Enter vehicle · hold to free hostages / plant charges']]],
-  ['Car & motorbike', [['W / S', 'Accelerate / brake and reverse'], ['A / D', 'Steer'], ['Space', 'Handbrake'], ['E', 'Get out']]],
-  ['Aircraft', [['Shift / C', 'Throttle up / down'], ['S / W', 'Pull up / push down'], ['A / D', 'Bank left / right'], ['J', 'Bail out in the air'], ['E', 'Get out (on the ground, stopped)']]],
-  ['Parachute', [['Space', 'Open the canopy during freefall'], ['Mouse or A / D', 'Steer'], ['W / S', 'Dive faster / flare and slow down']]],
-  ['General', [['Tab', 'Show or hide objectives'], ['H', 'Field manual'], ['Esc', 'Pause']]],
+const controlsList = (L) => [
+  ['On foot', [[`${L('KeyW')} ${L('KeyA')} ${L('KeyS')} ${L('KeyD')}`, 'Move'], ['Mouse', 'Look / aim'], [L('ShiftLeft'), 'Sprint (noisy)'], [L('KeyC'), 'Crouch - crouch-walking is slow and quiet'], [L('KeyZ'), 'Crawl - lie prone: slowest, quietest, hardest to see'], [L('KeyV'), 'Hold to sneak-walk while standing'], [L('Space'), 'Jump · stand up from crawling'],
+    ['Left mouse', 'Fire / punch'], ['Right mouse', 'Aim · sniper scope · block (fists)'], [L('KeyR'), 'Reload'], ['1 2 3 4 / wheel', 'Fists · sidearm · primary · heavy'],
+    [L('KeyF'), 'Kick - silent takedown from behind'], [L('KeyG'), 'Throw grenade'],
+    [L('KeyE'), 'Use: pick up a gun (it swaps with the one you hold), enter vehicle, hold to free hostages / plant charges'], [L('KeyU'), 'Drop the gun you hold'],
+    [`${L('KeyQ')} ${L('KeyX')} ${L('KeyT')} ${L('KeyY')}`, 'Backpack: medkit · armour plate · noisemaker · ammo box']]],
+  ['Car, motorbike & boat', [[`${L('KeyW')} / ${L('KeyS')}`, 'Accelerate / brake and reverse'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [L('Space'), 'Handbrake'], [L('KeyE'), 'Get out']]],
+  ['Aircraft', [[`${L('ShiftLeft')} / ${L('KeyC')}`, 'Throttle up / down'], [`${L('KeyS')} / ${L('KeyW')}`, 'Pull up / push down'], [`${L('KeyA')} / ${L('KeyD')}`, 'Bank left / right'], [L('KeyJ'), 'Bail out in the air'], [L('KeyE'), 'Get out (on the ground, stopped)']]],
+  ['Parachute', [[L('Space'), 'Open the canopy during freefall'], [`Mouse or ${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [`${L('KeyW')} / ${L('KeyS')}`, 'Dive faster / flare and slow down']]],
+  ['General', [[L('Tab'), 'Show or hide objectives'], [L('KeyB'), 'Change brightness (5 levels)'], [L('KeyK'), 'Show or hide the key list'], [L('KeyH'), 'Field manual'], ['Esc', 'Pause']]],
 ];
 const TIPS = [
   'The diamond over an enemy shows what they know: yellow means suspicious, red means they have seen you.',
@@ -21,6 +24,9 @@ const TIPS = [
   'Charges have a six-second fuse and a big blast. Plant, then run.',
   'To take off: hold Shift to full throttle, wait for 120 km/h, then hold S. To land: throttle down, come in shallow and level.',
   'After a death you can continue from your last completed objective - enemies you killed stay dead.',
+  'Enemies drop their guns. Pick one up and it swaps with the gun you carry in that slot; racks and ammo crates are hidden in compounds and buildings.',
+  'Spend mission credits in the armory: better guns, attachments like a suppressor, body armour and a bigger backpack.',
+  'Throw a noisemaker to pull guards away from the route you want to take.',
 ];
 
 export class UI {
@@ -30,11 +36,13 @@ export class UI {
   clear() { this.el.classList.remove('on', 'dark'); this.el.innerHTML = ''; }
   show(html, o = {}) {
     this.el.innerHTML = `<div class="panel ${o.left ? 'left' : ''}">${html}</div>`;
-    this.el.classList.add('on'); this.el.classList.toggle('dark', !o.left);
+    this.el.classList.add('on'); this.el.classList.toggle('dark', !o.left); this.el.classList.toggle('armory', !!o.preview); this.g.previewOn = !!o.preview;
     this.el.scrollTop = 0;
     this.el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => { this.g.audio.init(); this.g.audio.ui(); o.on && o.on(b.dataset.a, b); }));
   }
   q(sel) { return this.el.querySelector(sel); }
+  armory(tab, slot, back) { armoryScreen(this, tab, slot, back); }
+  controls(back) { controlsScreen(this, back); }
 
   // ---------------------------------------------------------------- title
   title() {
@@ -47,6 +55,7 @@ export class UI {
         ${hasGame ? `<button class="primary" data-a="continue">Continue campaign<small>${done ? 'Campaign complete - replay any mission' : this.T('Mission ' + s.unlocked + ': ' + CAMPAIGN[s.unlocked - 1].title)}</small></button>` : ''}
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
         ${hasGame ? '<button data-a="select">Mission select</button>' : ''}
+        <button data-a="armory">Profile &amp; armory<small>Credits, weapons, armour, outfit and backpack</small></button>
         <button data-a="builder">Operation builder<small>Write your own story and mission</small></button>
         <button data-a="cast">Cast &amp; names<small>Rename the hero, villain, city - anyone</small></button>
         <button data-a="manual">Field manual<small>Controls and tips</small></button>
@@ -55,6 +64,7 @@ export class UI {
       if (a === 'new') this.castEditor(() => { this.g.newCampaign(); this.intro(0); }, true);
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
       else if (a === 'select') this.select();
+      else if (a === 'armory') this.armory('profile', 'rifle', () => this.title());
       else if (a === 'builder') this.builder();
       else if (a === 'cast') this.castEditor(() => this.title());
       else if (a === 'manual') this.manual(() => this.title());
@@ -121,12 +131,13 @@ export class UI {
       ${def.brief.map((t) => `<p>${this.T(t)}</p>`).join('')}
       <h3>OBJECTIVES</h3><ul class="objs">${objs.map((o) => `<li>${this.T(o.text)}</li>`).join('')}</ul>
       <h3>APPROACH</h3><div class="grid2">${Object.entries(APPROACHES).map(([k, a]) => `<div class="opt ${k === ap ? 'sel' : ''}" data-a="ap:${k}"><b>${a.label}</b><span>${a.desc}</span></div>`).join('')}</div>
-      <div class="row"><button class="primary" data-a="go">Deploy</button><button data-a="manual">Field manual</button><button data-a="back">Back</button></div>
+      <div class="row"><button class="primary" data-a="go">Deploy</button><button data-a="gear">Loadout &amp; backpack</button><button data-a="manual">Field manual</button><button data-a="back">Back</button></div>
       <p class="note" style="margin-top:14px">Click the game once to capture the mouse. Esc pauses.</p>`,
     { on: (a) => {
       if (a.startsWith('ap:')) { ap = a.slice(3); draw(); }
       else if (a === 'go') { g.save.approach = ap; g.persist(); g.startMission(def, { approach: ap }); }
       else if (a === 'manual') this.manual(() => this.briefing(def, true));
+      else if (a === 'gear') this.armory('pack', 'rifle', () => this.briefing(def, true));
       else if (def.custom) this.builder(); else this.title();
     } });
     draw();
@@ -134,7 +145,7 @@ export class UI {
 
   manual(back) {
     this.show(`<h2><small>FIELD MANUAL</small>How to play</h2>
-      ${CONTROLS.map(([h, rows]) => `<h3>${h.toUpperCase()}</h3><table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`).join('')}
+      ${controlsList((id) => this.g.input.label(id)).map(([h, rows]) => `<h3>${h.toUpperCase()}</h3><table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`).join('')}
       <h3>TIPS</h3><ul class="objs">${TIPS.map((t) => `<li>${t}</li>`).join('')}</ul>
       <div class="row"><button class="primary" data-a="back">Back</button></div>`, { on: back });
   }
@@ -143,14 +154,16 @@ export class UI {
     const s = this.g.save.settings;
     this.show(`<h2><small>OPTIONS</small>Settings</h2>
       <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
+      <label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
       <label class="f">Volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">
       <label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${s.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>
       <label class="f">Graphics</label><select id="gfx"><option value="high" ${s.shadows ? 'selected' : ''}>High - shadows, glow and reflections</option><option value="low" ${s.shadows ? '' : 'selected'}>Low - no shadows or glow (faster)</option></select>
       <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>
-      <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="wipe">Erase campaign progress</button></div>`,
+      <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="controls">Customize controls</button><button data-a="wipe">Erase campaign progress</button></div>`,
     { on: (a) => {
+      if (a === 'controls') return this.controls(() => this.settings(back));
       if (a === 'wipe') { this.g.wipe(); return this.title(); }
-      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
+      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
       this.g.applySettings(); this.g.persist(); back();
     } });
   }
@@ -184,6 +197,7 @@ export class UI {
         <div><b>${fmtTime(st.time)}</b><span>TIME</span></div><div><b>${st.kills}</b><span>KILLS</span></div><div><b>${st.headshots}</b><span>HEADSHOTS</span></div><div><b>${st.takedowns}</b><span>TAKEDOWNS</span></div>
         <div><b>${st.shots ? Math.round(st.hits / st.shots * 100) : 0}%</b><span>ACCURACY</span></div><div><b>${st.alarms}</b><span>ALARMS</span></div><div><b>${st.deaths}</b><span>DEATHS</span></div><div><b>${r.score}</b><span>SCORE</span></div>
       </div>
+      <p class="note" style="color:var(--acc)">+${r.credits || 0} credits · +${r.score} XP</p>
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
       <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="again">Play again</button><button data-a="menu">Main menu</button></div>`,

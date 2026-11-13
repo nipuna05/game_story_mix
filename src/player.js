@@ -1,15 +1,10 @@
 import * as THREE from 'three';
 import { makeHumanoid, animateHumanoid, makeChute, reviveHumanoid } from './characters.js';
 import { clamp, damp, angDiff, dist2, rnd } from './util.js';
+import { VARIANTS, weaponDef, OUTFITS, PACK_ITEMS } from './gear.js';
 
-export const WEAPONS = {
-  fists: { name: 'Fists', melee: true },
-  pistol: { name: 'P9 Suppressed', dmg: 36, rate: 0.2, mag: 12, spread: 0.01, noise: 12, reload: 1.2, recoil: 0.012, snd: 'pistol' },
-  rifle: { name: 'AR-7 Carbine', dmg: 27, rate: 0.1, mag: 30, spread: 0.022, noise: 75, reload: 1.8, recoil: 0.009, snd: 'rifle', auto: true },
-  sniper: { name: 'LR-50 Longbow', dmg: 160, rate: 1.1, mag: 5, spread: 0.03, noise: 95, reload: 2.5, recoil: 0.05, snd: 'sniper', scope: true },
-};
 const ORDER = ['fists', 'pistol', 'rifle', 'sniper'];
-const GUN_MODEL = { pistol: 'usp', rifle: 'm4a1', sniper: 'l118a' };
+const SLOT_LIST = ['pistol', 'rifle', 'sniper'];
 const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3();
 
 export class Player {
@@ -19,21 +14,26 @@ export class Player {
     this.yaw = 0; this.pitch = 0; this.camYaw = 0;
     this.mode = 'foot'; this.vehicle = null; this.grounded = true; this.crouch = false;
     this.hp = 100; this.armor = 0; this.dead = false; this.regenT = 0;
-    this.inv = { fists: {}, pistol: { mag: 12, res: 60 }, rifle: null, sniper: null };
+    const prof = g.save.profile, eq = prof.equip;
+    this.var = { pistol: eq.pistol, rifle: eq.rifle, sniper: eq.sniper };   // the gun currently carried in each slot
+    this.W = { fists: { name: 'Fists', melee: true } };
+    for (const sl of SLOT_LIST) this.rebuildW(sl);
+    this.inv = { fists: {}, pistol: { mag: this.W.pistol.mag, res: this.W.pistol.mag * 5 }, rifle: null, sniper: null };
+    this.pack = {}; this.packStock = {}; this.packCap = 6;
     this.cur = 'pistol'; this.grenades = 2; this.fireCd = 0; this.reloadT = 0; this.meleeCd = 0; this.noiseT = 0;
     this.recoil = 0; this.aiming = false; this.blocking = false; this.lockFists = false; this.speed = 0;
     this.holdT = 0; this.holdObj = null; this.air = { x: 0, z: 0 }; this.fov = 68; this.takedown = null;
-    this.h = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, pack: 0x55663f, gun: true, gunKind: 'usp', tint: 0xb9c8e6 });
-    this.wet = false;
+    this.h = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, pack: 0x55663f, gun: true, gunKind: 'usp', tint: OUTFITS[eq.outfit % OUTFITS.length].c });
+    this.wet = false; this.prone = false; this.proneK = 0; this.hidden = false; this.sneaking = false;
     this.chute = makeChute(); this.h.group.add(this.chute);
     g.scene.add(this.h.group);
   }
   targetPos() {
     if (this.vehicle) return _t.set(this.vehicle.pos.x, this.vehicle.pos.y + 1, this.vehicle.pos.z);
-    return _t.set(this.pos.x, this.pos.y + (this.crouch ? 0.7 : 1.2), this.pos.z);
+    return _t.set(this.pos.x, this.pos.y + (this.prone ? 0.35 : this.crouch ? 0.7 : 1.2), this.pos.z);
   }
   give(w, res) {
-    const d = WEAPONS[w];
+    const d = this.W[w];
     if (!this.inv[w]) this.inv[w] = { mag: d.mag, res: res ?? d.mag * 3 }; else this.inv[w].res += res ?? d.mag * 2;
   }
   switchTo(w) { if (this.inv[w] && w !== this.cur && !(this.lockFists && w !== 'fists')) { this.cur = w; this.reloadT = 0; this.g.audio.click(); } }
@@ -60,14 +60,18 @@ export class Player {
   updateFoot(dt) {
     const g = this.g, inp = g.input, k = inp.keys, w = g.world;
     const f = (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), s = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0);
-    if (inp.pressed.KeyC) this.crouch = !this.crouch;
+    if (inp.pressed.KeyC) { if (this.prone) { this.prone = false; this.crouch = true; } else this.crouch = !this.crouch; }
+    if (inp.pressed.KeyZ && this.grounded) { this.prone = !this.prone; if (this.prone) this.crouch = false; }
+    if (this.prone && inp.pressed.Space) { this.prone = false; inp.pressed.Space = false; }
+    this.sneaking = !!k.KeyV && !this.crouch && !this.prone;
     this.aiming = !!inp.buttons[2] && this.cur !== 'fists';
     this.blocking = !!inp.buttons[2] && this.cur === 'fists';
-    const sprint = k.ShiftLeft && f > 0 && !this.crouch && !this.aiming;
-    let sp = this.crouch ? 2.3 : sprint ? 7.4 : 4.5;
+    const sprint = k.ShiftLeft && f > 0 && !this.crouch && !this.prone && !this.aiming;
+    let sp = this.prone ? 1.25 : this.crouch ? 2.3 : this.sneaking ? 2.6 : sprint ? 7.4 : 4.5;
     if (this.aiming || this.blocking) sp *= 0.6;
     this.wet = w.waters.length > 0 && this.pos.y < 0.3 && w.inWater(this.pos.x, this.pos.z);
-    if (this.wet) sp = Math.min(sp, 2.6);
+    if (this.wet) { sp = Math.min(sp, 2.6); this.prone = false; }
+    this.hidden = w.bushes.length > 0 && this.pos.y < 0.3 && w.inBush(this.pos.x, this.pos.z);
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx;
     let mx = fx * f + rx * s, mz = fz * f + rz * s; const ml = Math.hypot(mx, mz);
     if (ml > 0) { mx /= ml; mz /= ml; }
@@ -76,7 +80,7 @@ export class Player {
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
     if (this.grounded && inp.pressed.Space) { this.vy = 6.6; this.grounded = false; this.crouch = false; }
     this.vy -= 20 * dt; this.pos.y += this.vy * dt;
-    w.resolveCircle(this.pos, 0.4, Math.max(this.pos.y, 0), this.crouch ? 1.2 : 1.8);
+    w.resolveCircle(this.pos, 0.4, Math.max(this.pos.y, 0), this.prone ? 0.7 : this.crouch ? 1.2 : 1.8);
     for (const v of g.vehicles) {
       if (v.dead && v.type === 'plane') continue;
       const d = dist2(this.pos.x, this.pos.z, v.pos.x, v.pos.z), R = v.r + 0.3;
@@ -89,13 +93,13 @@ export class Player {
     } else this.grounded = this.pos.y - gy < 0.05;
     this.speed = Math.hypot(this.vel.x, this.vel.z);
     this.noiseT -= dt;
-    if (this.noiseT <= 0 && this.speed > 3 && !this.crouch && !this.wet) { this.noiseT = 0.45; g.emitNoise(this.pos, sprint ? 9 : 3.5, false); }
+    if (this.noiseT <= 0 && this.speed > 3 && !this.crouch && !this.prone && !this.sneaking && !this.wet) { this.noiseT = 0.45; g.emitNoise(this.pos, sprint ? 9 : 3.5, false); }
 
     // weapons
     for (let i = 0; i < 4; i++) if (inp.pressed['Digit' + (i + 1)]) this.switchTo(ORDER[i]);
     if (inp.wheel) { let i = ORDER.indexOf(this.cur); for (let n = 0; n < 4; n++) { i = (i + Math.sign(inp.wheel) + 4) % 4; if (this.inv[ORDER[i]]) break; } this.switchTo(ORDER[i]); }
     if (this.lockFists && this.cur !== 'fists') this.cur = 'fists';
-    const wd = WEAPONS[this.cur], st = this.inv[this.cur];
+    const wd = this.W[this.cur], st = this.inv[this.cur];
     if (this.reloadT > 0) {
       this.reloadT -= dt;
       if (this.reloadT <= 0) { const n = Math.min(wd.mag - st.mag, st.res); st.mag += n; st.res -= n; }
@@ -106,7 +110,15 @@ export class Player {
       if (inp.pressed.KeyR && st.mag < wd.mag && st.res > 0) { this.reloadT = wd.reload; g.audio.click(); }
     }
     if (inp.pressed.KeyF && this.meleeCd <= 0) this.melee(45, 0.75);
-    if (inp.pressed.KeyG && this.grenades > 0 && !this.lockFists) { this.grenades--; g.throwGrenade(this); }
+    if (inp.pressed.KeyG && !this.lockFists) {
+      if (this.grenades > 0) { this.grenades--; g.throwGrenade(this); }
+      else if (this.pack.nade > 0) { this.takeFromPack('nade'); g.throwGrenade(this); }
+    }
+    if (inp.pressed.KeyQ) this.usePack('med');
+    if (inp.pressed.KeyX) this.usePack('plate');
+    if (inp.pressed.KeyT) this.usePack('noise');
+    if (inp.pressed.KeyY) this.usePack('ammo');
+    if (inp.pressed.KeyU) this.dropWeapon();
     // stealth takedown hint
     for (const e of g.enemies) {
       if (e.dead || e.neutral || e.alerted || e.pos.y > 1) continue;
@@ -127,11 +139,52 @@ export class Player {
     const h = this.h;
     h.group.visible = !(this.aiming && wd.scope);
     h.gun.visible = this.cur !== 'fists';
-    if (this.cur !== 'fists') h.setGun(GUN_MODEL[this.cur]);
-    animateHumanoid(h, { speed: this.speed, crouch: this.crouch && !this.wet, aim: this.cur !== 'fists' && (this.aiming || this.fireCd > -0.6), pitch: this.pitch, block: this.blocking }, dt);
-    h.group.position.copy(this.pos); h.group.rotation.set(0, this.yaw, 0);
+    if (this.cur !== 'fists') h.setGun(this.W[this.cur].model, { finish: this.W[this.cur].finish, supp: this.W[this.cur].supp });
+    this.proneK = damp(this.proneK, this.prone ? 1 : 0, 10, dt);
+    animateHumanoid(h, { speed: this.speed, crouch: this.crouch && !this.wet, prone: this.prone, aim: this.cur !== 'fists' && (this.aiming || this.fireCd > -0.6), pitch: this.pitch, block: this.blocking }, dt);
+    h.group.position.copy(this.pos); h.group.rotation.set(this.proneK * Math.PI / 2, this.yaw, 0);
+    if (this.proneK > 0.001) { h.group.position.x -= Math.sin(this.yaw) * 0.85 * this.proneK; h.group.position.z -= Math.cos(this.yaw) * 0.85 * this.proneK; h.group.position.y += 0.2 * this.proneK; }
     if (this.wet) h.group.position.y -= 0.75;
     this.chute.visible = false;
+  }
+
+  rebuildW(slot) { this.W[slot] = weaponDef(this.var[slot], this.g.save.profile, this.var[slot] === this.g.save.profile.equip[slot]); }
+  packUsed() { return Object.values(this.pack).reduce((a, b) => a + b, 0); }
+  addPack(kind) { if (this.packUsed() >= this.packCap) return false; this.pack[kind] = (this.pack[kind] || 0) + 1; return true; }
+  takeFromPack(kind) {
+    this.pack[kind]--;
+    if ((this.packStock[kind] || 0) > 0) { this.packStock[kind]--; this.g.useStock(kind); }   // only what came from your own stock is spent
+  }
+  usePack(kind) {
+    const g = this.g, item = PACK_ITEMS[kind];
+    if (!(this.pack[kind] > 0)) { g.hud.banner('NO ' + item.name.toUpperCase(), 'Buy more in the armory'); return; }
+    if (kind === 'med') { if (this.hp >= 100) { g.hud.banner('HEALTH FULL', ''); return; } this.hp = Math.min(100, this.hp + 60); this.regenT = 0; g.audio.blip(520); g.hud.banner('MEDKIT USED', '+60 health'); }
+    else if (kind === 'plate') { if (this.armor >= 100) { g.hud.banner('ARMOUR FULL', ''); return; } this.armor = Math.min(100, this.armor + 50); g.audio.blip(480); g.hud.banner('ARMOUR PLATE FITTED', '+50 armour'); }
+    else if (kind === 'noise') { if (this.lockFists) return; g.throwGrenade(this, 'noise'); }
+    else if (kind === 'ammo') { for (const sl of SLOT_LIST) if (this.inv[sl]) this.inv[sl].res += this.W[sl].mag * 2; g.audio.blip(700); g.hud.banner('AMMO BOX USED', 'Reserves refilled'); }
+    else return;
+    this.takeFromPack(kind);
+  }
+  // pick up a gun: it replaces the gun you carry in that slot, which is dropped on the ground
+  takeWeapon(vid, mag, res) {
+    const v = VARIANTS[vid], slot = v.slot, g = this.g, old = this.inv[slot];
+    if (old && this.var[slot] === vid) { old.res += mag + res; g.hud.banner(v.name.toUpperCase(), 'Ammo added'); g.audio.click(); return null; }
+    const dropped = old ? { variant: this.var[slot], mag: old.mag, res: old.res } : null;
+    this.var[slot] = vid; this.rebuildW(slot);
+    const cap = this.W[slot].mag;
+    this.inv[slot] = { mag: Math.min(mag, cap), res: res + Math.max(0, mag - cap) };
+    this.cur = slot; this.reloadT = 0; g.audio.click();
+    g.hud.banner(v.name.toUpperCase(), dropped ? 'Swapped - you dropped the ' + VARIANTS[dropped.variant].name : 'Picked up');
+    return dropped;
+  }
+  dropWeapon() {
+    const slot = this.cur, g = this.g;
+    if (slot === 'fists' || !this.inv[slot] || this.lockFists) return;
+    const st = this.inv[slot], vid = this.var[slot];
+    g.dropWeapon(vid, st.mag, st.res, this.pos.x + Math.sin(this.yaw) * 1.4, this.pos.z + Math.cos(this.yaw) * 1.4);
+    this.inv[slot] = null; this.reloadT = 0;
+    this.cur = this.inv.pistol ? 'pistol' : this.inv.rifle ? 'rifle' : this.inv.sniper ? 'sniper' : 'fists';
+    g.hud.banner('DROPPED ' + VARIANTS[vid].name.toUpperCase(), '');
   }
 
   behind(e) {
@@ -144,17 +197,17 @@ export class Player {
     if (st.mag <= 0) { g.audio.click(); if (st.res > 0) this.reloadT = wd.reload; this.fireCd = 0.25; return; }
     st.mag--; this.fireCd = wd.rate;
     const cam = g.camera; cam.getWorldDirection(_d);
-    let sp = wd.spread * (this.aiming ? (wd.scope ? 0.02 : 0.4) : 1) * (this.speed > 2 ? 1.6 : 1) * (this.crouch ? 0.7 : 1) * (sprint ? 2 : 1);
+    let sp = wd.spread * (this.aiming ? (wd.scope ? 0.02 : 0.4) : 1) * (this.speed > 2 ? 1.6 : 1) * (this.prone ? 0.5 : this.crouch ? 0.7 : 1) * (sprint ? 2 : 1);
     _d.x += rnd(-sp, sp); _d.y += rnd(-sp, sp); _d.z += rnd(-sp, sp); _d.normalize();
     const head = _v.set(this.pos.x, this.pos.y + 1.5, this.pos.z);
     const tMin = Math.max(0, head.sub(cam.position).dot(_d));
     const hit = g.shootRay(cam.position, _d, 450, tMin, { dmg: wd.dmg, from: 'player' });
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
-    const mz = new THREE.Vector3(this.pos.x + rx * 0.14 + Math.sin(this.yaw) * 0.9, this.pos.y + (this.wet ? 0.8 : this.crouch ? 1.05 : 1.5), this.pos.z + rz * 0.14 + Math.cos(this.yaw) * 0.9);
+    const mz = new THREE.Vector3(this.pos.x + rx * 0.14 + Math.sin(this.yaw) * 0.9, this.pos.y + (this.prone ? 0.4 : this.wet ? 0.8 : this.crouch ? 1.05 : 1.5), this.pos.z + rz * 0.14 + Math.cos(this.yaw) * 0.9);
     g.fx.tracer(mz, hit, 0xfff0b0);
-    if (wd.snd !== 'pistol') g.fx.flash(mz, 0xffc070, 40, 0.06);
+    if (wd.snd !== 'pistol' && !wd.supp) g.fx.flash(mz, 0xffc070, 40, 0.06);
     this.pitch += wd.recoil; this.recoil = Math.min(0.2, (this.recoil || 0) + wd.recoil); this.yaw += rnd(-wd.recoil, wd.recoil) * 0.25;
-    g.audio.shot(wd.snd, 1);
+    g.audio.shot(wd.snd, wd.supp ? 0.3 : 1);
     g.emitNoise(this.pos, wd.noise, wd.noise > 30);
     g.stats.shots++;
     if (st.mag <= 0 && st.res > 0) this.reloadT = wd.reload;
@@ -230,7 +283,7 @@ export class Player {
   }
   enterVehicle(v) {
     this.vehicle = v; v.driver = this; v.autopilot = false; this.mode = v.type;
-    this.h.group.visible = false; this.crouch = false; this.camYaw = v.yaw; this.yaw = v.yaw; this.pitch = 0; this.vel.set(0, 0, 0);
+    this.h.group.visible = false; this.crouch = false; this.prone = false; this.proneK = 0; this.camYaw = v.yaw; this.yaw = v.yaw; this.pitch = 0; this.vel.set(0, 0, 0);
     this.g.audio.click();
   }
   exitVehicle() {
@@ -268,9 +321,9 @@ export class Player {
     this.g.fail(reason);
   }
   revive(x, z) {
-    this.dead = false; this.hp = 100; this.mode = 'foot'; this.vehicle = null; this.vy = 0; this.grounded = true;
+    this.dead = false; this.prone = false; this.proneK = 0; this.hp = 100; this.mode = 'foot'; this.vehicle = null; this.vy = 0; this.grounded = true;
     this.pos.set(x, 0, z); this.vel.set(0, 0, 0); reviveHumanoid(this.h); this.h.group.rotation.set(0, this.yaw, 0); this.h.group.visible = true;
-    for (const w of ['pistol', 'rifle', 'sniper']) if (this.inv[w]) this.inv[w].res = Math.max(this.inv[w].res, WEAPONS[w].mag * 2);
+    for (const w of ['pistol', 'rifle', 'sniper']) if (this.inv[w]) this.inv[w].res = Math.max(this.inv[w].res, this.W[w].mag * 2);
   }
 
   updateCamera(dt) {
@@ -295,16 +348,16 @@ export class Player {
       const cp = Math.cos(this.pitch);
       _d.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
       const air = this.mode !== 'foot' || this.dead;
-      const scope = !air && this.aiming && WEAPONS[this.cur].scope;
-      const hy = this.pos.y + (this.wet ? 0.95 : this.crouch ? 1.12 : 1.6);
-      if (scope) { cam.position.set(this.pos.x + _d.x * 0.3, hy, this.pos.z + _d.z * 0.3); fov = 13; }
+      const wdc = this.W[this.cur], scope = !air && this.aiming && wdc.scope;
+      const hy = this.pos.y + (this.prone ? 0.55 : this.wet ? 0.95 : this.crouch ? 1.12 : 1.6);
+      if (scope) { cam.position.set(this.pos.x + _d.x * 0.3, hy, this.pos.z + _d.z * 0.3); fov = wdc.zoom || 13; }
       else {
         const dist = air ? 9 : this.aiming ? 2.0 : 3.5, side = air ? 0 : this.aiming ? 0.55 : 0.75;
         const px = this.pos.x - Math.cos(this.yaw) * side, pz = this.pos.z + Math.sin(this.yaw) * side, py = hy + 0.22;
         const t = w.raycast(px, py, pz, -_d.x, -_d.y, -_d.z, dist + 0.3);
         const dd = Math.max(0.3, Math.min(dist, t - 0.25));
         cam.position.set(px - _d.x * dd, py - _d.y * dd, pz - _d.z * dd);
-        fov = this.aiming ? 46 : 68;
+        fov = this.aiming ? (wdc.zoom || 46) : 68;
       }
       cam.lookAt(cam.position.x + _d.x, cam.position.y + _d.y, cam.position.z + _d.z);
     }

@@ -3,6 +3,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { ASSETS } from './assets.js';
 import { clamp, damp, lerp } from './util.js';
+import { FINISHES } from './gear.js';
 
 // ------------------------------------------------------------------ shared bits
 const mats = new Map();
@@ -27,9 +28,37 @@ function basicGun(kind) {
   g.userData.len = len;
   return g;
 }
-export function makeGun(kind) {
+export function makeGun(kind, opts = {}) {
   const src = ASSETS.guns[kind];
-  return src ? src.clone(true) : basicGun(kind);
+  const g = src ? src.clone(true) : basicGun(kind);
+  const fin = FINISHES[opts.finish | 0];
+  if (fin && opts.finish > 0) {
+    g.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = o.material.clone();
+      o.material.color.multiply(new THREE.Color(fin.c));
+      if (fin.metal) { o.material.metalness = 0.95; o.material.roughness = 0.22; }
+    });
+  }
+  if (opts.supp) { // suppressor on the muzzle
+    const len = g.userData.len || 0.5;
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.2, 12).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x15161a, metalness: 0.7, roughness: 0.35 }));
+    can.position.set(0, 0.045, len * 0.7 + 0.09); g.add(can);
+  }
+  return g;
+}
+// shared by the soldier model and the blocky fallback
+function bindGunSlot(h) {
+  h.guns = {}; h.gunKind = null; h.gunKey = null; h.curGun = null;
+  h.setGun = (kind, opts = {}) => {
+    const key = kind ? kind + '|' + (opts.finish | 0) + (opts.supp ? 's' : '') : null;
+    if (h.gunKey === key) return;
+    h.gunKey = key; h.gunKind = kind;
+    for (const k in h.guns) h.guns[k].visible = false;
+    if (!kind) { h.curGun = null; return; }
+    if (!h.guns[key]) { h.guns[key] = makeGun(kind, opts); h.gun.add(h.guns[key]); }
+    h.guns[key].visible = true; h.curGun = h.guns[key];
+  };
 }
 
 // ------------------------------------------------------------------ realistic soldier (skinned model + clips)
@@ -92,15 +121,8 @@ function makeModel(o) {
   const ok = Object.values(b).every(Boolean);
   const h = { group, body, model, mixer, A, b: ok ? b : null, punchT: 1, deadT: 0, crouchK: 0, aimK: 0, dead: false, guns: {}, gunKind: null, tick: 0, acc: 0 };
   h.gun = new THREE.Group(); h.gun.visible = false; group.add(h.gun);
-  h.setGun = (kind) => {
-    if (h.gunKind === kind) return;
-    h.gunKind = kind;
-    for (const k in h.guns) h.guns[k].visible = false;
-    if (!kind) return;
-    if (!h.guns[kind]) { h.guns[kind] = makeGun(kind); h.gun.add(h.guns[kind]); }
-    h.guns[kind].visible = true;
-  };
-  if (o.gun) { h.setGun(o.gunKind || 'ak47'); h.gun.visible = true; }
+  bindGunSlot(h);
+  if (o.gun) { h.setGun(o.gunKind || 'ak47', o.gunOpts || {}); h.gun.visible = true; }
   if (o.mark) addMark(h);
   return h;
 }
@@ -116,6 +138,15 @@ function animModel(h, s, dt) {
   // distant figures animate at a quarter of the rate
   if (s.far) { h.acc += dt; if (++h.tick % 4) return; dt = h.acc; h.acc = 0; }
   const sp = s.speed || 0;
+  if (s.prone) { // crawl: the walk clip, slowed, with the weapon held out along the ground
+    const m = clamp(sp / 0.8, 0, 1);
+    if (A.idle) A.idle.setEffectiveWeight(1 - m);
+    if (A.walk) { A.walk.setEffectiveWeight(m); A.walk.timeScale = 0.55; }
+    if (A.run) A.run.setEffectiveWeight(0);
+    h.mixer.update(dt);
+    if (h.gun.visible && h.gunKind) { h.gun.position.set(-0.1, 1.72, 0.12); h.gun.rotation.set(-Math.PI / 2, 0, 0); }
+    return;
+  }
   const run = clamp((sp - 2.6) / 2.2, 0, 1), walk = clamp(sp / 1.0, 0, 1) * (1 - run);
   if (A.idle) A.idle.setEffectiveWeight(1 - walk - run);
   if (A.walk) { A.walk.setEffectiveWeight(walk); A.walk.timeScale = clamp(sp / 1.5, 0.7, 2); }
@@ -154,7 +185,7 @@ function animModel(h, s, dt) {
   else if (s.block) { reach(b.rArm, b.rFore, b.rHand, 0.12, 0.12, 0.32, 1); reach(b.lArm, b.lFore, b.lHand, -0.12, 0.12, 0.32, -1); }
   else if (armed) {
     // weapon rides in front of the chest: low-ready normally, raised to the eye line when aiming
-    const k = h.aimK, pitch = lerp(-0.55, clamp(s.pitch || 0, -1, 1), k), long = (h.guns[h.gunKind].userData.len || 0.8) > 0.5;
+    const k = h.aimK, pitch = lerp(-0.55, clamp(s.pitch || 0, -1, 1), k), long = ((h.curGun && h.curGun.userData.len) || 0.8) > 0.5;
     b.lArm.getWorldPosition(sh).add(b.rArm.getWorldPosition(_p)).multiplyScalar(0.5);
     h.group.worldToLocal(_t.copy(sh));
     h.gun.position.set(-lerp(0.1, 0.13, k), _t.y + lerp(-0.26, 0.0, k), _t.z + lerp(0.24, long ? 0.3 : 0.44, k));
@@ -187,10 +218,9 @@ function makeBlocky(o) {
   h.armL = mk(G.arm, shirt, 0.34, 1.48, 0); h.armR = mk(G.arm, shirt, -0.34, 1.48, 0);
   h.legL = mk(G.leg, pants, 0.13, 0.86, 0); h.legR = mk(G.leg, pants, -0.13, 0.86, 0);
   h.gun = new THREE.Group(); h.gun.rotation.x = Math.PI / 2; h.gun.position.set(0, -0.62, 0.05); h.armR.add(h.gun);
-  h.guns = {}; h.gunKind = null;
-  h.setGun = (kind) => { if (h.gunKind === kind) return; h.gunKind = kind; for (const k in h.guns) h.guns[k].visible = false; if (!kind) return; if (!h.guns[kind]) { h.guns[kind] = makeGun(kind); h.gun.add(h.guns[kind]); } h.guns[kind].visible = true; };
   h.gun.visible = false;
-  if (o.gun) { h.setGun(o.gunKind || 'ak47'); h.gun.visible = true; }
+  bindGunSlot(h);
+  if (o.gun) { h.setGun(o.gunKind || 'ak47', o.gunOpts || {}); h.gun.visible = true; }
   if (o.mark) addMark(h);
   if (o.scale) group.scale.setScalar(o.scale);
   return h;

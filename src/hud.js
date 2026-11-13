@@ -1,9 +1,16 @@
 import * as THREE from 'three';
-import { WEAPONS } from './player.js';
+import { PACK_ITEMS } from './gear.js';
 import { clamp, dist2 } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
+const keysets = (L) => ({
+  foot: [[`${L('KeyW')} ${L('KeyA')} ${L('KeyS')} ${L('KeyD')}`, 'Move'], ['Mouse', 'Look'], [L('ShiftLeft'), 'Sprint'], [L('KeyC'), 'Crouch'], [L('KeyZ'), 'Crawl (prone)'], [L('KeyV'), 'Sneak walk (hold)'], [L('Space'), 'Jump / stand up'], ['L-click', 'Fire / punch'], ['R-click', 'Aim / block'], [L('KeyR'), 'Reload'], ['1-4', 'Weapons'], [L('KeyF'), 'Kick / takedown'], [L('KeyG'), 'Grenade'], [L('KeyE'), 'Use · pick up · enter'], [L('KeyU'), 'Drop weapon'], [`${L('KeyQ')} ${L('KeyX')} ${L('KeyT')} ${L('KeyY')}`, 'Backpack items'], [L('KeyB'), 'Brightness'], [L('KeyH'), 'Full manual']],
+  car: [[`${L('KeyW')} / ${L('KeyS')}`, 'Gas / brake'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [L('Space'), 'Handbrake'], [L('KeyE'), 'Get out'], [L('KeyB'), 'Brightness']],
+  plane: [[`${L('ShiftLeft')} / ${L('KeyC')}`, 'Throttle'], [`${L('KeyS')} / ${L('KeyW')}`, 'Pull up / down'], [`${L('KeyA')} / ${L('KeyD')}`, 'Bank'], [L('KeyJ'), 'Bail out'], [L('KeyE'), 'Exit (landed)']],
+  air: [[L('Space'), 'Open parachute'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [`${L('KeyW')} / ${L('KeyS')}`, 'Dive / flare']],
+});
+const PACK_NAMES = { med: 'Med', plate: 'Plate', noise: 'Decoy', ammo: 'Ammo' };
 
 export class Hud {
   constructor(g) {
@@ -11,11 +18,11 @@ export class Hud {
     this.el = $('hud');
     this.map = $('minimap').getContext('2d');
     this.queue = []; this.radioT = 0; this.bannerT = 0; this.hitT = 0; this.hurtK = 0;
-    this.timer = ''; this.big = ''; this.objDirty = true; this.showObj = true; this.frame = 0;
+    this.timer = ''; this.big = ''; this.objDirty = true; this.showObj = true; this.frame = 0; this.keysOn = false; this.keysT = 0;
     this.cache = {};
   }
   show(on) { this.el.classList.toggle('hidden', !on); }
-  reset() { this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
+  reset() { this.keysT = 20; this.cache.keysSet = null; this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
   set(id, prop, val) { const k = id + prop; if (this.cache[k] !== val) { this.cache[k] = val; if (prop === 'text') $(id).textContent = val; else $(id).style[prop] = val; } }
 
   banner(title, sub = '') { $('bannerTitle').textContent = title; $('bannerSub').textContent = sub; $('banner').style.opacity = 1; this.bannerT = 2.6; }
@@ -26,6 +33,17 @@ export class Hud {
   update(dt) {
     const g = this.g, p = g.player, m = g.mission;
     this.frame++;
+    // on-screen key list: shown for the first seconds of a mission, toggled with K
+    if (g.input.pressed.KeyK) { this.keysOn = !(this.keysOn || this.keysT > 0); this.keysT = 0; }
+    this.keysT = Math.max(0, this.keysT - dt);
+    const show = this.keysOn || this.keysT > 0, kset = !show ? '' : p.mode === 'foot' ? 'foot' : p.mode === 'car' ? 'car' : p.mode === 'plane' ? 'plane' : 'air';
+    const ks = kset ? kset + g.input.bindVer : '';
+    if (this.cache.keysSet !== ks) {
+      this.cache.keysSet = ks;
+      const el = $('keys');
+      if (!kset) el.style.display = 'none';
+      else { el.innerHTML = '<h4>KEYS <span>K to hide</span></h4>' + keysets((id) => g.input.label(id))[kset].map(([k, v]) => `<div><b>${k}</b>${v}</div>`).join(''); el.style.display = 'block'; }
+    }
     // radio queue
     this.radioT -= dt;
     if (this.radioT <= 0) {
@@ -56,12 +74,13 @@ export class Hud {
     this.set('hpBar', 'width', Math.round(clamp(p.hp, 0, 100)) + '%');
     this.set('arBar', 'width', Math.round(clamp(p.armor, 0, 100)) + '%');
     const foot = p.mode === 'foot';
-    this.set('stance', 'text', p.mode === 'chute' ? 'PARACHUTE' : p.mode === 'fall' ? 'FREEFALL' : !foot ? '' : p.wet ? 'WADING · HIDDEN' : p.crouch ? 'CROUCHED · QUIET' : 'STANDING');
-    const wd = WEAPONS[p.cur], st = p.inv[p.cur];
+    this.set('stance', 'text', p.mode === 'chute' ? 'PARACHUTE' : p.mode === 'fall' ? 'FREEFALL' : !foot ? '' : p.prone ? (p.hidden ? 'PRONE · IN BRUSH' : 'PRONE · CRAWLING') : p.wet ? 'WADING · HIDDEN' : p.hidden ? (p.crouch ? 'HIDDEN IN BRUSH' : 'IN BRUSH · CROUCH TO HIDE') : p.crouch ? 'CROUCHED · QUIET' : p.sneaking ? 'SNEAKING · QUIET' : 'STANDING');
+    const wd = p.W[p.cur], st = p.inv[p.cur];
     this.set('weapon', 'display', foot ? '' : 'none');
     this.set('wName', 'text', wd.name.toUpperCase());
     this.set('wAmmo', 'text', wd.melee ? '—' : p.reloadT > 0 ? 'RELOAD' : `${st.mag} / ${st.res}`);
-    this.set('wExtra', 'text', `GRENADES ${p.grenades}` + (p.lockFists ? ' · NO WEAPONS' : ''));
+    this.set('wPack', 'text', Object.entries(p.pack).filter(([k, n]) => n > 0 && PACK_NAMES[k]).map(([k, n]) => `${g.input.label(PACK_ITEMS[k].key)} ${PACK_NAMES[k]} ${n}`).join(' · ') || 'PACK EMPTY');
+    this.set('wExtra', 'text', `GRENADES ${p.grenades + (p.pack.nade | 0)}` + (p.lockFists ? ' · NO WEAPONS' : ''));
     const scope = foot && p.aiming && wd.scope;
     this.set('scope', 'display', scope ? 'block' : 'none');
     this.set('cross', 'display', foot && !scope ? '' : 'none');
@@ -80,8 +99,8 @@ export class Hud {
     // prompt
     const it = g.interact;
     let prompt = '';
-    if (it) prompt = it.text; else if (p.takedown) prompt = '[F] Silent takedown';
-    else if (p.mode === 'plane' && v) prompt = v.airborne ? '[J] Bail out' : v.speed < 1 ? 'Hold SHIFT for throttle · S to lift off at 120 km/h · [E] get out' : '';
+    if (it) prompt = it.text; else if (p.takedown) prompt = `[${g.input.label('KeyF')}] Silent takedown`;
+    else if (p.mode === 'plane' && v) prompt = v.airborne ? `[${g.input.label('KeyJ')}] Bail out` : v.speed < 1 ? `Hold ${g.input.label('ShiftLeft')} for throttle · ${g.input.label('KeyS')} to lift off at 120 km/h · [${g.input.label('KeyE')}] get out` : '';
     this.set('prompt', 'display', prompt ? 'block' : 'none');
     if (prompt) {
       const k = it && it.hold ? Math.round(clamp(p.holdT / it.hold, 0, 1) * 100) : 0;
