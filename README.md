@@ -117,6 +117,10 @@ Cars, the jeep and the boat are detailed models built in code (curved bodies, gl
 
 During a race a **route map** shows the whole track with numbered checkpoints, your position and the rivals, and glowing arrows are laid along the road to the next checkpoints.
 
+## Enemies you can tell apart
+
+Guards wear a red beret, heavies carry a pack and a chest rig and are bigger, snipers wear a bush hat, street fighters wear caps, and the boss wears a black beret and a pack. Buildings have air-conditioners, rooftop tanks, awnings with glowing signs, fire escapes, pipes and loading doors, and the streets have zebra crossings.
+
 ## Aiming and spotting
 
 Aiming zooms in (pistols 52 degrees, rifles 40, optics and scopes more). Enemies near the crosshair in line of sight get a tag with their type and distance for a few seconds, and show on the minimap.

@@ -6,11 +6,11 @@ const HOODS = [0x7a2a2a, 0x2a4a7a, 0x4a4a4a, 0x6a5a2a, 0x3a6a4a, 0x5a2a6a];
 const VOICE_OF = { guard: 'ak47', heavy: 'm4a1', sniper: 'l118a', boss: 'ak47' };
 const TINTS = [0xffa0a0, 0xa0b8ff, 0xc8c8c8, 0xffe090, 0xa0ffc8, 0xe0a0ff];
 export const ENEMY_TYPES = {
-  guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => ({ shirt: 0x4d5a3a, pants: 0x2e3524, hat: 0x8a1c1c, tint: 0xffffff, gunKind: 'ak47' }) },
-  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.1, tint: 0x6f6f78, gunKind: 'm4a1' }) },
-  sniper: { hp: 80, speed: 0, dmg: 24, acc: 0.5, burst: 1, range: 150, gun: true, static: true, look: () => ({ shirt: 0x3a4a2a, pants: 0x2a3520, hat: 0x2a3520, tint: 0xa8c890, gunKind: 'l118a' }) },
-  thug: { hp: 110, speed: 5.0, dmg: 13, melee: true, look: () => { const i = Math.floor(Math.random() * HOODS.length); return { shirt: HOODS[i], pants: 0x22252c, hat: Math.random() < 0.5 ? 0x151515 : null, tint: TINTS[i] }; } },
-  boss: { hp: 480, speed: 3.8, dmg: 13, acc: 0.62, burst: 4, range: 70, gun: true, look: () => ({ shirt: 0x151515, pants: 0x101010, hat: 0xb01818, scale: 1.14, tint: 0xb06060, gunKind: 'ak47' }) },
+  guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => ({ shirt: 0x4d5a3a, pants: 0x2e3524, hat: 0x8a1c1c, tint: 0xffffff, gunKind: 'ak47', gearList: [['beret', 0xa81e1e]] }) },
+  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.1, tint: 0x6f6f78, gunKind: 'm4a1', gearList: [['pack', 0x2c2c26], ['rig', 0x1a1b1e]] }) },
+  sniper: { hp: 80, speed: 0, dmg: 24, acc: 0.5, burst: 1, range: 150, gun: true, static: true, look: () => ({ shirt: 0x3a4a2a, pants: 0x2a3520, hat: 0x2a3520, tint: 0xa8c890, gunKind: 'l118a', gearList: [['boonie', 0x6b6a3e]] }) },
+  thug: { hp: 110, speed: 5.0, dmg: 13, melee: true, look: () => { const i = Math.floor(Math.random() * HOODS.length); return { shirt: HOODS[i], pants: 0x22252c, hat: Math.random() < 0.5 ? 0x151515 : null, tint: TINTS[i], gearList: Math.random() < 0.6 ? [['cap', [0x151515, 0x7a2a2a, 0x2a4a7a][i % 3]]] : [] }; } },
+  boss: { hp: 480, speed: 3.8, dmg: 13, acc: 0.62, burst: 4, range: 70, gun: true, look: () => ({ shirt: 0x151515, pants: 0x101010, hat: 0xb01818, scale: 1.14, tint: 0xb06060, gunKind: 'ak47', gearList: [['beret', 0x0e0e10], ['pack', 0x2a2a2c]] }) },
 };
 
 // Shared ground movement with simple path following and stuck recovery.

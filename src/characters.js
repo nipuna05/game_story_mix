@@ -97,6 +97,22 @@ function ik2(upper, mid, end, target, pole) {
   swing(mid, _c.sub(_b).normalize(), _t.copy(target).sub(_b).normalize());
 }
 
+// Headgear and packs attached to the skeleton, so each enemy type is recognisable at a glance. Sizes are in the
+// rig's own units (centimetres under a 0.01 scale).
+const gearMat = (c, rough = 0.85) => once2('g' + c + rough, () => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: 0.05 }));
+const memo = new Map();
+function once2(k, f) { let v = memo.get(k); if (v === undefined) { v = f(); memo.set(k, v); } return v; }
+function addGear(model, kind, color) {
+  const head = model.getObjectByName('Head'), back = model.getObjectByName('Spine01') || model.getObjectByName('Spine');
+  const add = (bone, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { if (!bone) return; const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.castShadow = true; bone.add(m); return m; };
+  const mat = gearMat(color);
+  if (kind === 'beret') { add(head, once2('beret', () => new THREE.CylinderGeometry(13.5, 14.5, 4.5, 20)), mat, 0, 22, 1.5, 0.12, 0, 0.1); add(head, once2('bband', () => new THREE.CylinderGeometry(12.2, 12.2, 2.2, 20)), mat, 0, 19.5, 0.5); }
+  else if (kind === 'cap') { add(head, once2('cap', () => new THREE.CylinderGeometry(12, 12.6, 6, 18)), mat, 0, 21.5, 0.5); add(head, once2('visor', () => new THREE.BoxGeometry(17, 0.8, 11)), mat, 0, 19.2, 12.5, 0.15); }
+  else if (kind === 'boonie') { add(head, once2('brim', () => new THREE.CylinderGeometry(22, 22, 0.8, 24)), mat, 0, 20.5, 0.5); add(head, once2('crown', () => new THREE.CylinderGeometry(11, 12.5, 7, 20)), mat, 0, 24, 0.5); }
+  else if (kind === 'pack') { add(back, once2('pack', () => new THREE.BoxGeometry(34, 38, 16)), mat, 0, 4, -19); add(back, once2('roll', () => new THREE.CylinderGeometry(6, 6, 38, 12).rotateZ(Math.PI / 2)), gearMat(0x3a3a34), 0, -17, -19); }
+  else if (kind === 'rig') { add(back, once2('rig', () => new THREE.BoxGeometry(32, 12, 16)), gearMat(0x1a1b1e), 0, 6, 3); }
+}
+
 function makeModel(o) {
   const T = ASSETS.cole;
   const group = new THREE.Group(), body = new THREE.Group();
@@ -113,6 +129,7 @@ function makeModel(o) {
   for (const n of ['idle', 'walk', 'run']) if (T.clips[n]) { A[n] = mixer.clipAction(T.clips[n]); A[n].play(); A[n].setEffectiveWeight(n === 'idle' ? 1 : 0); }
   if (T.clips.death) { A.death = mixer.clipAction(T.clips.death); A.death.setLoop(THREE.LoopOnce, 1); A.death.clampWhenFinished = true; }
   mixer.setTime(Math.random() * 2);
+  for (const [kind, c] of o.gearList || []) addGear(model, kind, c);
   const B = (n) => model.getObjectByName(n);
   const b = {
     hips: B('Hips'), lUp: B('LeftUpLeg'), lLeg: B('LeftLeg'), lFoot: B('LeftFoot'), rUp: B('RightUpLeg'), rLeg: B('RightLeg'), rFoot: B('RightFoot'),

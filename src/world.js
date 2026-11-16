@@ -267,6 +267,7 @@ export class World {
     mesh.position.set(x, h / 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
     this.root.add(mesh); this.disposables.push(geo);
     this.solid(x, z, w, d, h);
+    if (style !== 'warehouse' || h > 6) this.facade(x, z, w, d, h, style, r);
     if (h > 8 && r() < 0.6) this.deco(x + (r() - 0.5) * w * 0.4, h + 0.7, z + (r() - 0.5) * d * 0.4, 2.5, 1.4, 2.5, 0x555b63);
     this.deco(x, h + 0.25, z, w + 0.5, 0.5, d + 0.5, st.roof);
     if (style !== 'warehouse') this.deco(x, 0.5, z, w + 0.3, 1, d + 0.3, 0x2a2c30);
@@ -280,6 +281,59 @@ export class World {
       if (h > 38) { this.inst('cyl', 0x555b63, x, h + 4, z, 0.3, 8, 0.3); this.inst('sph', 0xff2020, x, h + 8.2, z, 0.9, 0.9, 0.9, { glow: dark }); }
     }
     return mesh;
+  }
+
+  // instanced details that sit flush on walls and roofs (no colliders): air-conditioners, rooftop tanks and vents, awnings with
+  // signs, fire escapes, pipes and loading doors
+  facade(x, z, w, d, h, style, r) {
+    const dark = this.theme.lit > 0.1, hw = w / 2, hd = d / 2, PI2 = Math.PI / 2;
+    const faces = [[0, 1, w], [0, -1, w], [1, 0, d], [-1, 0, d]];       // [normal x, normal z, wall length]
+    const at = (f, u, y, push) => [x + (f[0] ? f[0] * (hw + push) : u), y, z + (f[1] ? f[1] * (hd + push) : u)];
+    if (h > 8) {
+      const nAc = 1 + Math.floor(r() * 3);
+      for (let i = 0; i < nAc; i++) {
+        const f = faces[Math.floor(r() * 4)], u = (r() - 0.5) * (f[2] - 3), [px, py, pz] = at(f, u, 3.5 + r() * (h - 6), 0.3);
+        this.inst('box', 0x9aa0a6, px, py, pz, f[0] ? 0.6 : 1.1, 0.7, f[0] ? 1.1 : 0.6);
+        this.inst('box', 0x2a2d31, px + (f[0] ? f[0] * 0.31 : 0), py, pz + (f[1] ? f[1] * 0.31 : 0), f[0] ? 0.02 : 0.8, 0.45, f[0] ? 0.8 : 0.02);
+      }
+      if (r() < 0.45) {   // water tank on legs
+        const tx = x + (r() - 0.5) * w * 0.5, tz = z + (r() - 0.5) * d * 0.5;
+        this.inst('cyl', 0x7a5a42, tx, h + 2.6, tz, 2.2, 2.2, 2.2); this.inst('cone', 0x5a4636, tx, h + 3.9, tz, 2.4, 0.7, 2.4);
+        for (const [a, b] of [[-0.8, -0.8], [0.8, -0.8], [0.8, 0.8], [-0.8, 0.8]]) this.inst('box', 0x3a3a3a, tx + a, h + 1.5, tz + b, 0.12, 2.0, 0.12);
+      }
+      const nv = 2 + Math.floor(r() * 3);
+      for (let i = 0; i < nv; i++) this.inst('box', 0x6a6f76, x + (r() - 0.5) * (w - 2), h + 0.85, z + (r() - 0.5) * (d - 2), 0.9, 0.7, 0.9);
+      if (h > 20 && r() < 0.5) this.inst('cyl', 0x555b63, x + (r() - 0.5) * w * 0.4, h + 3.5, z + (r() - 0.5) * d * 0.4, 0.15, 6, 0.15);
+    }
+    if (style === 'city') {
+      const cols = [0xb83a3a, 0x2f6fb5, 0x2e8a52, 0xd08a1e, 0x8a3a8a], neon = [0xff2e7a, 0x24d6ff, 0xffb020, 0x3dff9a];
+      for (let i = 0; i < 2; i++) {   // shop awnings and signs along the street level
+        const f = faces[Math.floor(r() * 4)], aw = Math.min(5, f[2] * 0.4), u = (r() - 0.5) * (f[2] - aw - 1), [px, , pz] = at(f, u, 0, 0.6);
+        const tilt = f[1] ? { rx: -f[1] * 0.35 } : { rz: f[0] * 0.35 };
+        this.inst('box', cols[Math.floor(r() * 5)], px, 3.3, pz, f[0] ? 1.2 : aw, 0.1, f[0] ? aw : 1.2, tilt);
+        const [sx, , sz] = at(f, u, 0, 0.12);
+        this.inst('box', neon[Math.floor(r() * 4)], sx, 4.3, sz, f[0] ? 0.08 : aw * 0.8, 0.5, f[0] ? aw * 0.8 : 0.08, { glow: dark });
+        const [dx, , dz] = at(f, u, 0, 0.08); this.inst('box', 0x16181c, dx, 1.3, dz, f[0] ? 0.06 : aw * 0.7, 2.4, f[0] ? aw * 0.7 : 0.06);
+      }
+      if (h > 12 && r() < 0.6) {   // fire escape
+        const f = faces[Math.floor(r() * 4)], len = Math.min(3, f[2] * 0.3);
+        for (let fl = 3; fl < h - 2; fl += 3) {
+          const [px, , pz] = at(f, 0, 0, 0.55); this.inst('box', 0x2d3036, px, fl, pz, f[0] ? 0.9 : len, 0.1, f[0] ? len : 0.9);
+          const [rx, , rz] = at(f, 0, 0, 1.0); this.inst('box', 0x2d3036, rx, fl + 0.5, rz, f[0] ? 0.05 : len, 0.9, f[0] ? len : 0.05);
+        }
+        const [lx, , lz] = at(f, len / 2, 0, 0.55); this.inst('box', 0x2d3036, lx, h / 2, lz, 0.08, h - 3, 0.08);
+      }
+    } else if (style === 'port' || style === 'industrial' || style === 'warehouse') {
+      for (const yy of [2.6, 3.6]) {   // pipes along one wall
+        const f = faces[Math.floor(r() * 4)], [px, , pz] = at(f, 0, 0, 0.35);
+        this.inst('cyl', style === 'industrial' ? 0x7a6a50 : 0x6a7078, px, yy, pz, 0.25, f[2] * 0.8, 0.25, f[1] ? { rz: PI2 } : { rx: PI2 });
+      }
+      const f = faces[Math.floor(r() * 4)], u = (r() - 0.5) * (f[2] - 5), [px, , pz] = at(f, u, 0, 0.12);   // loading door with warning bands
+      this.inst('box', 0x1a1c20, px, 2.1, pz, f[0] ? 0.2 : 4.2, 4.2, f[0] ? 4.2 : 0.2);
+      for (const yy of [0.4, 4.0]) { const [bx, , bz] = at(f, u, 0, 0.2); this.inst('box', 0xe0b020, bx, yy, bz, f[0] ? 0.05 : 4.2, 0.25, f[0] ? 4.2 : 0.05); }
+      const [lx, , lz] = at(f, u, 0, 0.3); this.inst('box', 0xffe2a0, lx, 4.8, lz, f[0] ? 0.15 : 0.7, 0.2, f[0] ? 0.7 : 0.15, { glow: dark });
+      if (h > 6) this.inst('cyl', 0x5a5f66, x + hw * 0.5, h + 2.0, z - hd * 0.4, 0.8, 3.0, 0.8);   // exhaust stack
+    }
   }
 
   // ---------- props ----------

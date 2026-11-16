@@ -182,7 +182,7 @@ function buildCar(kind, color) {
     for (const sx of [-1, 1]) { sbox(g, plastic, sx * 0.55, P.tail + 0.14, -h + 0.3, 0.05, 0.3, 0.07); rbox(g, pm, sx * (W / 2 - 0.05), P.belt - 0.3, 0.0, 0.05, 0.1, 0.5); }
     rbox(g, trim, 0, P.tail + 0.34, -h + 0.3, W * 0.88, 0.05, 0.36, -0.06);      // wing
     const glowGeo = new THREE.PlaneGeometry(W * 1.9, L * 1.35).rotateX(-Math.PI / 2);
-    const gm = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(2.2), map: radial(), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const gm = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(1.1), map: radial(), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     const gl = new THREE.Mesh(glowGeo, gm); gl.position.y = 0.04; g.add(gl);       // under-car glow
   } else {
     rbox(g, chrome, 0, sill + 0.04, h - 0.1, W * 0.6, 0.02, 0.02);

@@ -14,6 +14,11 @@ function townGrid(w, o) {
     if (V && i > V && j > V) continue;
     w.addNav(p.x, p.z);
     if ((i + j) % 2 === 0) w.lamp(p.x + road / 2 + 0.8, p.z + road / 2 + 0.8);
+    // zebra crossings on the four approaches
+    for (const [ax, az] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) for (let k = -3; k <= 3; k++) {
+      const off = road / 2 + 2.4, u = k * (road / 8.5);
+      w.flat(p.x + ax * off + (ax ? 0 : u), p.z + az * off + (az ? 0 : u), ax ? 3.0 : 0.8, az ? 3.0 : 0.8, 0xdedacc, 2);
+    }
     for (let k = 0; k < 4; k++) {
       const off = road / 2 + bs * (k + 0.5) / 4;
       if (j < nz && !(V && i > V && j >= V)) w.flat(p.x, p.z + off, 0.35, 4, o.lineColor, 2);
