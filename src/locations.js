@@ -267,7 +267,7 @@ export const LOCATIONS = {
     name: 'Old Harbor District', tagline: 'Warehouses, docks and smuggling routes on the black water.',
     defaultTime: 'night', compound: 'the freight yard',
     build(w, rng) {
-      w.ground(0x2c3a33);
+      w.ground(0x5a6558);
       const town = townGrid(w, { x0: -300, z0: -320, nx: 8, nz: 4, cell: 70, road: 16, rng, style: 'port', hMin: 6, hMax: 17, roadColor: 0x26292e, walkColor: 0x3c4148, lineColor: 0x8a8a70, tree: 'leaf', skip: (i, j) => i === 3 && j === 2 });
       const C = compound(w, { cx: 0, cz: 130, w: 240, d: 220, wall: 0x4a4f55, floor: 0x24272b, style: 'port', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'w', off: -30, width: 10 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],

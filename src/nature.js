@@ -155,11 +155,11 @@ function trunkGeo(height, rBottom, rTop, branches) {
 }
 // a lumpy, noise-shaped rock with a flat-ish base
 function rockGeo(seed, angular) {
-  let g = new THREE.IcosahedronGeometry(0.5, 3); g.deleteAttribute('normal'); g.deleteAttribute('uv'); g = mergeVertices(g, 1e-4);
+  let g = new THREE.IcosahedronGeometry(0.5, 4); g.deleteAttribute('normal'); g.deleteAttribute('uv'); g = mergeVertices(g, 1e-4);
   const p = g.attributes.position, v = new THREE.Vector3(), uv = new Float32Array(p.count * 2);
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i).normalize();
-    let n = vnoise(v.x * 1.7 + seed, v.y * 1.7 + seed * 1.3, v.z * 1.7) * 0.6 + vnoise(v.x * 4 + seed, v.y * 4, v.z * 4 + seed) * 0.28 + vnoise(v.x * 9, v.y * 9 + seed, v.z * 9) * 0.12;
+    let n = vnoise(v.x * 1.7 + seed, v.y * 1.7 + seed * 1.3, v.z * 1.7) * 0.6 + vnoise(v.x * 4 + seed, v.y * 4, v.z * 4 + seed) * 0.28 + vnoise(v.x * 9, v.y * 9 + seed, v.z * 9) * 0.12 + vnoise(v.x * 18 + seed, v.y * 18, v.z * 18) * 0.05;
     if (angular) n = Math.round(n * 7) / 7;   // stepped, so the surface breaks into flat facets
     v.multiplyScalar(0.5 * (0.62 + 0.75 * n));
     if (v.y < -0.18) v.y = -0.18 + (v.y + 0.18) * 0.08;

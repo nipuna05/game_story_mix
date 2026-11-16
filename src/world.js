@@ -619,7 +619,7 @@ export class World {
       const nk = this.nat.kind[b.geo];   // vegetation and rocks: textured, alpha-cut leaves, bark and stone
       if (nk) {
         const alpha = nk === 'leaf' || nk === 'pine' || nk === 'frond' || nk === 'grass';
-        mat = nk === 'rock' ? new THREE.MeshStandardMaterial({ color: b.color, map: this.nat.tex.rock, roughness: 0.95, metalness: 0 })
+        mat = nk === 'rock' ? new THREE.MeshStandardMaterial({ color: b.color, map: this.nat.tex.rock, bumpMap: this.nat.tex.rock, bumpScale: 2.2, roughness: 0.95, metalness: 0 })
           : new THREE.MeshLambertMaterial({ color: b.color, map: this.nat.tex[nk], alphaTest: alpha ? 0.45 : 0, side: alpha ? THREE.DoubleSide : THREE.FrontSide });
       } else if (o.add) mat = new THREE.MeshBasicMaterial({ color: b.color, map: this.radial(), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
       else if (o.glow) { mat = new THREE.MeshBasicMaterial({ color: b.color }); mat.color.multiplyScalar(2.6); }
