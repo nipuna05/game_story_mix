@@ -144,3 +144,6 @@ button em { margin-left: 10px; }
 .panel.left.wide { width: min(760px, 92vw); }
 .mlist button { padding: 9px 16px; } .prow { padding: 5px 0; }
 .logo { font-size: 50px; } .tag { margin: 8px 0 18px; }
+
+table.best td { padding: 2px 8px; font-size: 13px; }
+.menu.mlist.two button { padding: 8px 14px; }

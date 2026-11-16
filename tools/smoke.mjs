@@ -90,7 +90,7 @@ await shot('ai-chase');
 
 // ---- M2: fight + race
 await run('m2 fight', () => {
-  const g = window.game; g.startMission(window.S.CAMPAIGN[1], {}); g.god = true; const p = g.player;
+  const g = window.game; g.startMission(window.M('m2'), {}); g.god = true; const p = g.player;
   p.pos.set(g.P.arena.x + 20, 0, g.P.arena.z); window.tick(5); const a = window.info();
   p.pos.set(g.P.arena.x, 0, g.P.arena.z); window.tick(30);
   const started = g.mission.cur.st.started, lock = p.lockFists;
@@ -165,7 +165,7 @@ for (const e of ['savior', 'vengeance', 'truth']) await run('ending ' + e, (k) =
 
 // ---- combat: guards shoot back, death -> fail screen -> continue from checkpoint; grenades; charges
 await run('combat death', () => {
-  const g = window.game; g.startMission(window.S.CAMPAIGN[2], { approach: 'storm' }); const p = g.player;
+  const g = window.game; g.startMission(window.M('m3'), { approach: 'storm' }); const p = g.player;
   const e = g.enemies.find((x) => !x.dead && x.type === 'guard' && !x.route);
   p.pos.set(e.pos.x + Math.sin(e.yaw) * 9, 0, e.pos.z + Math.cos(e.yaw) * 9); p.armor = 0;
   let f = 0; while (g.state === 'playing' && f < 3000) { window.tick(1); f++; }
@@ -464,6 +464,28 @@ await run('quality levels', () => {
     out[q] = { shadows: g.renderer.shadowMap.enabled, mapSize: g.world.sun.shadow ? g.world.sun.shadow.mapSize.x : 0, pixelRatio: g.renderer.getPixelRatio(), parked: Object.keys(g.world.custom || {}).filter((k) => k.startsWith('pk:')).length, state: g.state };
   }
   return out;
+});
+
+
+// ---- ghost mission: raising the alarm fails it
+await run('dead air', () => {
+  const g = window.game; g.startMission(window.M('m2b'), {}); g.god = true; window.tick(5);
+  const out = { obj: g.mission.cur.type, noAlarm: !!g.mission.cur.noAlarm, items: g.mission.cur.st.items.length, state0: g.state };
+  g.alarm = true; window.tick(3); out.afterAlarm = g.state; out.pending = !!g.pendingUI;
+  return out;
+});
+
+
+await run('dead air full run', () => {
+  const g = window.game; g.startMission(window.M('m2b'), {}); g.god = true; const p = g.player;
+  g.enemies.forEach((e) => { e.dead = true; e.h.group.visible = false; });
+  const steps = [];
+  for (const it of g.mission.cur.st.items) { p.pos.set(it.pos.x, 0, it.pos.z); window.tick(4); }
+  steps.push(g.mission.cur.type);
+  for (const t of g.mission.cur.st.targets) { p.pos.set(t.pos.x + 3, 0, t.pos.z); window.tick(2); g.armTarget(t); }
+  p.pos.set(g.P.extract.x + 60, 0, g.P.extract.z + 60); window.tick(260); steps.push(g.mission.cur ? g.mission.cur.type : 'done');
+  p.pos.set(g.P.extract.x, 0, g.P.extract.z); window.tick(8);
+  return { steps, state: g.state, pending: !!g.pendingUI, alarm: g.alarm };
 });
 
 // ---- custom builder mission in every district

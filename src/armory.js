@@ -35,7 +35,7 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
         <div><b>${acc}</b><span>ACCURACY</span></div><div><b>${t.deaths}</b><span>DEATHS</span></div><div><b>${t.alarms}</b><span>ALARMS</span></div><div><b>${hrs}</b><span>PLAYED</span></div>
       </div><div class="row"><button data-a="reset">Reset profile</button></div>`;
     const best = `
-      <table>${CAMPAIGN.map((m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:90px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank + ' · ' + b.score : 'not completed'}</td></tr>`; }).join('')}</table>`;
+      <table class="best">${CAMPAIGN.map((m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:90px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank + ' · ' + b.score : 'not completed'}</td></tr>`; }).join('')}</table>`;
     body = ui.tabbed('pf', [['rank', 'Rank', rank], ['rec', 'Service record', rec], ['best', 'Mission ranks', best]]);
   } else if (tab === 'weapons') {
     const eqd = weaponDef(eq[slot], prof, true);

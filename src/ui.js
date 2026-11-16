@@ -123,7 +123,7 @@ export class UI {
 
   select() {
     const s = this.g.save;
-    this.show(`<h2><small>CAMPAIGN</small>Mission select</h2><div class="menu mlist">
+    this.show(`<h2><small>CAMPAIGN</small>Mission select</h2><div class="menu mlist two">
       ${CAMPAIGN.map((m, i) => `<button data-a="${i}" ${i + 1 > s.unlocked ? 'disabled' : ''}><b>${String(i + 1).padStart(2, '0')}</b>${this.T(m.title)}<small>${esc(LOCATIONS[m.location].name)} · ${THEMES[m.time].label}${s.best[m.id] ? ' · best rank ' + s.best[m.id].rank : ''}</small></button>`).join('')}
       </div><div class="row"><button data-a="back">Back</button></div>`,
     { on: (a) => (a === 'back' ? this.title() : this.briefing(CAMPAIGN[+a])) });

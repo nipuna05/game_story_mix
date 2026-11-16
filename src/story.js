@@ -85,6 +85,26 @@ export const CAMPAIGN = [
     outro: ["The keycards open a logistics database. {org} is holding civilians - engineers, grid operators, anyone who could switch the city back on - in the Industrial Zone.", "Their jailer has a name: {lt}."],
   },
   {
+    id: 'm2b', title: 'Dead Air', location: 'downtown', time: 'night', insertion: 'foot', enemies: 0.9, loadout: [],
+    place: 'Downtown - Aegis plaza, after dark',
+    brief: [
+      "{org} coordinates its patrols through two relay masts inside the Aegis plaza. While those masts are up, one shout and half of {city} is on top of you. {hacker} wants them down before the strike on the foundry - and wants it done quietly.",
+      "This is a ghost job. If the alarm goes up the plaza locks down and the mission is over. Crouch [C] or crawl [Z] through the bushes, use the suppressed pistol, take guards from behind [F], and throw a noisemaker [T] to pull them off your route.",
+      "Two things to do: lift the relay codes from the logistics desks, then plant a charge on each mast. Both without raising the alarm.",
+    ],
+    objectives: [
+      { type: 'collect', count: 2, item: 'decoder', noAlarm: true, text: 'Take the 2 relay codes from the plaza desks (do not raise the alarm)',
+        radio: [R('{hacker}', 'Night shift is thin but jumpy. Stay out of sight - if the alarm trips, this whole job is dead.')],
+        done: [R('{hacker}', 'Codes copied. Now the masts.')] },
+      { type: 'destroy', count: 2, kind: 'jammer', noAlarm: true, text: 'Plant charges on the 2 relay masts (do not raise the alarm)',
+        radio: [R('{hacker}', 'The masts are on the marked pads. Hold [E] to plant, then get well clear - the blast will bring every guard running.')],
+        done: [R('{hacker}', 'Their radio is dead. Get out before the shift changes.')] },
+      { type: 'reach', at: 'extract', text: 'Slip out of the plaza',
+        done: [R('{ally}', 'Not a shot fired at you. I am almost impressed.')] },
+    ],
+    outro: ["With the relay masts gone, {org} patrols can no longer call for backup across {city}. The road to the Industrial Zone, and {lt}'s prisoners, is open."],
+  },
+  {
     id: 'm3', title: 'Rust and Chains', location: 'industrial', time: 'day', insertion: 'car', enemies: 1.0, loadout: ['sniper'],
     place: 'Industrial Zone - foundry fortress',
     brief: [

@@ -81,6 +81,7 @@ export class MissionRun {
       g.hud.timer = 'TIME ' + fmtTime(s.t);
       if (s.t <= 0) return g.fail(fill(o.failText || 'You ran out of time.', g.cast));
     }
+    if (o.noAlarm && g.alarm) return g.fail(fill(o.failText || 'The alarm was raised - the plaza is locked down.', g.cast));
     switch (o.type) {
       case 'fly': if (p.mode !== 'plane' || dist2(p.pos.x, p.pos.z, P.lz.x, P.lz.z) < 190) this.complete(); break;
       case 'land': if (p.mode === 'foot' && p.grounded && !p.dead) this.complete(); break;

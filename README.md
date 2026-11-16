@@ -35,6 +35,7 @@ and endings use whatever you type.
 |---|---------|----------|-------------|
 | 1 | The Last Signal | Old Harbor, night | Sneak into a freight yard, collect evidence drives, steal a jeep or bike and escape |
 | 2 | Broken Trust | Downtown, dusk | Win a bare-knuckle fight, win a street race, steal keycards from a guarded plaza |
+| 2b | Dead Air | Downtown, night | A ghost job: copy relay codes and plant charges on two masts - raise the alarm and you fail |
 | 3 | Rust and Chains | Industrial Zone, day | Free three hostages, blow up fuel convoys, eliminate the enemy lieutenant |
 | 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
