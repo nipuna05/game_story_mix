@@ -141,6 +141,15 @@ class Game {
     try {   // draw one real frame through the normal path (including the glow effect) so exactly the right shaders are built
       if (this.settings.shadows) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     } catch { /* warming up is only an optimisation */ }
+    try {   // objects that are hidden right now (enemy markers, beams, lamps) would build their shaders only when first shown, so compile them too
+      const hidden = [];
+      this.scene.traverse((o) => { if (!o.visible && (o.isMesh || o.isLine || o.isPoints)) hidden.push(o); });
+      for (const o of hidden) o.visible = true;
+      if (this.settings.shadows) this.renderer.setRenderTarget(this.composer.renderTarget1);
+      this.renderer.compile(this.scene, this.camera);
+      this.renderer.setRenderTarget(null);
+      for (const o of hidden) o.visible = false;
+    } catch { this.renderer.setRenderTarget(null); }
     const keep = this._warmKeep || (this._warmKeep = []);
     for (const it of this.fx.items.splice(n0)) { this.scene.remove(it.o); keep.push(it.o.material); }   // materials stay alive, so the shaders do too
     while (keep.length > 10) keep.shift().dispose();
