@@ -10,6 +10,7 @@ import { Enemy, Hostage } from './enemies.js';
 import { Car, Plane } from './vehicles.js';
 import { MissionRun } from './mission.js';
 import { Hud } from './hud.js';
+import { Music } from './music.js';
 import { UI } from './ui.js';
 import { CAMPAIGN, DEFAULT_CAST, fill } from './story.js';
 import { clamp, dist2, rng } from './util.js';
@@ -32,7 +33,7 @@ const SPHERES = [[1.62, 0.21, true], [1.15, 0.4, false], [0.55, 0.36, false]];
 const _v = new THREE.Vector3();
 
 function loadSave() {
-  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, shadows: true, invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
+  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, shadows: true, invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (s) return { ...base, ...s, settings: { ...base.settings, ...s.settings }, cast: { ...base.cast, ...s.cast }, profile: mergeProfile(s.profile) };
@@ -53,7 +54,7 @@ class Game {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.55, 1.0);
     this.composer.addPass(this.renderPass); this.composer.addPass(this.bloom); this.composer.addPass(new OutputPass());
     this.save = loadSave(); this.settings = this.save.settings; this.cast = this.save.cast;
-    this.input = new Input(this.canvas); this.audio = new Sfx(); this.input.setBindings(this.settings.keys);
+    this.input = new Input(this.canvas); this.audio = new Sfx(); this.music = new Music(this.audio); this.input.setBindings(this.settings.keys);
     this.initPreview();
     this.hud = new Hud(this); this.ui = new UI(this);
     this.state = 'menu'; this.time = 0; this.last = 0;
@@ -69,6 +70,9 @@ class Game {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && this.state === 'playing' && !this.input.locked) this.pause();
+      if (this.input.mapCode(e.code) === 'KeyM' && !(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName || ''))) {
+        const off = this.audio.toggleMute(); this.music.refreshMute(); if (this.state === 'playing') this.hud.banner(off ? 'SOUND OFF' : 'SOUND ON', '');
+      }
       if (this.input.mapCode(e.code) === 'KeyB' && this.state === 'playing') { // quick brightness: cycle through 5 levels
         const L = [0.8, 1, 1.3, 1.7, 2.2], i = L.findIndex((v) => v >= this.settings.bright - 0.01);
         this.settings.bright = L[(i + 1) % L.length]; this.applySettings(); this.persist();
@@ -86,6 +90,7 @@ class Game {
   wipe() { Object.assign(this.save, { unlocked: 1, started: false, flags: {}, best: {} }); this.persist(); }
   newCampaign() { Object.assign(this.save, { unlocked: 1, started: true, flags: {} }); this.persist(); }
   applySettings() {
+    this.music.setVolume(this.settings.music ?? 0.6);
     if (this.world) this.renderer.toneMappingExposure = this.world.theme.exposure * (this.settings.bright || 1);
     this.audio.setVol(this.settings.vol);
     this.renderer.shadowMap.enabled = !!this.settings.shadows;
@@ -159,6 +164,7 @@ class Game {
     this.hud.banner('CHARGE PLANTED', 'Get clear - 6 seconds');
   }
   throwGrenade(p, kind = 'frag') {
+    this.audio.throwNade();
     this.camera.getWorldDirection(_v);
     const mesh = new THREE.Mesh(this.world.geo.sph, cmat(kind === 'noise' ? 0xffb020 : 0x2a3a2a)); mesh.scale.setScalar(0.22);
     const gr = { pos: new THREE.Vector3(p.pos.x + _v.x * 0.8, p.pos.y + 1.5, p.pos.z + _v.z * 0.8), vel: new THREE.Vector3(_v.x * 17, _v.y * 17 + 5, _v.z * 17), t: kind === 'noise' ? 1.6 : 2.3, mesh, kind };
@@ -288,15 +294,16 @@ class Game {
     if (best) {
       best.damage(info.dmg * (head ? 2.5 : 1), { from: 'player', head });
       this.stats.hits++; if (head && best.dead) this.stats.headshots++;
+      { const sp = this.spatial(best.pos, 220); this.audio.hitTick(best.dead); this.audio.impact('body', 0.55 * sp.vol, sp.pan); }
       this.fx.sparks(pt, 0xb01818, 6, 2.5, 0.3, 0.09);
       this.hud.hitMark(best.dead);
-    } else if (tw < maxT) this.fx.sparks(pt, 0xd8d0b8, 4, 3, 0.25, 0.07);
+    } else if (tw < maxT) { this.fx.sparks(pt, 0xd8d0b8, 4, 3, 0.25, 0.07); const sp = this.spatial(pt, 220); this.audio.impact('wall', 0.5 * sp.vol, sp.pan, 'stone'); }
     return pt;
   }
   explode(pos, r, dmg) {
     const p = this.player;
     this.fx.explosion(pos, r * 0.8);
-    this.audio.explosion(clamp(1.25 - pos.distanceTo(p.pos) / 160, 0, 1));
+    this.audio.explosion(clamp(1.25 - pos.distanceTo(p.pos) / 160, 0, 1), this.spatial(pos, 220).pan);
     for (const e of this.enemies) { if (e.dead) continue; const d = e.pos.distanceTo(pos); if (d < r) e.damage(dmg * (1 - d / r) + 25, { from: 'player', explosion: true }); }
     for (const v of this.vehicles) { if (v.dead || v.type !== 'car') continue; const d = v.pos.distanceTo(pos); if (d < r) v.hit(dmg * (1 - d / r)); }
     const dp = p.pos.distanceTo(pos);
@@ -448,6 +455,24 @@ class Game {
     return best;
   }
 
+  // which score to play: calm in menus and when paused, driving pulse in play, intense when guards are alerted or you race
+  musicMode() {
+    if (this.state === 'menu' || this.state === 'paused' || this.state === 'over') return 'calm';
+    let hot = !!this.alarm;
+    if (!hot) for (const e of this.enemies) if (!e.dead && e.alerted && !e.noAlarm) { hot = true; break; }
+    const o = this.mission && this.mission.cur;
+    if (o && o.type === 'race' && o.st.state === 'run') hot = true;
+    if (hot) this.intenseUntil = this.time + 8;
+    return hot || this.time < (this.intenseUntil || 0) ? 'intense' : 'game';
+  }
+  // pan / distance of a sound at a world position, relative to the camera
+  spatial(pos, range = 150) {
+    const c = this.camera, dx = pos.x - c.position.x, dz = pos.z - c.position.z, d = Math.hypot(dx, dz) || 1;
+    const f = this._sf || (this._sf = new THREE.Vector3()); c.getWorldDirection(f);
+    const far = clamp(d / range, 0, 1);
+    return { vol: clamp(1 - far * 0.85, 0.05, 1), pan: clamp((dx * -f.z + dz * f.x) / d, -1, 1) * Math.min(1, d / 12), far };
+  }
+
   // ---------------------------------------------------------------- loop
   frame(t) {
     requestAnimationFrame((n) => this.frame(n));
@@ -464,6 +489,7 @@ class Game {
     }
     if (this.settings.shadows) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     if (this.previewOn && this.pFig && this.state === 'menu') this.renderPreview(dt);
+    if (this.audio.ctx) { if (!this.music.started) this.music.start(); this.music.setMode(this.musicMode()); }
     this.input.frameEnd();
   }
 
@@ -526,9 +552,11 @@ class Game {
     } else this.spot.intensity = 0;
 
     // looping audio
-    if (v && v.type === 'car') this.audio.engine(1, Math.abs(v.speed) / v.max, v.kind === 'bike' ? 85 : 55);
-    else if (v && v.type === 'plane') this.audio.engine(1, v.throttle, 75);
-    else this.audio.engine(0);
+    if (v && v.type === 'car') {
+      this.audio.vehicle(v.kind, 1, Math.abs(v.speed) / v.max);
+      this.audio.skid(v.kind !== 'boat' && Math.abs(v.speed) > 12 && (Math.abs(v.steer) > 0.8 || !!this.input.keys.Space), 0.45);
+    } else if (v && v.type === 'plane') { this.audio.engine(1, v.throttle, 75); this.audio.vehicleOff(); }
+    else { this.audio.engine(0); this.audio.vehicleOff(); }
     this.audio.wind(p.mode === 'fall' ? 1 : p.mode === 'chute' ? 0.4 : p.mode === 'plane' ? 0.3 : 0);
 
     this.fx.update(dt);

@@ -107,6 +107,10 @@ Open **Profile & armory** from the main menu (or **Loadout & backpack** on any m
 
 In the field, **enemies drop their guns**. Press the use key next to a gun to take it - it swaps with the gun you carry in that slot, and yours is dropped. U drops the gun you hold. Weapon racks with guns, ammo and medkits are hidden in compounds and in some buildings. Medkits and plates you find are free; the ones from your own stock are only used up when you use them.
 
+## Villages
+
+The forest and mountain villages are built from the Medieval Village kit: textured plaster and stone cottages with tiled roofs, doors, windows and furnished interiors you can walk into.
+
 ## Vehicles, passengers and races
 
 Cars, the jeep and the boat are detailed models built in code (curved bodies, glass over a visible interior, spinning wheels, lights). Your driver is visible at the wheel. Rescued hostages board when you drive up and sit in the free seats (sedan 3 passengers, jeep 3, sports car 1, boat 3, motorbike 1 on the back) and step out beside you when you get out or reach the safe zone.
@@ -116,6 +120,13 @@ During a race a **route map** shows the whole track with numbered checkpoints, y
 ## Aiming and spotting
 
 Aiming zooms in (pistols 52 degrees, rifles 40, optics and scopes more). Enemies near the crosshair in line of sight get a tag with their type and distance for a few seconds, and show on the minimap.
+
+## Sound and music
+
+- **Guns:** each weapon has its own layered sound (crack, blast, thump and an echo tail), louder and sharper up close, duller and echoing far away, panned to where the shot came from. Shotguns pump and the sniper rifle works its bolt. Reloads, empty clicks, weapon swaps, footsteps, bullet impacts and hits have their own sounds.
+- **Vehicles:** the cars and the motorbike use real engine recordings that rise and fall with speed; tyres skid on sharp turns and crashes have an impact sound.
+- **Music:** a tense military score is generated live. It is calm in menus, a driving pulse during play, and turns intense when guards are alerted, an alarm sounds or you race. Volume sliders for music and effects are in Settings; **M** mutes everything.
+- **Real gun recordings (optional):** put a short single-shot `.ogg` in `public/sounds/guns/` named after the weapon (`usp ak47 m4a1 mp5 p90 spas12 striker deagle glock l118a`, e.g. `ak47.ogg`) and the game uses it instead of the generated shot. Only add recordings you are allowed to ship.
 
 ## Stealth movement and cover
 
@@ -150,6 +161,7 @@ src/enemies.js      guard / sniper / thug / boss AI and hostages
 src/vehicles.js     cars, motorbike, aircraft and racing AI
 src/mission.js      objective logic (collect, rescue, sabotage, race, fly ...)
 src/story.js        cast, campaign, decisions, endings, operation builder
+src/audio.js        sound effects and engine loops        src/music.js  generated background music
 src/hud.js          HUD and minimap        src/ui.js   menus and screens
 src/fx.js           tracers and explosions src/audio.js synthesised sound
 tools/smoke.mjs     headless test that plays through every mission
@@ -163,3 +175,5 @@ Edge or Chrome).
 - Soldier Cole - Grigory Petrov - royalty-free for games, do not resell the raw model.
 - Guns (USP, Glock, M4A1, AK-47, L118A) - models supplied by the project owner, who confirmed usage rights.
 - Military motorbike - Zsky (Poly Pizza).
+- Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
+- Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).

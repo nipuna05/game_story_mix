@@ -398,9 +398,9 @@ await shot('aim-zoom', 600);
 await run('shotgun pellets', () => {
   const g = window.game, p = g.player; g.save.profile.own.variants.push('spas12', 'mp5', 'deagle', 'p90', 'striker');
   p.var.rifle = 'spas12'; p.rebuildW('rifle'); p.inv.rifle = { mag: 6, res: 24 }; p.switchTo('rifle'); window.tick(2);
-  const e = g.enemies.find((x) => !x.dead && x.pos.y < 1), s0 = g.stats.shots, h0 = g.stats.hits;
+  const W = g.world; const e = g.enemies.find((x) => !x.dead && x.pos.y < 1 && W.los(x.pos.x, 1.5, x.pos.z - 6, x.pos.x, 1.3, x.pos.z) && !W.inside(x.pos.x, 1, x.pos.z - 6, 0.5)) || g.enemies.find((x) => !x.dead && x.pos.y < 1), s0 = g.stats.shots, h0 = g.stats.hits;
   p.pos.set(e.pos.x, 0, e.pos.z - 6); const c = g.camera.position;
-  p.yaw = Math.atan2(e.pos.x - p.pos.x, e.pos.z - p.pos.z); p.pitch = 0; window.tick(4);
+  for (let i = 0; i < 6; i++) { const cc = g.camera.position, dx = e.pos.x - cc.x, dy = e.pos.y + 1.3 - cc.y, dz = e.pos.z - cc.z; p.yaw = Math.atan2(dx, dz); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)); window.tick(1); }
   const hp0 = e.hp, s1 = g.stats.shots, h1 = g.stats.hits; g.input.btnPressed[0] = true; window.tick(1);
   return { name: p.W.rifle.name, pellets: p.W.rifle.pellets, shots: g.stats.shots - s1, hits: g.stats.hits - h1, damage: Math.round(hp0 - e.hp), mag: p.inv.rifle.mag };
 });

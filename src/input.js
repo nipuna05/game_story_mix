@@ -8,7 +8,7 @@ export const ACTIONS = [
   ['Space', 'Jump · stand up · handbrake · open parachute'], ['KeyR', 'Reload'], ['KeyF', 'Kick · silent takedown'], ['KeyG', 'Throw grenade'],
   ['KeyE', 'Use · enter or leave vehicle · hold to free / plant'], ['KeyJ', 'Bail out of aircraft'],
   ['KeyQ', 'Use medkit'], ['KeyX', 'Use armour plate'], ['KeyT', 'Throw noisemaker'], ['KeyY', 'Use ammo box'], ['KeyU', 'Drop current weapon'],
-  ['KeyB', 'Change brightness'], ['KeyK', 'Show / hide key list'], ['KeyH', 'Field manual'], ['Tab', 'Show / hide objectives'],
+  ['KeyB', 'Change brightness'], ['KeyM', 'Mute sound and music'], ['KeyK', 'Show / hide key list'], ['KeyH', 'Field manual'], ['Tab', 'Show / hide objectives'],
 ];
 const IDS = new Set(ACTIONS.map((a) => a[0]));
 // keys that would trigger browser shortcuts or the OS; not allowed for binding

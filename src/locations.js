@@ -40,6 +40,8 @@ function townGrid(w, o) {
         if (hollowLeft > 0 && hh <= 16 && Math.min(bw, bd) >= 13 && rng() < 0.5) {
           hollowLeft--;
           w.hollow(cx, cz, bw, bd, Math.min(Math.max(hh, 5), 8), o.style, rng, rng() < 0.5 ? (a > 0 ? 'e' : 'w') : (b > 0 ? 'n' : 's'));
+        } else if (o.cottages && rng() < 0.8) {
+          w.cottage(cx, cz, 3 + Math.floor(rng() * 3), 3 + Math.floor(rng() * 3), rng() < 0.5 ? (a > 0 ? 'e' : 'w') : (b > 0 ? 'n' : 's'), rng);
         } else w.building(cx, cz, bw, bd, hh, o.style, rng);
       }
     }
@@ -286,7 +288,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0xe2e9ef);
       w.setWeather('snow');
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 20, cz: 80, w: 250, d: 230, wall: 0x6a727a, floor: 0x8a9298, style: 'mountain', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'e', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['TCOS', 'WC.W', 'SCTC', 'MWST'] });
@@ -295,6 +297,7 @@ export const LOCATIONS = {
       arenaRing(w, town.block(1, 1), 0x5a626a);
       scatter(rng, 130, [town.rect, C.rect, air.rect, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], (x, z) => (rng() < 0.85 ? w.tree(x, z, 'pine', rr(rng, 0.9, 1.6)) : w.rock(x, z, rr(rng, 1.5, 3.5))));
       lush(w, rng, [town.rect, C.rect, air.rect, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], { trees: 140, bushes: 130, rocks: 80, kinds: ['pine', 'pine', 'fir'] });
+      scatter(rng, 6, [town.rect, C.rect, air.rect], (x, z) => w.wagon(x, z, rr(rng, 0, 6.28)));
       w.mountains(30, 1300, 2100, 260, 640, 0x5a6672, 0xf2f6fa);
       return finish(C, town, air, {
         lz: { x: -160, z: 60 }, extract: { x: -352, z: -110 }, footSpawn: { x: -150, z: -215, yaw: 0.6 }, carSpawn: { x: -130, z: -245, yaw: Math.PI / 2 },
@@ -310,7 +313,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0x4f6f3c);
       const dirt = 0x6a5c44;
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
       const C = compound(w, { cx: -120, cz: 170, w: 240, d: 220, wall: 0x5a4a36, floor: 0x6a6248, style: 'cabin', containers: false, rng,
         gates: [{ side: 's', off: -80, width: 14 }, { side: 'e', off: 80, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['SCTO', 'WC.W', 'TSCC', 'MWST'] });
@@ -324,6 +327,7 @@ export const LOCATIONS = {
       const avoid = [town.rect, C.rect, air.rect, [-425, 425, -108, -72], [137, 163, -80, 415], [-208, -192, -205, 65], [0, 325, 243, 257], [50, 115, 90, 150], [-372, -332, -190, -150]];
       scatter(rng, 560, avoid, (x, z) => { const k = rng(); if (k < 0.5) w.tree(x, z, 'fir', rr(rng, 0.9, 1.7)); else if (k < 0.9) w.tree(x, z, 'leaf', rr(rng, 0.9, 1.5)); else w.rock(x, z, rr(rng, 1.2, 3)); });
       lush(w, rng, avoid, { trees: 260, bushes: 460, rocks: 70, kinds: ['fir', 'leaf'] });
+      scatter(rng, 8, avoid, (x, z) => w.wagon(x, z, rr(rng, 0, 6.28)));
       w.mountains(26, 1500, 2200, 180, 420, 0x3f5a3a, null);
       const P = finish(C, town, air, {
         lz: { x: 82, z: 120 }, extract: { x: -352, z: -170 }, footSpawn: { x: -120, z: -200, yaw: 0 }, carSpawn: { x: -200, z: -185, yaw: 0 },

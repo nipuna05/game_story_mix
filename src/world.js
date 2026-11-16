@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clamp } from './util.js';
+import { ASSETS } from './assets.js';
 
 export const THEMES = {
   night: { label: 'Night', top: 0x070b1c, horizon: 0x2a3d68, fog: 0x1a2744, fogNear: 60, fogFar: 760, hemiSky: 0x8aa4e6, hemiGround: 0x2a3446, hemi: 4.2, sun: 0xb4c6ff, sunI: 3.0, sunDir: [-0.5, 0.8, 0.35], stars: true, view: 27, lit: 0.5, exposure: 1.85, bloom: 0.4, cloud: 0x2a3a5c, env: 1.6 },
@@ -43,7 +44,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
-    this.bushes = []; this.interiors = [];
+    this.bushes = []; this.interiors = []; this.models = new Map();
     this._env();
   }
 
@@ -282,6 +283,72 @@ export class World {
   }
 
   // ---------- props ----------
+  // place one copy of a flattened model-kit piece (instanced at finalize)
+  model(name, x, y, z, ry = 0, sx = 1, sy = 1, sz = 1) {
+    const m = ASSETS.village[name]; if (!m) return false;
+    let b = this.models.get(name); if (!b) { b = { m, mats: [] }; this.models.set(name, b); }
+    _e.set(0, ry, 0); _q.setFromEuler(_e); _m.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz)); b.mats.push(_m.clone());
+    return true;
+  }
+  wagon(x, z, ry = 0) { if (this.model('Prop_Wagon', x, 0, z, ry)) this.solid(x, z, Math.abs(Math.cos(ry)) > 0.7 ? 2.2 : 4.2, Math.abs(Math.cos(ry)) > 0.7 ? 4.2 : 2.2, 1.4); }
+  // a cottage built from the village kit: textured walls with doors and windows, tiled roof, furnished and walkable
+  cottage(cx, cz, nx, nz, doorSide, r = Math.random) {
+    const A = ASSETS.village;
+    if (!A.Wall_Plaster_Straight || !A.Roof_RoundTiles_6x8) return this.hollow(cx, cz, nx * 2, nz * 2, 3.1, 'cabin', r, doorSide);
+    const W = nx * 2, D = nz * 2, T = 0.4, H = 3.1, base = r() < 0.45 ? 'Wall_UnevenBrick_' : 'Wall_Plaster_';
+    const wins = ['Window_Wide_Round', 'Window_Thin_Round', 'Window_Wide_Flat'];
+    // boxes of each wall piece in its own frame: [centre along the wall, length, y0, y1]
+    const SHAPE = {
+      straight: [[0, 2, 0, H]],
+      wide: [[0, 2, 0, 1.0], [0, 2, 2.4, H], [-0.8, 0.4, 1.0, 2.4], [0.8, 0.4, 1.0, 2.4]],
+      thin: [[0, 2, 0, 1.0], [0, 2, 2.4, H], [-0.7, 0.6, 1.0, 2.4], [0.7, 0.6, 1.0, 2.4]],
+      door: [[-0.75, 0.5, 0, H], [0.75, 0.5, 0, H], [0, 1, 2.3, H]],
+    };
+    const sides = {
+      s: { n: nx, horiz: true, fixed: cz - D / 2, ry: 0 }, n: { n: nx, horiz: true, fixed: cz + D / 2, ry: Math.PI },
+      w: { n: nz, horiz: false, fixed: cx - W / 2, ry: Math.PI / 2 }, e: { n: nz, horiz: false, fixed: cx + W / 2, ry: -Math.PI / 2 },
+    };
+    for (const k in sides) {
+      const S = sides[k];
+      for (let i = 0; i < S.n; i++) {
+        const u = (i - (S.n - 1) / 2) * 2, px = S.horiz ? cx + u : S.fixed, pz = S.horiz ? S.fixed : cz + u;
+        const isDoor = k === doorSide && i === Math.floor(S.n / 2);
+        let name = base + 'Straight', shape = 'straight';
+        if (isDoor) { name = base + 'Door_Round'; shape = 'door'; }
+        else if (r() < 0.55) { const w = wins[Math.floor(r() * 3)]; name = base + w; shape = w.startsWith('Window_Thin') ? 'thin' : 'wide'; }
+        if (!this.model(name, px, 0, pz, S.ry)) this.model(base + 'Straight', px, 0, pz, S.ry);
+        for (const [lx, len, y0, y1] of SHAPE[shape]) { if (S.horiz) this.solid(px + lx, pz, len, T, y1, y0); else this.solid(px, pz + lx, T, len, y1, y0); }
+      }
+    }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) this.block(cx + sx * W / 2, cz + sz * D / 2, 0.8, 0.8, H + 0.1, 0x8b8578, { solid: false });
+    // roof, ridge along the longer side
+    const along = D >= W, span = Math.min(W, D) + 1.5, len = Math.max(W, D) + 1.5, rm = A.Roof_RoundTiles_6x8.size;
+    const sy = (span / rm.x) * 0.78;
+    this.model('Roof_RoundTiles_6x8', cx, H - 0.12, cz, along ? 0 : Math.PI / 2, span / rm.x, sy, len / rm.z);
+    this.solid(cx, cz, W + 1.0, D + 1.0, H + rm.y * sy * 0.6, H);
+    // plaster fills the triangular gable at each end of the roof
+    const wd = along ? W : D, yE = H - 0.12 + rm.y * sy * (1 - wd / span), yA = H - 0.12 + rm.y * sy - 0.35;
+    const gs = new THREE.Shape(); gs.moveTo(-wd / 2, H - 0.3); gs.lineTo(wd / 2, H - 0.3); gs.lineTo(wd / 2, yE); gs.lineTo(0, yA); gs.lineTo(-wd / 2, yE); gs.closePath();
+    const gg = new THREE.ExtrudeGeometry(gs, { depth: 0.25, bevelEnabled: false }); gg.translate(0, 0, -0.125); this.disposables.push(gg);
+    const gm = this._gableMat || (this._gableMat = new THREE.MeshStandardMaterial({ color: 0xd8cfb4, roughness: 0.95 })); this.disposables.push(gm);
+    const gh = (along ? D : W) / 2;
+    for (const sg of [-1, 1]) {
+      const m = new THREE.Mesh(gg, gm); m.position.set(along ? cx : cx + sg * gh, 0, along ? cz + sg * gh : cz); m.rotation.y = along ? 0 : Math.PI / 2;
+      m.castShadow = true; m.receiveShadow = true; this.root.add(m);
+    }
+    // inside: floor, lamp, furniture, loot spot
+    this.flat(cx, cz, W - 0.8, D - 0.8, 0x4a3a2c, 3);
+    this.inst('box', 0xffe6b0, cx, H - 0.3, cz, 1.2, 0.08, 1.2, { glow: true });
+    const [dx, dz] = { s: [0, -1], n: [0, 1], w: [-1, 0], e: [1, 0] }[doorSide], half = dx ? W / 2 : D / 2;
+    const side = dx ? D / 2 : W / 2;
+    for (let i = 0; i < 2; i++) { const u = (i ? 1 : -1) * Math.max(1.2, side - 1.8); this.crate(cx - dx * (half - 1.5) + (dx ? 0 : u), cz - dz * (half - 1.5) + (dx ? u : 0), 1.1 + r() * 0.5); }
+    this.crate(cx + dz * (side - 1.4) * (r() < 0.5 ? 1 : -1), cz - dx * (side - 1.4), 1.0);
+    this.interiors.push({ x: cx - dx * (half - 2.6), z: cz - dz * (half - 2.6), cx, cz, w: W, d: D, door: { x: cx + dx * (half + 2.4), z: cz + dz * (half + 2.4), nx: dx, nz: dz } });
+    // outside: crate or wagon near the door, so every cottage has a lived-in yard
+    const yx = cx + dx * (half + 2.2) + (dx ? 0 : 2.4), yz = cz + dz * (half + 2.2) + (dz ? 0 : 2.4);
+    if (r() < 0.5) this.crate(yx, yz, 1.2); else this.barrel(yx, yz, 0x6a4a32);
+  }
+
   // a walk-in building: four walls with a door and a window per wall, a roof you can stand on, cover inside
   hollow(x, z, w, d, h, style, r = Math.random, doorSide = 's') {
     const st = STYLES[style] || STYLES.city;
@@ -366,7 +433,10 @@ export class World {
     this.inst('sph', on ? 0xffe2a0 : 0x8a8a80, x - 1.4, 5.9, z, 0.6, 0.3, 0.6, { glow: on });
     if (on) this.inst('plane', 0xffc878, x - 1.4, 0.05, z, 26, 1, 26, { layer: 4, add: true });
   }
-  crate(x, z, s = 1.4, color = 0x7a5a36) { this.block(x, z, s, s, s, color); }
+  crate(x, z, s = 1.4, color = 0x7a5a36) {
+    if (ASSETS.village.Prop_Crate) { const k = s / 1.1; this.model('Prop_Crate', x, 0, z, (x * 7.3 + z * 3.1) % 6.28, k, k, k); this.solid(x, z, s * 0.95, s * 0.95, s); }
+    else this.block(x, z, s, s, s, color);
+  }
   container(x, z, alongX, color, levels = 1) {
     for (let l = 0; l < levels; l++) this.inst('box', l ? (color ^ 0x151515) : color, x, 1.3 + l * 2.6, z, alongX ? 12 : 2.5, 2.55, alongX ? 2.5 : 12);
     this.solid(x, z, alongX ? 12 : 2.5, alongX ? 2.5 : 12, 2.6 * levels);
@@ -406,6 +476,15 @@ export class World {
   }
 
   finalize() {
+    for (const [, b] of this.models) {   // village-kit pieces: one instanced mesh per sub-part
+      for (const part of b.m.parts) {
+        const im = new THREE.InstancedMesh(part.geo, part.mat, b.mats.length);
+        b.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
+        im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+        this.root.add(im);
+      }
+    }
+    this.models.clear();
     for (const b of this.batches.values()) {
       const o = b.o;
       let mat;

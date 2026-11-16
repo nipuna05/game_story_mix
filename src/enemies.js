@@ -3,6 +3,7 @@ import { makeHumanoid, animateHumanoid } from './characters.js';
 import { clamp, angDiff, turnToward, dist2, rnd } from './util.js';
 
 const HOODS = [0x7a2a2a, 0x2a4a7a, 0x4a4a4a, 0x6a5a2a, 0x3a6a4a, 0x5a2a6a];
+const VOICE_OF = { guard: 'ak47', heavy: 'm4a1', sniper: 'l118a', boss: 'ak47' };
 const TINTS = [0xffa0a0, 0xa0b8ff, 0xc8c8c8, 0xffe090, 0xa0ffc8, 0xe0a0ff];
 export const ENEMY_TYPES = {
   guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => ({ shirt: 0x4d5a3a, pants: 0x2e3524, hat: 0x8a1c1c, tint: 0xffffff, gunKind: 'ak47' }) },
@@ -196,7 +197,7 @@ export class Enemy extends Walker {
     if (!hit) { end.x += rnd(-1.6, 1.6); end.y += rnd(-0.6, 1.4); end.z += rnd(-1.6, 1.6); end.sub(mz).multiplyScalar(1.4).add(mz); }
     g.fx.tracer(mz, end, 0xffc070);
     g.fx.flash(mz, 0xffb060, 30, 0.06);
-    g.audio.shot(this.type === 'sniper' ? 'sniper' : 'rifle', clamp(1.1 - d / 110, 0, 0.8));
+    { const sp = g.spatial(this.pos, 170); g.audio.gun(VOICE_OF[this.type] || 'ak47', sp.vol * 0.9, sp.pan, sp.far, false); }
     if (hit) p.damage(def.dmg * g.diff.dmg, this.pos, 'gun');
     if (this.burstN === 0) g.shout(this, 45, tp);
   }

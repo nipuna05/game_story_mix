@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Optional real models in /public/models. Anything that fails to load falls back to the built-in shapes.
-export const ASSETS = { cole: null, guns: {}, bike: null };
+export const ASSETS = { cole: null, guns: {}, bike: null, village: {} };
 
 const BASE = import.meta.env.BASE_URL;
 // file, length in metres, flip (model's stock end is in front)
@@ -36,9 +36,29 @@ function prepareGun(src, len, flip) {
   return out;
 }
 
+// Medieval Village kit (Quaternius, CC0). Each piece is flattened to a few {geometry, material} parts with its
+// bottom centre at the origin, so any number of copies can be drawn with instancing.
+const VILLAGE = ['Wall_Plaster_Straight', 'Wall_Plaster_Window_Wide_Round', 'Wall_Plaster_Window_Thin_Round', 'Wall_Plaster_Window_Wide_Flat', 'Wall_Plaster_Door_Round',
+  'Wall_UnevenBrick_Straight', 'Wall_UnevenBrick_Window_Wide_Round', 'Wall_UnevenBrick_Window_Thin_Round', 'Wall_UnevenBrick_Window_Wide_Flat', 'Wall_UnevenBrick_Door_Round',
+  'Roof_RoundTiles_6x8', 'Roof_RoundTiles_4x4', 'Prop_Crate', 'Prop_Wagon', 'Prop_WoodenFence_Single', 'Prop_Chimney', 'Corner_Exterior_Brick'];
+function flatten(scene) {
+  scene.updateMatrixWorld(true);
+  const parts = [], box = new THREE.Box3();
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.geometry.clone(); g.applyMatrix4(o.matrixWorld); g.computeBoundingBox(); box.union(g.boundingBox);
+    parts.push({ geo: g, mat: o.material });
+  });
+  if (!parts.length) return null;
+  const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
+  for (const p of parts) p.geo.translate(-cx, -box.min.y, -cz);
+  return { parts, size: box.getSize(new THREE.Vector3()) };
+}
+
 export async function loadAssets() {
   const L = new GLTFLoader(), safe = (p) => p.catch(() => null);
   const names = Object.keys(GUNS);
+  const vil = Promise.all(VILLAGE.map((n) => safe(L.loadAsync(BASE + `models/village/${n}.gltf`))));
   const [cole, anims, bike, ...guns] = await Promise.all([
     safe(L.loadAsync(BASE + 'models/cole/cole.glb')),
     safe(fetch(BASE + 'models/cole/anims.json').then((r) => (r.ok ? r.json() : null))),
@@ -53,6 +73,7 @@ export async function loadAssets() {
       if (h > 0) ASSETS.cole = { scene: cole.scene, clips, scale: 1.82 / h, offsetY: -box.min.y * (1.82 / h) };
     }
   } catch (e) { console.info('Soldier model not usable, using built-in figure', e); }
+  try { (await vil).forEach((g, i) => { if (g) { const f = flatten(g.scene); if (f) ASSETS.village[VILLAGE[i]] = f; } }); } catch (e) { console.info('Village kit not usable', e); }
   names.forEach((n, i) => { try { if (guns[i]) ASSETS.guns[n] = prepareGun(guns[i].scene, GUNS[n][0], GUNS[n][1]); } catch { /* keep built-in */ } });
   try {
     if (bike) {

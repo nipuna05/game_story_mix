@@ -157,7 +157,7 @@ export class Car {
   hit(dmg, crash) {
     if (this.dead) return;
     this.hp -= dmg;
-    if (this.driver) { this.g.player.damage(dmg * (crash ? (this.kind === 'bike' ? 0.5 : 0.22) : 0.3), this.pos, 'crash'); if (crash) this.g.audio.punch(); }
+    if (this.driver) { this.g.player.damage(dmg * (crash ? (this.kind === 'bike' ? 0.5 : 0.22) : 0.3), this.pos, 'crash'); if (crash) this.g.audio.crash(clamp(dmg / 30, 0.4, 1)); }
     if (this.hp <= 0) this.destroy();
   }
   destroy() {
@@ -166,7 +166,7 @@ export class Car {
     const g = this.g, p = g.player;
     if (this.driver) { p.exitVehicle(true); p.damage(45, this.pos, 'explosion'); }
     g.fx.explosion(new THREE.Vector3(this.pos.x, 1, this.pos.z), 7);
-    g.audio.explosion(clamp(1.2 - this.pos.distanceTo(p.pos) / 150, 0, 1));
+    g.audio.explosion(clamp(1.2 - this.pos.distanceTo(p.pos) / 150, 0, 1), g.spatial(this.pos, 220).pan);
     this.mesh.traverse((o) => { if (o.isMesh) o.material = cmat(0x161616); });
     if (this.rider) this.rider.group.visible = false;
   }

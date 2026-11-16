@@ -13,7 +13,7 @@ const controlsList = (L) => [
   ['Car, motorbike & boat', [[`${L('KeyW')} / ${L('KeyS')}`, 'Accelerate / brake and reverse'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [L('Space'), 'Handbrake'], [L('KeyE'), 'Get out']]],
   ['Aircraft', [[`${L('ShiftLeft')} / ${L('KeyC')}`, 'Throttle up / down'], [`${L('KeyS')} / ${L('KeyW')}`, 'Pull up / push down'], [`${L('KeyA')} / ${L('KeyD')}`, 'Bank left / right'], [L('KeyJ'), 'Bail out in the air'], [L('KeyE'), 'Get out (on the ground, stopped)']]],
   ['Parachute', [[L('Space'), 'Open the canopy during freefall'], [`Mouse or ${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [`${L('KeyW')} / ${L('KeyS')}`, 'Dive faster / flare and slow down']]],
-  ['General', [[L('Tab'), 'Show or hide objectives'], [L('KeyB'), 'Change brightness (5 levels)'], [L('KeyK'), 'Show or hide the key list'], [L('KeyH'), 'Field manual'], ['Esc', 'Pause']]],
+  ['General', [[L('Tab'), 'Show or hide objectives'], [L('KeyB'), 'Change brightness (5 levels)'], [L('KeyK'), 'Show or hide the key list'], [L('KeyM'), 'Mute or unmute sound and music'], [L('KeyH'), 'Field manual'], ['Esc', 'Pause']]],
 ];
 const TIPS = [
   'The diamond over an enemy shows what they know: yellow means suspicious, red means they have seen you.',
@@ -155,7 +155,8 @@ export class UI {
     this.show(`<h2><small>OPTIONS</small>Settings</h2>
       <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
       <label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
-      <label class="f">Volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">
+      <label class="f">Music volume</label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${s.music ?? 0.6}">
+      <label class="f">Sound effects volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">
       <label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${s.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>
       <label class="f">Graphics</label><select id="gfx"><option value="high" ${s.shadows ? 'selected' : ''}>High - shadows, glow and reflections</option><option value="low" ${s.shadows ? '' : 'selected'}>Low - no shadows or glow (faster)</option></select>
       <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>
@@ -163,7 +164,7 @@ export class UI {
     { on: (a) => {
       if (a === 'controls') return this.controls(() => this.settings(back));
       if (a === 'wipe') { this.g.wipe(); return this.title(); }
-      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
+      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
       this.g.applySettings(); this.g.persist(); back();
     } });
   }

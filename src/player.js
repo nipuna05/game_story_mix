@@ -36,7 +36,7 @@ export class Player {
     const d = this.W[w];
     if (!this.inv[w]) this.inv[w] = { mag: d.mag, res: res ?? d.mag * 3 }; else this.inv[w].res += res ?? d.mag * 2;
   }
-  switchTo(w) { if (this.inv[w] && w !== this.cur && !(this.lockFists && w !== 'fists')) { this.cur = w; this.reloadT = 0; this.g.audio.click(); } }
+  switchTo(w) { if (this.inv[w] && w !== this.cur && !(this.lockFists && w !== 'fists')) { this.cur = w; this.reloadT = 0; this.g.audio.swap(); } }
 
   update(dt) {
     const g = this.g, inp = g.input;
@@ -92,6 +92,8 @@ export class Player {
       this.pos.y = gy; this.vy = 0; this.grounded = true;
     } else this.grounded = this.pos.y - gy < 0.05;
     this.speed = Math.hypot(this.vel.x, this.vel.z);
+    this.stepT = (this.stepT || 0) - dt * this.speed;
+    if (this.stepT <= 0 && this.speed > 1.2 && this.grounded && !this.prone) { this.stepT = 2.2; g.audio.step(this.crouch ? 0.12 : this.sneaking ? 0.14 : sprint ? 0.5 : 0.3, this.wet); }
     this.noiseT -= dt;
     if (this.noiseT <= 0 && this.speed > 3 && !this.crouch && !this.prone && !this.sneaking && !this.wet) { this.noiseT = 0.45; g.emitNoise(this.pos, sprint ? 9 : 3.5, false); }
 
@@ -108,7 +110,7 @@ export class Player {
       if (inp.btnPressed[0] && this.meleeCd <= 0) this.melee(30, 0.36);
     } else {
       if ((wd.auto ? inp.buttons[0] : inp.btnPressed[0]) && this.fireCd <= 0) this.fire(wd, st, sprint);
-      if (inp.pressed.KeyR && st.mag < wd.mag && st.res > 0) { this.reloadT = wd.reload; g.audio.click(); }
+      if (inp.pressed.KeyR && st.mag < wd.mag && st.res > 0) { this.reloadT = wd.reload; g.audio.reload(wd.reload); }
     }
     if (inp.pressed.KeyF && this.meleeCd <= 0) this.melee(45, 0.75);
     if (inp.pressed.KeyG && !this.lockFists) {
@@ -207,7 +209,7 @@ export class Player {
 
   fire(wd, st, sprint) {
     const g = this.g;
-    if (st.mag <= 0) { g.audio.click(); if (st.res > 0) this.reloadT = wd.reload; this.fireCd = 0.25; return; }
+    if (st.mag <= 0) { if (st.res > 0) { this.reloadT = wd.reload; g.audio.reload(wd.reload); } else g.audio.dry(); this.fireCd = 0.25; return; }
     st.mag--; this.fireCd = wd.rate;
     const cam = g.camera; cam.getWorldDirection(_d);
     let sp = wd.spread * (this.aiming ? (wd.scope ? 0.02 : 0.4) : 1) * (this.speed > 2 ? 1.6 : 1) * (this.prone ? 0.5 : this.crouch ? 0.7 : 1) * (sprint ? 2 : 1);
@@ -224,10 +226,10 @@ export class Player {
     for (let i = 0; i < ends.length; i += (n > 3 ? 2 : 1)) g.fx.tracer(mz, ends[i], 0xfff0b0);
     if (wd.snd !== 'pistol' && !wd.supp) g.fx.flash(mz, 0xffc070, 40, 0.06);
     this.pitch += wd.recoil; this.recoil = Math.min(0.2, (this.recoil || 0) + wd.recoil); this.yaw += rnd(-wd.recoil, wd.recoil) * 0.25;
-    g.audio.shot(wd.snd, wd.supp ? 0.3 : 1);
+    g.audio.gun(wd.id, wd.supp ? 0.55 : 1, 0, wd.supp ? 0.55 : 0, true);
     g.emitNoise(this.pos, wd.noise, wd.noise > 30);
     g.stats.shots++;
-    if (st.mag <= 0 && st.res > 0) this.reloadT = wd.reload;
+    if (st.mag <= 0 && st.res > 0) { this.reloadT = wd.reload; g.audio.reload(wd.reload); }
   }
 
   melee(dmg, cd) {
@@ -327,12 +329,12 @@ export class Player {
     this.hp -= d; this.regenT = 6;
     this.g.stats.damage += d;
     this.g.hud.hurt(from, this);
-    this.g.audio.hurt();
+    this.g.audio.hurt(d);
     if (this.hp <= 0) this.die(kind === 'fall' ? 'You fell to your death.' : kind === 'explosion' ? 'Caught in the blast.' : 'You were killed in action.');
   }
   die(reason) {
     if (this.dead) return;
-    this.dead = true; this.hp = 0;
+    this.dead = true; this.hp = 0; this.g.audio.death();
     if (this.vehicle) { this.vehicle.driver = null; this.vehicle = null; }
     this.h.group.visible = true; this.chute.visible = false;
     this.g.fail(reason);
