@@ -21,14 +21,15 @@ export class Hud {
     this.map = $('minimap').getContext('2d'); this.rmap = $('racemap').getContext('2d');
     this.queue = []; this.radioT = 0; this.bannerT = 0; this.hitT = 0; this.hurtK = 0;
     this.timer = ''; this.big = ''; this.objDirty = true; this.showObj = true; this.frame = 0; this.keysOn = false; this.keysT = 0;
-    this.cache = {}; this.tagEls = [];
+    this.cache = {}; this.tagEls = []; this.tipQueue = []; this.tipT = 0;
   }
   show(on) { this.el.classList.toggle('hidden', !on); }
-  reset() { this.keysT = 20; this.cache.keysSet = null; this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
+  reset() { this.tipQueue = []; this.tipT = 0; $('tip').style.display = 'none'; this.keysT = 20; this.cache.keysSet = null; this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
   set(id, prop, val) { const k = id + prop; if (this.cache[k] !== val) { this.cache[k] = val; if (prop === 'text') $(id).textContent = val; else $(id).style[prop] = val; } }
 
   banner(title, sub = '') { $('bannerTitle').textContent = title; $('bannerSub').textContent = sub; $('banner').style.opacity = 1; this.bannerT = 2.6; }
-  radio(who, text) { this.queue.push({ who, text }); }
+  radio(who, text) { this.queue.push({ who, text: this.g.keyText(text) }); }
+  tip(text) { this.tipQueue.push(text); }
   hurt() { this.hurtK = 1; }
   hitMark(kill) { const h = $('hitmark'); h.classList.toggle('kill', !!kill); this.hitT = kill ? 0.35 : 0.18; }
 
@@ -45,6 +46,12 @@ export class Hud {
       const el = $('keys');
       if (!kset) el.style.display = 'none';
       else { el.innerHTML = '<h4>KEYS <span>K to hide</span></h4>' + keysets((id) => g.input.label(id))[kset].map(([k, v]) => `<div><b>${k}</b>${v}</div>`).join(''); el.style.display = 'block'; }
+    }
+    // tips: one at a time
+    this.tipT -= dt;
+    if (this.tipT <= 0) {
+      const n = this.tipQueue.shift();
+      if (n) { const el = $('tip'); el.textContent = n; el.style.display = 'block'; this.tipT = clamp(3.5 + n.length * 0.06, 5, 10); } else $('tip').style.display = 'none';
     }
     // radio queue
     this.radioT -= dt;
@@ -65,7 +72,7 @@ export class Hud {
       for (const o of m.objs) {
         if (o.i > m.idx + 1) continue;
         const pr = o.i === m.idx ? m.progress(o) : '';
-        html += `<div class="o ${o.done ? 'done' : o.i === m.idx ? 'cur' : ''}"><span>${o.done ? '✔' : o.i === m.idx ? '▶' : '·'}</span><span>${esc(o.text)}</span>${pr ? `<b>${pr}</b>` : ''}</div>`;
+        html += `<div class="o ${o.done ? 'done' : o.i === m.idx ? 'cur' : ''}"><span>${o.done ? '✔' : o.i === m.idx ? '▶' : '·'}</span><span>${esc(g.keyText(o.text))}</span>${pr ? `<b>${pr}</b>` : ''}</div>`;
       }
       if (this.cache.obj !== html) { this.cache.obj = html; $('objectives').innerHTML = html; }
     }

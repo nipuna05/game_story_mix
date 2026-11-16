@@ -33,7 +33,8 @@ export class Input {
     this.dx = 0; this.dy = 0; this.wheel = 0; this.lockedAt = 0;
     this.locked = false;
     this.active = false; // true while gameplay wants input
-    this.onLockLost = null;
+    this.onLockLost = null; this.onPad = null;
+    this._pk = {}; this._pb = {}; this._pw = {}; this.padOn = false;
     this.setBindings(null);
 
     window.addEventListener('keydown', (e) => {
@@ -99,6 +100,31 @@ export class Input {
     for (const k of Object.keys(next)) if (next[k] === k) delete next[k];
     return { map: next, swapped: other ? other[1] : null };
   }
+  // Gamepad (standard layout): left stick moves, right stick looks, RT fires, LT aims, A jump, B crouch, X reload, Y use,
+  // LB grenade, RB next weapon, L3 sprint, R3 kick, d-pad medkit / plate / decoy / ammo, Start pauses.
+  pollPad(dt) {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pad = null; for (const p of pads) if (p && p.connected) { pad = p; break; }
+    if (!pad) { if (this.padOn) { this.padOn = false; this._release(); } return; }
+    if (!this.padOn) { this.padOn = true; if (this.onPad) this.onPad('connected'); }
+    const dz = (v) => (Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82);
+    const ax = (i) => dz(pad.axes[i] || 0), b = (i) => !!(pad.buttons[i] && (pad.buttons[i].pressed || pad.buttons[i].value > 0.5));
+    const lx = ax(0), ly = ax(1);
+    const keyWant = { KeyW: ly < -0.3, KeyS: ly > 0.3, KeyA: lx < -0.3, KeyD: lx > 0.3, Space: b(0), KeyR: b(2), KeyE: b(3), KeyG: b(4), ShiftLeft: b(10), KeyF: b(11), KeyQ: b(12), KeyX: b(13), KeyT: b(14), KeyY: b(15), Tab: b(8) };
+    for (const act in keyWant) {
+      const want = keyWant[act];
+      if (want !== !!this._pk[act]) { this._pk[act] = want; this.keys[act] = want; if (want) this.pressed[act] = true; }
+    }
+    const crouch = b(1); if (crouch !== !!this._pw.crouch) { this._pw.crouch = crouch; if (crouch) this.pressed.KeyC = true; this.keys.KeyC = crouch; }
+    for (const [btn, i] of [[0, 7], [2, 6]]) {   // right trigger = fire, left trigger = aim / block
+      const want = b(i); if (want !== !!this._pb[btn]) { this._pb[btn] = want; this.buttons[btn] = want; if (want) this.btnPressed[btn] = true; }
+    }
+    const rb = b(5); if (rb && !this._pw.rb) this.wheel += 1; this._pw.rb = rb;
+    const st = b(9); if (st && !this._pw.start && this.onPad) this.onPad('pause'); this._pw.start = st;
+    const k = 22 * dt * 60;
+    this.dx += ax(2) * k; this.dy += ax(3) * k;
+  }
+  _release() { for (const act in this._pk) if (this._pk[act]) { this.keys[act] = false; this._pk[act] = false; } for (const bt in this._pb) if (this._pb[bt]) { this.buttons[bt] = false; this._pb[bt] = false; } }
   lock() {
     // automated test browsers must never capture the real mouse (it can trap the user's cursor on the desktop)
     if (navigator.webdriver) return;

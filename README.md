@@ -118,6 +118,12 @@ Cars, the jeep and the boat are detailed models built in code (curved bodies, gl
 
 During a race a **route map** shows the whole track with numbered checkpoints, your position and the rivals, and glowing arrows are laid along the road to the next checkpoints.
 
+## Tips, enemies and gamepad
+
+- **Tips:** short one-time hints appear for new players (crouching, suspicious guards, the alarm, medkits, driving, flying, hostages). Story and hint text shows whatever keys you have bound. Turn them off, or show them all again, in Settings.
+- **Enemy tactics:** after a few bursts or when hit, guards dive behind cover and shoot from there. Heavies and the boss throw grenades; a GRENADE! warning appears, so move.
+- **Gamepad:** plug one in and press a button. Sticks move and look, RT fires, LT aims, A jumps, B crouches, X reloads, Y uses, LB grenade, RB next weapon, d-pad items, Start pauses. Menus need the mouse.
+
 ## Graphics quality
 
 Settings -> Graphics has three levels: **High** (sharp shadows, glow, reflections), **Medium** (smaller shadows, lower resolution) and **Low** (no shadows or glow, fastest). Streets have parked cars (the same detailed models, drawn cheaply), benches, bins, hydrants and bus stops.

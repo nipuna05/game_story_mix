@@ -7,10 +7,10 @@ const VOICE_OF = { guard: 'ak47', heavy: 'm4a1', sniper: 'l118a', boss: 'ak47' }
 const TINTS = [0xffa0a0, 0xa0b8ff, 0xc8c8c8, 0xffe090, 0xa0ffc8, 0xe0a0ff];
 export const ENEMY_TYPES = {
   guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => ({ shirt: 0x4d5a3a, pants: 0x2e3524, hat: 0x8a1c1c, tint: 0xffffff, gunKind: 'ak47', gearList: [['beret', 0xa81e1e]] }) },
-  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.1, tint: 0x6f6f78, gunKind: 'm4a1', gearList: [['pack', 0x2c2c26], ['rig', 0x1a1b1e]] }) },
+  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, nade: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.1, tint: 0x6f6f78, gunKind: 'm4a1', gearList: [['pack', 0x2c2c26], ['rig', 0x1a1b1e]] }) },
   sniper: { hp: 80, speed: 0, dmg: 24, acc: 0.5, burst: 1, range: 150, gun: true, static: true, look: () => ({ shirt: 0x3a4a2a, pants: 0x2a3520, hat: 0x2a3520, tint: 0xa8c890, gunKind: 'l118a', gearList: [['boonie', 0x6b6a3e]] }) },
   thug: { hp: 110, speed: 5.0, dmg: 13, melee: true, look: () => { const i = Math.floor(Math.random() * HOODS.length); return { shirt: HOODS[i], pants: 0x22252c, hat: Math.random() < 0.5 ? 0x151515 : null, tint: TINTS[i], gearList: Math.random() < 0.6 ? [['cap', [0x151515, 0x7a2a2a, 0x2a4a7a][i % 3]]] : [] }; } },
-  boss: { hp: 480, speed: 3.8, dmg: 13, acc: 0.62, burst: 4, range: 70, gun: true, look: () => ({ shirt: 0x151515, pants: 0x101010, hat: 0xb01818, scale: 1.14, tint: 0xb06060, gunKind: 'ak47', gearList: [['beret', 0x0e0e10], ['pack', 0x2a2a2c]] }) },
+  boss: { hp: 480, speed: 3.8, dmg: 13, acc: 0.62, burst: 4, range: 70, gun: true, nade: true, look: () => ({ shirt: 0x151515, pants: 0x101010, hat: 0xb01818, scale: 1.14, tint: 0xb06060, gunKind: 'ak47', gearList: [['beret', 0x0e0e10], ['pack', 0x2a2a2c]] }) },
 };
 
 // Shared ground movement with simple path following and stuck recovery.
@@ -69,6 +69,7 @@ export class Enemy extends Walker {
     this.losT = Math.random() * 0.15; this.sees = false; this.dead = false; this.deadT = 0;
     this.neutral = !!o.neutral; this.noAlarm = !!o.noAlarm; this.name = o.name || null;
     this.stagger = 0; this.windup = 0; this.meleeCd = 0; this.seed = Math.random() * 10;
+    this.cover = null; this.coverT = 0; this.coverCd = rnd(1, 4); this.hitT = 0; this.bursts = 0; this.nadeCd = rnd(5, 10); this.crouching = false;
     this.initWalk();
     this.h = makeHumanoid({ ...this.def.look(), gun: this.def.gun, mark: true });
     this.h.group.position.copy(this.pos); this.h.group.rotation.y = yaw;
@@ -99,7 +100,7 @@ export class Enemy extends Walker {
   update(dt) {
     const g = this.g, p = g.player;
     if (this.dead) { animateHumanoid(this.h, { dead: true }, dt); return; }
-    this.speedNow = 0; if (this.tagT > 0) this.tagT -= dt;
+    this.speedNow = 0; if (this.tagT > 0) this.tagT -= dt; if (this.hitT > 0) this.hitT -= dt;
     if (this.stagger > 0) { this.stagger -= dt; this.sync(dt); return; }
     const tp = p.targetPos(), dx = tp.x - this.pos.x, dz = tp.z - this.pos.z, d = Math.hypot(dx, dz);
     if (!this.neutral && !p.dead && !(g.truce && !this.noAlarm)) {
@@ -147,6 +148,24 @@ export class Enemy extends Walker {
         if (this.sees) { this.last = { x: tp.x, z: tp.z }; this.lostT = 0; } else this.lostT += dt;
         if (this.lostT > 7 || p.dead) { this.state = 'search'; this.searchT = 12; break; }
         const face = Math.atan2(dx, dz);
+        // tactics: after a few bursts, or when hit, dive for cover and shoot from there; heavies also throw grenades
+        if (!this.def.melee && !this.def.static) {
+          this.coverCd -= dt; this.nadeCd -= dt;
+          if (!this.cover && this.coverCd <= 0 && this.sees && d > 8 && d < 55 && (this.hitT > 0 || this.bursts >= 3)) {
+            this.coverCd = rnd(5, 8); this.bursts = 0;
+            const c = this.findCover(tp, d);
+            if (c) { this.cover = c; this.coverT = rnd(2.4, 4.0); }
+          }
+          if (this.def.nade && this.sees && this.nadeCd <= 0 && d > 8 && d < 34) { this.nadeCd = rnd(11, 17); g.enemyGrenade(this, tp); }
+          if (this.cover) {
+            const arrived = this.moveTo(this.cover.x, this.cover.z, 5.0, dt);
+            this.crouching = arrived;
+            this.coverT -= dt;
+            if (this.coverT <= 0) { this.cover = null; this.crouching = false; }
+            else if (arrived) this.yaw = turnToward(this.yaw, Math.atan2(this.last.x - this.pos.x, this.last.z - this.pos.z), 5 * dt);
+            if (!(arrived && this.sees)) break;   // running to cover: no shooting; sitting in cover: shoot only when we can see
+          }
+        }
         if (this.def.melee) {
           this.meleeCd -= dt;
           this.yaw = turnToward(this.yaw, face, 8 * dt);
@@ -160,7 +179,7 @@ export class Enemy extends Walker {
           else if (this.meleeCd <= 0) { this.windup = 0.42; this.h.punchT = 0; }
         } else if (this.sees) {
           this.yaw = turnToward(this.yaw, face, 6 * dt);
-          if (!this.def.static) {
+          if (!this.def.static && !this.cover) {
             if (d > 32) this.moveTo(tp.x, tp.z, this.def.speed, dt, true);
             else if (d < 7) this.step(-dx / d, -dz / d, 2.4, dt);
             else {
@@ -174,7 +193,7 @@ export class Enemy extends Walker {
             this.fireCd -= dt;
             if (this.fireCd <= 0) {
               this.fire(d, tp, p);
-              if (++this.burstN >= this.def.burst) { this.burstN = 0; this.fireCd = this.type === 'sniper' ? rnd(2.4, 3.4) : rnd(0.9, 1.7); } else this.fireCd = 0.13;
+              if (++this.burstN >= this.def.burst) { this.burstN = 0; this.bursts++; this.fireCd = this.type === 'sniper' ? rnd(2.4, 3.4) : rnd(0.9, 1.7); } else this.fireCd = 0.13;
             }
           }
         } else if (!this.def.static) this.moveTo(this.last.x, this.last.z, this.def.speed, dt);
@@ -202,6 +221,22 @@ export class Enemy extends Walker {
     if (this.burstN === 0) g.shout(this, 45, tp);
   }
 
+  // a reachable spot close by that is out of the player's line of sight and not nearer to the player
+  findCover(tp, d) {
+    const w = this.g.world;
+    let best = null, bd = 1e9;
+    for (let k = 0; k < 14; k++) {
+      const a = (k / 14) * Math.PI * 2, r = 4 + (k % 3) * 2.5, x = this.pos.x + Math.sin(a) * r, z = this.pos.z + Math.cos(a) * r;
+      const q = { x, y: 0, z }; w.resolveCircle(q, 0.5, this.pos.y, 1.8);
+      if (Math.abs(q.x - x) > 0.05 || Math.abs(q.z - z) > 0.05) continue;           // that spot is inside something
+      if (Math.hypot(tp.x - x, tp.z - z) < d * 0.8 - 1) continue;                   // do not run toward the player
+      if (!w.segClear(this.pos.x, this.pos.z, x, z)) continue;
+      if (w.los(x, 0.95, z, tp.x, tp.y, tp.z)) continue;                            // still visible when crouched
+      if (r < bd) { bd = r; best = { x, z }; }
+    }
+    return best;
+  }
+
   alert(tp) {
     if (this.dead || this.neutral) return;
     const was = this.state === 'alert';
@@ -218,7 +253,7 @@ export class Enemy extends Walker {
 
   damage(d, info = {}) {
     if (this.dead) return;
-    this.hp -= d;
+    this.hp -= d; this.hitT = 2;
     if (this.neutral) this.neutral = false;
     if (this.hp <= 0) return this.die(info);
     if (info.melee) this.stagger = 0.3;
@@ -234,7 +269,7 @@ export class Enemy extends Walker {
     const h = this.h;
     const g = this.g, pp = g.player.pos;
     if (h.setLod) h.setLod(!this.dead && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) > 100);
-    animateHumanoid(h, { speed: this.speedNow, aim: this.def.gun && this.state === 'alert', far: Math.abs(pp.x - this.pos.x) + Math.abs(pp.z - this.pos.z) > 110 }, dt);
+    animateHumanoid(h, { speed: this.speedNow, aim: this.def.gun && this.state === 'alert', crouch: this.crouching, far: Math.abs(pp.x - this.pos.x) + Math.abs(pp.z - this.pos.z) > 110 }, dt);
     h.group.position.copy(this.pos); h.group.rotation.y = this.yaw;
     if (g.world.waters.length && this.pos.y < 0.5 && g.world.inWater(this.pos.x, this.pos.z)) h.group.position.y -= 0.75;
     const m = h.mark;

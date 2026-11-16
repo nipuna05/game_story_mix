@@ -488,6 +488,63 @@ await run('dead air full run', () => {
   return { steps, state: g.state, pending: !!g.pendingUI, alarm: g.alarm };
 });
 
+
+// ---- tips for new players, and story text that follows rebound keys
+await run('tips', () => {
+  const g = window.game; g.save.hints = {}; g.settings.tips = true; g.startMission(window.M('m1'), {}); window.tick(150);
+  const tip1 = document.getElementById('tip').textContent, saved = Object.keys(g.save.hints);
+  g.settings.keys = { KeyC: 'KeyL', Space: 'KeyP' }; g.input.setBindings(g.settings.keys);
+  const kt = g.keyText('Crouch [C], jump [SPACE], plain C'); g.settings.keys = {}; g.input.setBindings({});
+  g.settings.tips = false; g.save.hints = {}; g.hud.tipQueue = []; g.hint('x', 'should not show'); const off = g.hud.tipQueue.length; g.settings.tips = true;
+  return { tip1: tip1.slice(0, 50), saved, kt, offQueue: off };
+});
+
+
+// ---- enemy tactics: cover and grenades
+await run('enemy tactics', () => {
+  const g = window.game; const W2 = () => g.world; g.startMission(window.M('m5'), { approach: 'storm' }); g.god = false; const p = g.player, W = g.world;
+  window.tick(3); p.exitVehicle(); p.mode = 'foot'; p.vy = 0; p.hp = 100; g.god = true;
+  const pickFor = (type) => { for (const e of g.enemies) { if (e.dead || e.def.static || e.pos.y > 1 || e.type !== type) continue; for (const [ox, oz] of [[0, -22], [0, 22], [-22, 0], [22, 0], [0, -30], [0, 30]]) if (W.los(e.pos.x + ox, 1.6, e.pos.z + oz, e.pos.x, 1.3, e.pos.z) && !W.inside(e.pos.x + ox, 1, e.pos.z + oz)) return { e, ox, oz }; } return null; };
+  const out = {};
+  const hv = pickFor('heavy');
+  if (hv) {
+    p.pos.set(hv.e.pos.x + hv.oz * 0 + hv.ox, 0, hv.e.pos.z + hv.oz); window.tick(3); hv.e.alert(p.targetPos()); hv.e.nadeCd = 0; hv.e.react = 0; window.tick(12);
+    out.grenadeThrown = g.grenades.some((x) => x.owner === 'enemy');
+    const hp0 = p.hp; g.god = false; p.hp = 100; window.tick(80); out.afterBlast = { grenades: g.grenades.length, playerHpLost: Math.round(100 - p.hp) }; g.god = true;
+  } else out.grenadeThrown = 'no heavy with a clear line found';
+  g.startMission(window.M('m1'), { approach: 'storm' }); g.god = true; window.tick(3);
+  out.cover = 'no guard with cover and a clear line found';
+  for (const e of g.enemies) {
+    if (e.dead || e.def.static || e.pos.y > 1 || e.def.melee || e.type !== 'guard') continue;
+    for (const [ox, oz] of [[0, -22], [0, 22], [-22, 0], [22, 0]]) {
+      if (!(W2().los(e.pos.x + ox, 1.6, e.pos.z + oz, e.pos.x, 1.3, e.pos.z) && !W2().inside(e.pos.x + ox, 1, e.pos.z + oz))) continue;
+      g.player.pos.set(e.pos.x + ox, 0, e.pos.z + oz); window.tick(3);
+      const tp = g.player.targetPos(), d = Math.hypot(tp.x - e.pos.x, tp.z - e.pos.z);
+      if (!e.findCover(tp, d)) continue;
+      e.alert(tp); e.hitT = 2; e.coverCd = 0; e.react = 0; let went = false, crouched = false;
+      for (let i = 0; i < 150; i++) { window.tick(1); if (e.cover) went = true; if (e.crouching) crouched = true; }
+      out.cover = { wentToCover: went, crouched }; return out;
+    }
+  }
+  return out;
+});
+
+
+// ---- gamepad (simulated): left stick moves, right stick looks, RT fires
+await run('gamepad', () => {
+  const g = window.game; g.startMission(window.M('m1'), {}); g.god = true; const p = g.player, inp = g.input; window.tick(3);
+  const btn = () => Array.from({ length: 17 }, () => ({ pressed: false, value: 0 }));
+  const pad = { connected: true, axes: [0, -1, 0.8, 0], buttons: btn() };
+  const real = navigator.getGamepads; navigator.getGamepads = () => [pad];
+  const x0 = p.pos.x, z0 = p.pos.z, yaw0 = p.yaw; window.tick(40);
+  const out = { padOn: inp.padOn, moved: Math.round(Math.hypot(p.pos.x - x0, p.pos.z - z0)), turned: +(Math.abs(p.yaw - yaw0)).toFixed(2), keyW: !!inp.keys.KeyW };
+  pad.axes = [0, 0, 0, 0]; const shots0 = g.stats.shots; pad.buttons[7] = { pressed: true, value: 1 }; window.tick(2); out.fireHeld = !!inp.buttons[0]; window.tick(20); out.shots = g.stats.shots - shots0;
+  pad.buttons[7] = { pressed: false, value: 0 }; pad.buttons[6] = { pressed: true, value: 1 }; window.tick(2); out.aimHeld = !!inp.buttons[2];
+  pad.buttons[6] = { pressed: false, value: 0 }; pad.buttons[1] = { pressed: true, value: 1 }; window.tick(2); pad.buttons[1] = { pressed: false, value: 0 }; window.tick(2); out.crouched = p.crouch;
+  pad.buttons[9] = { pressed: true, value: 1 }; window.tick(2); out.pausedByStart = g.state;
+  navigator.getGamepads = real; return out;
+});
+
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {

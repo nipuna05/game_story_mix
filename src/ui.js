@@ -13,7 +13,7 @@ const controlsList = (L) => [
   ['Car, motorbike & boat', [[`${L('KeyW')} / ${L('KeyS')}`, 'Accelerate / brake and reverse'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [L('Space'), 'Handbrake'], [L('KeyE'), 'Get out']]],
   ['Aircraft', [[`${L('ShiftLeft')} / ${L('KeyC')}`, 'Throttle up / down'], [`${L('KeyS')} / ${L('KeyW')}`, 'Pull up / push down'], [`${L('KeyA')} / ${L('KeyD')}`, 'Bank left / right'], [L('KeyJ'), 'Bail out in the air'], [L('KeyE'), 'Get out (on the ground, stopped)']]],
   ['Parachute', [[L('Space'), 'Open the canopy during freefall'], [`Mouse or ${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [`${L('KeyW')} / ${L('KeyS')}`, 'Dive faster / flare and slow down']]],
-  ['General', [[L('Tab'), 'Show or hide objectives'], [L('KeyB'), 'Change brightness (5 levels)'], [L('KeyK'), 'Show or hide the key list'], [L('KeyM'), 'Mute or unmute sound and music'], [L('KeyH'), 'Field manual'], ['Esc', 'Pause']]],
+  ['General', [['Gamepad', 'Sticks move and look · RT fire · LT aim · A jump · B crouch · X reload · Y use · LB grenade · RB next weapon · d-pad items · Start pause (menus need the mouse)'], [L('Tab'), 'Show or hide objectives'], [L('KeyB'), 'Change brightness (5 levels)'], [L('KeyK'), 'Show or hide the key list'], [L('KeyM'), 'Mute or unmute sound and music'], [L('KeyH'), 'Field manual'], ['Esc', 'Pause']]],
 ];
 const TIPS = [
   'The diamond over an enemy shows what they know: yellow means suspicious, red means they have seen you.',
@@ -32,7 +32,7 @@ const TIPS = [
 export class UI {
   constructor(g) { this.g = g; this.el = document.getElementById('ui'); this.tabMem = {}; }
   get cast() { return this.g.save.cast; }
-  T(s) { return esc(fill(s, this.cast)); }
+  T(s) { return esc(this.g.keyText(fill(s, this.cast))); }
   clear() { this.el.classList.remove('on', 'dark'); this.el.innerHTML = ''; }
   show(html, o = {}) {
     this.el.innerHTML = `<div class="panel ${o.left ? 'left' : ''} ${o.wide ? 'wide' : ''}">${html}</div>`;
@@ -190,20 +190,22 @@ export class UI {
       ${this.tabbed('settings', [
         ['play', 'Gameplay', `<label class="f">Difficulty</label>${sel('diff', [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], s.difficulty)}
           <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
-          <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>`],
+          <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>
+          <label class="f"><input type="checkbox" id="tips" ${s.tips !== false ? 'checked' : ''}> Show tips and hints while playing</label>`],
         ['audio', 'Audio', `<label class="f">Music volume<em>press M in game to mute everything</em></label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${s.music ?? 0.6}">
           <label class="f">Sound effects volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">`],
         ['gfx', 'Graphics', `<label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
           <label class="f">Quality</label>${sel('gfx', [['high', 'High - sharp shadows, glow and reflections'], ['medium', 'Medium - smaller shadows, lower resolution'], ['low', 'Low - no shadows or glow (fastest)']], s.quality || (s.shadows ? 'high' : 'low'))}`],
         ['ctrl', 'Controls & data', `<p>Every key can be changed.</p><div class="row" style="margin-top:0"><button data-a="controls">Customize controls</button></div>
-          <h3>DANGER ZONE</h3><div class="row" style="margin-top:0"><button data-a="wipe">Erase campaign progress</button></div>`],
+          <div class="row" style="margin-top:0"><button data-a="tips">Show all tips again</button></div><h3>DANGER ZONE</h3><div class="row" style="margin-top:0"><button data-a="wipe">Erase campaign progress</button></div>`],
       ])}
       <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="cancel">Cancel</button></div>`,
     { on: (a) => {
       if (a === 'controls') return this.controls(() => this.settings(back));
       if (a === 'wipe') { this.g.wipe(); return this.title(); }
       if (a === 'cancel') return back();
-      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.quality = this.q('#gfx').value; s.shadows = s.quality !== 'low'; s.invertY = this.q('#inv').checked;
+      if (a === 'tips') { this.g.save.hints = {}; this.g.persist(); return this.settings(back); }
+      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.quality = this.q('#gfx').value; s.shadows = s.quality !== 'low'; s.invertY = this.q('#inv').checked; s.tips = this.q('#tips').checked;
       this.g.applySettings(); this.g.persist(); back();
     } });
   }

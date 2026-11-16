@@ -33,7 +33,7 @@ const SPHERES = [[1.62, 0.21, true], [1.15, 0.4, false], [0.55, 0.36, false]];
 const _v = new THREE.Vector3();
 
 function loadSave() {
-  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, shadows: true, quality: 'high', invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
+  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, tips: true, shadows: true, quality: 'high', invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (s) return { ...base, ...s, settings: { ...base.settings, ...s.settings }, cast: { ...base.cast, ...s.cast }, profile: mergeProfile(s.profile) };
@@ -60,6 +60,7 @@ class Game {
     this.state = 'menu'; this.time = 0; this.last = 0;
     this.resetLists();
     this.input.onLockLost = () => { if (this.state === 'playing') this.pause(); };
+    this.input.onPad = (ev) => { if (ev === 'pause') { if (this.state === 'playing') this.pause(); } else if (this.state === 'playing') this.hud.banner('GAMEPAD CONNECTED', 'Sticks move and look, RT fire, LT aim, A jump, B crouch'); };
     // never keep the mouse captured when the window loses focus, the tab is hidden or the page closes
     const release = () => { if (this.state === 'playing') this.pause(); this.input.unlock(); };
     window.addEventListener('blur', release);
@@ -166,6 +167,13 @@ class Game {
     if (t.kind === 'uplink') { t.state = 'dead'; t.lamp.visible = true; t.lamp.material.color.setHex(0x40ff80); this.audio.blip(1200); this.hud.banner('UPLINK ACTIVE', ''); return; }
     t.state = 'armed'; t.t = 6; t.lamp.visible = true;
     this.hud.banner('CHARGE PLANTED', 'Get clear - 6 seconds');
+  }
+  // an enemy lobs a grenade at where the player is standing; it lands in about a second and a half
+  enemyGrenade(e, tp) {
+    const T = 1.5, y0 = e.pos.y + 1.5, mesh = new THREE.Mesh(this.world.geo.sph, cmat(0x7a2a2a)); mesh.scale.setScalar(0.22);
+    const gr = { pos: new THREE.Vector3(e.pos.x, y0, e.pos.z), vel: new THREE.Vector3((tp.x - e.pos.x) / T, (0.3 - y0 + 10 * T * T) / T, (tp.z - e.pos.z) / T), t: 2.3, mesh, kind: 'frag', owner: 'enemy' };
+    this.scene.add(mesh); this.grenades.push(gr);
+    if (dist2(e.pos.x, e.pos.z, this.player.pos.x, this.player.pos.z) < 45) { this.hud.banner('GRENADE!', 'Get away from where it lands'); this.audio.beep(900); }
   }
   throwGrenade(p, kind = 'frag') {
     this.audio.throwNade();
@@ -304,11 +312,11 @@ class Game {
     } else if (tw < maxT) { this.fx.sparks(pt, 0xd8d0b8, 4, 3, 0.25, 0.07); const sp = this.spatial(pt, 220); this.audio.impact('wall', 0.5 * sp.vol, sp.pan, 'stone'); }
     return pt;
   }
-  explode(pos, r, dmg) {
+  explode(pos, r, dmg, owner = 'player') {
     const p = this.player;
     this.fx.explosion(pos, r * 0.8);
     this.audio.explosion(clamp(1.25 - pos.distanceTo(p.pos) / 160, 0, 1), this.spatial(pos, 220).pan);
-    for (const e of this.enemies) { if (e.dead) continue; const d = e.pos.distanceTo(pos); if (d < r) e.damage(dmg * (1 - d / r) + 25, { from: 'player', explosion: true }); }
+    for (const e of this.enemies) { if (e.dead || owner === 'enemy') continue; const d = e.pos.distanceTo(pos); if (d < r) e.damage(dmg * (1 - d / r) + 25, { from: 'player', explosion: true }); }
     for (const v of this.vehicles) { if (v.dead || v.type !== 'car') continue; const d = v.pos.distanceTo(pos); if (d < r) v.hit(dmg * (1 - d / r)); }
     const dp = p.pos.distanceTo(pos);
     if (dp < r && !p.vehicle) p.damage(dmg * 0.5 * (1 - dp / r), pos, 'explosion');
@@ -459,6 +467,37 @@ class Game {
     return best;
   }
 
+  // story and hint text mentions keys like [C] or [E]: show whatever key the player has bound to that action
+  keyText(s) {
+    const map = { C: 'KeyC', Z: 'KeyZ', F: 'KeyF', T: 'KeyT', E: 'KeyE', J: 'KeyJ', G: 'KeyG', Q: 'KeyQ', R: 'KeyR', U: 'KeyU', X: 'KeyX', V: 'KeyV', SPACE: 'Space' };
+    return String(s).replace(/\[(C|Z|F|T|E|J|G|Q|R|U|X|V|SPACE)\]/g, (m, k) => '[' + this.input.label(map[k]) + ']');
+  }
+  // one-time tips for new players, remembered in the save
+  hint(id, text) {
+    if (this.settings.tips === false) return;
+    const h = this.save.hints || (this.save.hints = {});
+    if (h[id]) return;
+    h[id] = 1; this.persist(); this.hud.tip(this.keyText(text));
+  }
+  checkHints() {
+    const p = this.player, t = this.time;
+    if (t > 1.5 && p.mode === 'foot') this.hint('move', 'WASD to move, mouse to look. Hold Shift to sprint - but running is noisy.');
+    if (p.mode === 'foot') {
+      let near = 1e9, susp = false;
+      for (const e of this.enemies) { if (e.dead || e.neutral) continue; const d = dist2(e.pos.x, e.pos.z, p.pos.x, p.pos.z); if (d < near) near = d; if (e.state === 'suspicious') susp = true; }
+      if (near < 45 && !this.alarm) this.hint('stealth', 'Guards ahead. Crouch [C] to stay hidden and creep up behind them - a kick [F] from behind takes one down silently.');
+      if (susp) this.hint('suspicious', 'A yellow diamond over a guard means they are suspicious. Break line of sight, or stay low and still, and it will pass.');
+      if (this.alarm) this.hint('alarm', 'ALARM! Everyone nearby is coming. Fight from cover, or run and hide - it winds down after about 20 seconds without contact.');
+      if (p.hp < 40 && p.pack.med > 0) this.hint('med', 'Low health - press [Q] to use a medkit from your backpack.');
+      const w = p.inv[p.cur]; if (w && w.mag === 0 && w.res > 0 && p.reloadT <= 0) this.hint('reload', 'Magazine empty - press [R] to reload.');
+      for (const k of this.pickups) if (!k.taken && k.type === 'weapon' && dist2(k.pos.x, k.pos.z, p.pos.x, p.pos.z) < 6) { this.hint('swap', 'Guns on the ground: press [E] to pick one up - it swaps with the gun you carry in that slot. [U] drops the gun you hold.'); break; }
+    }
+    if (p.mode === 'car') this.hint('drive', 'W / S gas and brake, A / D steer, Space handbrake, [E] to get out.');
+    if (p.mode === 'plane') this.hint('fly', 'Hold Shift for throttle. At about 120 km/h pull back with S to take off. [J] bails out in the air.');
+    if (p.mode === 'fall') this.hint('chute', 'Press [SPACE] to open your parachute, then steer with the mouse.');
+    if (this.hostages.some((h) => h.state === 'follow')) this.hint('hostage', 'Rescued people follow you. Drive up to a vehicle and they climb in. Take them to the safe-zone marker.');
+  }
+
   // which score to play: calm in menus and when paused, driving pulse in play, intense when guards are alerted or you race
   musicMode() {
     if (this.state === 'menu' || this.state === 'paused' || this.state === 'over') return 'calm';
@@ -499,6 +538,7 @@ class Game {
 
   update(dt) {
     const p = this.player, w = this.world;
+    this.input.pollPad(dt);
     this.time += dt; this.stingT -= dt;
     p.update(dt);
     for (const v of this.vehicles) v.update(dt);
@@ -526,6 +566,7 @@ class Game {
     for (const h of this.hostages) h.update(dt);
     this.updateItems(dt);
     this.mission.update(dt);
+    if (this.state === 'playing') this.checkHints();
     if (this.state !== 'playing') { this.hud.update(dt); return; }
 
     // alarm logic
@@ -608,6 +649,7 @@ class Game {
       if (g.t <= 0) {
         this.scene.remove(g.mesh); this.grenades.splice(i, 1);
         if (g.kind === 'noise') { this.fx.sparks(g.pos.clone(), 0xffd070, 14, 4, 0.5, 0.12); this.audio.beep(1800); this.emitNoise(g.pos, 80, true); this.hud.banner('DECOY', 'Guards are investigating'); }
+        else if (g.owner === 'enemy') this.explode(g.pos.clone(), 8, 120, 'enemy');
         else this.explode(g.pos.clone(), 9, 170);
       }
     }
