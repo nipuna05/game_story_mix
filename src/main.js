@@ -26,6 +26,7 @@ const DIFFS = { easy: { acc: 0.7, dmg: 0.65 }, normal: { acc: 1, dmg: 1 }, hard:
 const PICKUPS = {
   intel: { color: 0x4fd1c5, key: true, label: 'Evidence drive secured' }, keycard: { color: 0xffd23c, key: true, label: 'Keycard secured' },
   decoder: { color: 0xd070ff, key: true, label: 'Signal decoder secured' },
+  manifest: { color: 0xffa040, key: true, label: 'Shipping manifest copied' },
   med: { color: 0xf2f2f2, label: 'Medkit +50' }, ammo: { color: 0x6a7a3a, label: 'Ammunition' }, armor: { color: 0x4a8adf, label: 'Body armour' }, grenade: { color: 0x2a4a2a, label: 'Grenades +2' },
 };
 const SUPPLY_ORDER = ['med', 'ammo', 'armor', 'grenade', 'ammo', 'med'];

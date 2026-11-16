@@ -205,8 +205,8 @@ function lush(w, rng, avoid, o) {
 
 // Find every open gap (no cover within 17 m) and put a hiding cluster there, so nowhere is a long dash from cover.
 function clusterMaker(w, rng, style) {
-  const types = { harbor: ['crates', 'wreck', 'grove', 'hedge', 'rocks'], downtown: ['hedge', 'wreck', 'crates', 'grove'], industrial: ['crates', 'wreck', 'rocks', 'wall', 'drums'], mountain: ['rocks', 'grove', 'log', 'wall'], forest: ['grove', 'log', 'rocks', 'hedge'] }[style];
-  const kinds = { harbor: ['leaf', 'palm'], downtown: ['leaf'], industrial: ['palm', 'leaf'], mountain: ['pine', 'fir'], forest: ['fir', 'leaf'] }[style];
+  const types = { harbor: ['crates', 'wreck', 'grove', 'hedge', 'rocks'], downtown: ['hedge', 'wreck', 'crates', 'grove'], industrial: ['crates', 'wreck', 'rocks', 'wall', 'drums'], mountain: ['rocks', 'grove', 'log', 'wall'], forest: ['grove', 'log', 'rocks', 'hedge'], desert: ['rocks', 'crates', 'wreck', 'wall', 'drums', 'grove'] }[style];
+  const kinds = { harbor: ['leaf', 'palm'], downtown: ['leaf'], industrial: ['palm', 'leaf'], mountain: ['pine', 'fir'], forest: ['fir', 'leaf'], desert: ['palm', 'leaf'] }[style];
   return (x, z) => {
     const t = types[Math.floor(rng() * types.length)], out = [[x, z]];
     const around = (n, r, f) => { for (let i = 0; i < n; i++) { const a = rng() * 6.283, d = 1.5 + rng() * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; f(px, pz, i); out.push([px, pz]); } };
@@ -402,6 +402,30 @@ export const LOCATIONS = {
       });
       P.cars.push({ x: -120, z: -90, yaw: Math.PI / 2, kind: 'boat' }, { x: 225, z: -90, yaw: -Math.PI / 2, kind: 'boat' });
       return withCover(P, w, rng, avoid, 'forest');
+    },
+  },
+  desert: {
+    name: 'Redrock Canyon', tagline: 'Sun-baked canyon, a quarry fortress and a dust-blown airfield.',
+    defaultTime: 'day', compound: 'the quarry fortress',
+    build(w, rng) {
+      w.ground(0xc7935a);
+      const town = townGrid(w, { x0: -300, z0: -260, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['pickup', 'jeep', 'suv', 'van'], hMin: 4, hMax: 9, big: 0.2, roadColor: 0x5a4a3a, walkColor: 0xa5845a, lineColor: 0xd8c8a0, tree: 'palm', skip: (i, j) => i === 1 && j === 1 });
+      const C = compound(w, { cx: 130, cz: 120, w: 240, d: 220, wall: 0x9a6a46, floor: 0xa5784f, style: 'industrial', containers: true, rng,
+        gates: [{ side: 's', off: -30, width: 14 }, { side: 'w', off: 20, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
+        pattern: ['OCST', 'WC.W', 'TSCC', 'MWTS'] });
+      const air = airstrip(w, { x: 340, z0: -320, z1: -10 });
+      arenaRing(w, town.block(1, 1), 0x7a4a32);
+      const avoid = [town.rect, C.rect, air.rect];
+      // dry gullies of loose rock and a few dead wagons
+      scatter(rng, 70, avoid, (x, z) => (rng() < 0.3 ? w.tree(x, z, 'palm', rr(rng, 0.9, 1.3)) : w.rock(x, z, rr(rng, 1.4, 3.4))));
+      lush(w, rng, avoid, { trees: 40, bushes: 150, rocks: 130, boulders: 44, grass: 520, dry: true, ring: C.rect, kinds: ['palm', 'leaf'] });
+      scatter(rng, 7, avoid, (x, z) => w.wagon(x, z, rr(rng, 0, 6.28)));
+      w.mountains(28, 1400, 2200, 220, 560, 0x9a5a38, null);
+      return withCover(finish(C, town, air, {
+        lz: { x: -60, z: 50 }, extract: { x: -352, z: 60 }, footSpawn: { x: 30, z: -150, yaw: 0.4 }, carSpawn: { x: -40, z: -165, yaw: Math.PI / 2 },
+        flyStart: { x: -60, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [2, 0], [2, 2], [0, 2]],
+        parked: [[0, 1, 'pickup'], [2, 1, 'bike'], [1, 2, 'suv']],
+      }), w, rng, [town.rect, C.rect, air.runway], 'desert');
     },
   },
 };

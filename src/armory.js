@@ -34,8 +34,9 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
         <div><b>${t.missions}</b><span>MISSIONS</span></div><div><b>${t.kills}</b><span>KILLS</span></div><div><b>${t.headshots}</b><span>HEADSHOTS</span></div><div><b>${t.takedowns}</b><span>TAKEDOWNS</span></div>
         <div><b>${acc}</b><span>ACCURACY</span></div><div><b>${t.deaths}</b><span>DEATHS</span></div><div><b>${t.alarms}</b><span>ALARMS</span></div><div><b>${hrs}</b><span>PLAYED</span></div>
       </div><div class="row"><button data-a="reset">Reset profile</button></div>`;
-    const best = `
-      <table class="best">${CAMPAIGN.map((m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:90px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank + ' · ' + b.score : 'not completed'}</td></tr>`; }).join('')}</table>`;
+    const row = (m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:70px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank : '-'}</td></tr>`; };
+    const half = Math.ceil(CAMPAIGN.length / 2);
+    const best = `<div style="display:flex;gap:18px"><table class="best" style="flex:1">${CAMPAIGN.slice(0, half).map(row).join('')}</table><table class="best" style="flex:1">${CAMPAIGN.slice(half).map(row).join('')}</table></div>`;
     body = ui.tabbed('pf', [['rank', 'Rank', rank], ['rec', 'Service record', rec], ['best', 'Mission ranks', best]]);
   } else if (tab === 'weapons') {
     const eqd = weaponDef(eq[slot], prof, true);

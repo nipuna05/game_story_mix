@@ -38,8 +38,10 @@ and endings use whatever you type.
 | 2b | Dead Air | Downtown, night | A ghost job: copy relay codes and plant charges on two masts - raise the alarm and you fail |
 | 3 | Rust and Chains | Industrial Zone, day | Free three hostages, blow up fuel convoys, eliminate the enemy lieutenant |
 | 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
+| 3c | Redrock Run | Redrock Canyon, day | Pickup time trial through the canyon, copy shipping manifests, burn two fuel trucks |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
 | 4b | Dead Drop | Greenwater Forest, day | Arrive by boat, rescue couriers, hunt the Warden |
+| 4c | Quarry Break | Redrock Canyon, dusk | Free three engineers from the quarry and take down the Quartermaster |
 | 5 | Nightfall | Downtown, blackout | Fly in, parachute into the dark city and face the commander |
 
 Before the final mission you choose how the night goes, which changes the objectives and the ending:
@@ -124,11 +126,15 @@ During a race a **route map** shows the whole track with numbered checkpoints, y
 - **Enemy tactics:** after a few bursts or when hit, guards dive behind cover and shoot from there. Heavies and the boss throw grenades; a GRENADE! warning appears, so move.
 - **Gamepad:** plug one in and press a button. Sticks move and look, RT fires, LT aims, A jumps, B crouches, X reloads, Y uses, LB grenade, RB next weapon, d-pad items, Start pauses. Menus need the mouse.
 
+## Vehicles
+
+Sedan, street racer, SUV, pickup truck (open load bed), van, jeep, motorbike and boat. Parked cars around each district mix the types, and the new Redrock Canyon district is built for pickups and trucks.
+
 ## Vegetation and cover
 
 Trees, bushes, grass and rocks are drawn with leaf, needle, bark and stone textures made in code (no image files): leafy broadleaf trees, spruces with needle branches, palms, dense bushes, grass tufts and noise-shaped boulders. Bushes hide you when you crouch or crawl in them.
 
-Every map is checked for open gaps: if a spot is more than about 17 m from cover, a hiding cluster is placed there (groves, boulders, hedges, low walls, crate piles, wrecked cars, logs, drum stacks). Cover also ring-fences each enemy compound so you can creep up on it. On the five maps the farthest point from cover is now 37 to 52 m (it was 75 to 126 m), and 94 to 99% of the ground is within 25 m of cover.
+Every map is checked for open gaps: if a spot is more than about 17 m from cover, a hiding cluster is placed there (groves, boulders, hedges, low walls, crate piles, wrecked cars, logs, drum stacks). Cover also ring-fences each enemy compound so you can creep up on it. On the harbor, downtown, industrial, mountain and forest maps the farthest point from cover is now 37 to 52 m (it was 75 to 126 m), and 94 to 99% of the ground is within 25 m of cover.
 
 ## Graphics quality
 
@@ -180,7 +186,7 @@ src/world.js        scene, lighting themes, collision, ray casting, navigation g
 src/gear.js         weapons, attachments, armour, backpack items and the profile data
 src/armory.js       profile / armory / backpack and key-binding screens
 src/input.js        keyboard and mouse with rebindable keys
-src/locations.js    the four districts (town grids, walled compounds, airstrips)
+src/locations.js    the six districts (town grids, walled compounds, airstrips)
 src/player.js       on-foot, parachute and vehicle control, weapons, camera
 src/enemies.js      guard / sniper / thug / boss AI and hostages
 src/vehicles.js     cars, motorbike, aircraft and racing AI
