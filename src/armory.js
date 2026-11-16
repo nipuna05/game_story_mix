@@ -25,36 +25,36 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
     const lo = xpFor(lvl), hi = xpFor(lvl + 1), pct = Math.round(((prof.xp - lo) / (hi - lo)) * 100), t = prof.totals;
     const acc = t.shots ? Math.round((t.hits / t.shots) * 100) + '%' : '—';
     const hrs = t.playSec >= 3600 ? (t.playSec / 3600).toFixed(1) + ' h' : Math.round(t.playSec / 60) + ' min';
-    body = `
+    const rank = `
       <div class="row2"><div style="flex:1"><label class="f">Callsign<em>this is the hero's name in the story</em></label><input type="text" id="pf_name" maxlength="28" value="${esc(cast.hero)}"></div><button data-a="name">Save name</button></div>
       <h3>RANK</h3><p style="margin-bottom:6px"><b style="color:var(--acc);font-size:20px">${rankOf(prof.xp)}</b> &nbsp;level ${lvl}</p>
-      <div class="bar" style="height:8px"><i style="width:${pct}%"></i></div><p class="note">${prof.xp} XP · ${hi - prof.xp} to level ${lvl + 1}</p>
-      <h3>SERVICE RECORD</h3>
+      <div class="bar" style="height:8px"><i style="width:${pct}%"></i></div><p class="note">${prof.xp} XP · ${hi - prof.xp} to level ${lvl + 1}</p>`;
+    const rec = `
       <div class="stats">
         <div><b>${t.missions}</b><span>MISSIONS</span></div><div><b>${t.kills}</b><span>KILLS</span></div><div><b>${t.headshots}</b><span>HEADSHOTS</span></div><div><b>${t.takedowns}</b><span>TAKEDOWNS</span></div>
         <div><b>${acc}</b><span>ACCURACY</span></div><div><b>${t.deaths}</b><span>DEATHS</span></div><div><b>${t.alarms}</b><span>ALARMS</span></div><div><b>${hrs}</b><span>PLAYED</span></div>
-      </div>
-      <h3>BEST MISSION RANKS</h3>
-      <table>${CAMPAIGN.map((m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:90px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank + ' · ' + b.score : 'not completed'}</td></tr>`; }).join('')}</table>
-      <div class="row"><button data-a="reset">Reset profile</button></div>`;
+      </div><div class="row"><button data-a="reset">Reset profile</button></div>`;
+    const best = `
+      <table>${CAMPAIGN.map((m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:90px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank + ' · ' + b.score : 'not completed'}</td></tr>`; }).join('')}</table>`;
+    body = ui.tabbed('pf', [['rank', 'Rank', rank], ['rec', 'Service record', rec], ['best', 'Mission ranks', best]]);
   } else if (tab === 'weapons') {
     const eqd = weaponDef(eq[slot], prof, true);
-    body = `
-      <div class="tabs">${SLOTS.map((s) => `<button class="tab ${s === slot ? 'on' : ''}" data-a="slot:${s}">${SLOT_NAMES[s]}</button>`).join('')}</div>
-      <p class="note">You carry one gun per slot (sidearm, primary, heavy) plus fists. Pick up a gun in the field and it swaps with the one you hold.</p>
-      <h3>${SLOT_NAMES[slot].toUpperCase()} WEAPON</h3>
+    const guns = `
       <div class="grid2">${Object.entries(VARIANTS).filter(([, v]) => v.slot === slot).map(([id, v]) => {
         const own = prof.own.variants.includes(id), on = eq[slot] === id;
         return `<div class="opt ${on ? 'sel' : ''}" data-a="${own ? 'equip:' : 'buy:'}${id}"><b>${v.name} ${on ? '· EQUIPPED' : own ? '· owned' : price(v.price)}</b><span>${v.desc}</span><div class="sts">${stat('DMG', v.pellets ? v.dmg + '×' + v.pellets : v.dmg)}${stat('RATE', (1 / v.rate).toFixed(1) + '/s')}${stat('MAG', v.mag)}${stat('NOISE', v.noise)}</div></div>`;
-      }).join('')}</div>
-      <h3>ATTACHMENTS</h3>
+      }).join('')}</div>`;
+    const atts = `
       <div class="grid2">${Object.entries(ATTACH).filter(([, a]) => a.slots.includes(slot)).map(([id, a]) => {
         const own = prof.own.att.includes(slot + ':' + id), on = eq.att[slot].includes(id);
         return `<div class="opt ${on ? 'sel' : ''}" data-a="att:${id}"><b>${a.name} ${on ? '· FITTED' : own ? '· in stock' : price(a.price)}</b><span>${a.desc}</span></div>`;
-      }).join('')}</div>
-      <h3>FINISH</h3>
+      }).join('')}</div>`;
+    const fin = `
+      <p class="note">You carry one gun per slot (sidearm, primary, heavy) plus fists. Pick up a gun in the field and it swaps with the one you hold.</p>
       <div class="swrow">${FINISHES.map((f, i) => `<button class="sw ${eq.finish[slot] === i ? 'on' : ''}" style="background:${hex(f.c)}" title="${f.name}" data-a="fin:${i}"></button>`).join('')}<span class="note">${FINISHES[eq.finish[slot]].name}</span></div>
       <p class="note" style="margin-top:12px">Your ${VARIANTS[eq[slot]].name} with attachments: ${eqd.dmg.toFixed(0)} damage · ${eqd.mag} rounds · noise ${eqd.noise.toFixed(0)} · spread ${(eqd.spread * 100).toFixed(1)}</p>`;
+    body = `<div class="tabs">${SLOTS.map((s) => `<button class="tab ${s === slot ? 'on' : ''}" data-a="slot:${s}">${SLOT_NAMES[s]}</button>`).join('')}</div>`
+      + ui.tabbed('wp', [['gun', 'Weapon', guns], ['att', 'Attachments', atts], ['fin', 'Finish', fin]]);
   } else if (tab === 'armour') {
     body = `
       <h3>BODY ARMOUR</h3>
@@ -75,7 +75,7 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
         <div class="prow"><div class="pi"><b>${it.name}</b><span>${it.desc} · key ${esc(g.input.label(it.key))}</span></div>
           <div class="ctl"><button data-a="pk-:${k}">−</button><b>${prof.carry[k]}</b><button data-a="pk+:${k}">+</button></div>
           <div class="own"><span>owned ${prof.stock[k]}</span><button data-a="stock:${k}">Buy +1 ${price(it.price)}</button></div></div>`).join('')}
-      <p class="note" style="margin-top:12px">What you carry is used up in missions. Medkits and plates you find on the ground are free and do not come out of your stock.</p>`;
+      <p class="note">Used items come out of your stock. Medkits and plates found in the field are free.</p>`;
   }
 
   ui.show(`
@@ -117,11 +117,16 @@ export function controlsScreen(ui, back, note = '') {
   const g = ui.g, s = g.settings;
   s.keys = s.keys || {};
   if (ui._unlisten) ui._unlisten();
-  const rows = ACTIONS.map(([id, label]) => `<tr><td>${esc(label)}</td><td style="width:130px"><button class="keybtn" data-a="rb:${id}">${esc(keyName(g.input.bind[id]))}</button></td></tr>`).join('');
+  const row = ([id, label]) => `<tr><td>${esc(label)}</td><td style="width:130px"><button class="keybtn" data-a="rb:${id}">${esc(keyName(g.input.bind[id]))}</button></td></tr>`;
+  const grp = (ids) => `<table class="ctl">${ACTIONS.filter(([id]) => ids.includes(id)).map(row).join('')}</table>`;
   ui.show(`<h2><small>CONTROLS</small>Customize keys</h2>
     <p>Click an action, then press the key you want. Esc cancels. If the key is already used, the two actions swap places.</p>
     ${note ? `<p style="color:var(--acc)">${esc(note)}</p>` : ''}
-    <table class="ctl">${rows}</table>
+    ${ui.tabbed('ctl', [
+      ['move', 'Movement', grp(['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ShiftLeft', 'KeyC', 'KeyZ', 'KeyV', 'Space'])],
+      ['fight', 'Combat & items', grp(['KeyR', 'KeyF', 'KeyG', 'KeyE', 'KeyJ', 'KeyQ', 'KeyX', 'KeyT', 'KeyY', 'KeyU'])],
+      ['ui', 'Interface', grp(['KeyB', 'KeyM', 'KeyK', 'KeyH', 'Tab'])],
+    ])}
     <p class="note">Mouse: left button fires, right button aims or blocks, wheel or 1-4 change weapon. Prompts in the story text still show the default keys.</p>
     <div class="row"><button class="primary" data-a="done">Done</button><button data-a="reset">Reset to defaults</button></div>`,
   { on: (a, btn) => {

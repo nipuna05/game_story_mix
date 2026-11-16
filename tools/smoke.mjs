@@ -15,7 +15,9 @@ page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message + '\n' + (e.sta
 page.on('console', (m) => { if (m.type() === 'error') errors.push('CONSOLE ' + m.text()); });
 await page.goto(URL);
 await page.waitForFunction(() => window.game, null, { timeout: 60000 });
-await page.waitForTimeout(2500);
+await page.waitForTimeout(1500);
+await page.screenshot({ path: 'test-shots/00-splash.png' });
+await page.mouse.click(640, 360); await page.waitForTimeout(1000);
 await page.screenshot({ path: 'test-shots/00-menu.png' });
 const run = async (name, fn, arg) => {
   try { const r = await page.evaluate(fn, arg); console.log(name, JSON.stringify(r)); return r; } catch (e) { console.log(name, 'THREW', e.message.split('\n')[0]); }
@@ -189,7 +191,8 @@ await run('hostage ride', () => {
 });
 
 // ---- real UI flow with mouse clicks
-await page.reload(); await page.waitForFunction(() => window.game, null, { timeout: 60000 }); await page.waitForTimeout(2000);
+await page.reload(); await page.waitForFunction(() => window.game, null, { timeout: 60000 }); await page.waitForTimeout(1500);
+await page.mouse.click(640, 360); await page.waitForTimeout(800);
 await page.click('button[data-a="new"]');
 await page.fill('input[data-k="hero"]', 'Test <b>Hero</b>');
 await shot('ui-cast', 300);
@@ -300,9 +303,9 @@ await run('armory screens', () => {
 });
 await shot('armory-weapons', 1500);
 await page.click('[data-a="buy:ak47"]');
-await page.click('[data-a="att:supp"]');
+await page.click('[data-tab="att"]'); await page.click('[data-a="att:supp"]');
 await page.click('[data-a="att:grip"]');
-await page.click('[data-a="fin:3"]');
+await page.click('[data-tab="fin"]'); await page.click('[data-a="fin:3"]');
 await run('after buying', () => { const pr = window.game.save.profile; return { owns: pr.own.variants, rifle: pr.equip.rifle, att: pr.equip.att.rifle, finish: pr.equip.finish.rifle, credits: pr.credits }; });
 await shot('armory-ak', 1200);
 await page.click('[data-a="tab:armour"]'); await page.click('[data-a="abuy:2"]'); await page.click('[data-a="outfit:1"]');
@@ -352,7 +355,7 @@ await page.keyboard.up('KeyP'); await page.keyboard.down('KeyW');
 await run('physical W no longer forward', () => ({ forward: !!window.game.input.keys.KeyW }));
 await page.keyboard.up('KeyW');
 await run('controls screen', () => { const g = window.game; g.settings.keys = {}; g.input.setBindings({}); g.state = 'menu'; g.ui.controls(() => g.ui.title()); return document.querySelectorAll('#ui .keybtn').length; });
-await page.click('button[data-a="rb:KeyG"]'); await page.keyboard.press('KeyL');
+await page.click('[data-tab="fight"]'); await page.click('button[data-a="rb:KeyG"]'); await page.keyboard.press('KeyL');
 await run('rebound via screen', () => { const g = window.game; return { label: g.input.label('KeyG'), saved: g.settings.keys }; });
 await shot('controls', 800);
 await run('reset keys', () => { const g = window.game; g.settings.keys = {}; g.input.setBindings({}); return g.input.label('KeyG'); });
@@ -413,6 +416,43 @@ await shot('weapon-deagle', 1500);
 await run('preview p90+striker', () => { const g = window.game; g.save.profile.equip.rifle = 'striker'; g.ui.armory('weapons', 'rifle', () => g.ui.title()); return 1; });
 await shot('weapon-striker', 1500);
 await run('restore gear', () => { const g = window.game; const e = g.save.profile.equip; e.rifle = 'm4a1'; e.pistol = 'usp'; return 1; });
+
+
+// ---- getting into a vehicle with the use key: only the driver inside is visible, not a second soldier outside
+await run('enter with the E key', () => {
+  const g = window.game; g.startMission(window.M('m1'), {}); g.god = true; const p = g.player;
+  const bike = g.vehicles.find((v) => v.kind === 'bike'); p.pos.set(bike.pos.x + 1.4, 0, bike.pos.z); window.tick(3);
+  g.input.pressed.KeyE = true; window.tick(1);
+  const out = { mode: p.mode, playerVisibleAfter1: p.h.group.visible };
+  window.tick(20); out.playerVisibleAfter20 = p.h.group.visible; out.riderVisible = bike.rider.group.visible;
+  const seen = []; g.scene.traverse((o) => { if (o.isSkinnedMesh) { let v = true, q = o; while (q) { if (!q.visible) v = false; q = q.parent; } if (v && Math.hypot(o.getWorldPosition(o.position.clone()).x - bike.pos.x, o.getWorldPosition(o.position.clone()).z - bike.pos.z) < 8) seen.push(1); } });
+  out.soldiersNearBike = seen.length;
+  g.input.pressed.KeyE = true; window.tick(2); out.afterExit = { mode: p.mode, visible: p.h.group.visible };
+  return out;
+});
+
+
+// ---- menus: every screen and every tab must fit without scrolling at 1280 x 720
+await run('menu fit', () => {
+  const g = window.game, ui = g.ui, bad = [], seen = [];
+  g.toMenu(true); g.save.profile.credits = 5000;
+  const measure = (name) => {
+    const panel = document.querySelector('#ui .panel'); if (!panel) { bad.push(name + ' (no panel)'); return; }
+    seen.push(name); if (panel.scrollHeight > panel.clientHeight + 2) bad.push(`${name} ${panel.scrollHeight}>${panel.clientHeight}`);
+  };
+  const eachTab = (name, id, fn) => { const keys = [...document.querySelectorAll(`.tabs[data-tabs="${id}"] [data-tab]`)].map((b) => b.dataset.tab); for (const k of keys) { document.querySelector(`.tabs[data-tabs="${id}"] [data-tab="${k}"]`).click(); measure(name + ':' + k); } if (fn) fn(); };
+  ui.title(); measure('title');
+  ui.castEditor(() => {}, true); eachTab('cast', 'cast');
+  ui.select(); measure('select');
+  const m = window.S.CAMPAIGN; ui.briefing(m[0]); eachTab('brief-m1', 'brief'); ui.briefing(m[4], true); eachTab('brief-m5', 'brief');
+  ui.manual(() => {}); eachTab('manual', 'manual');
+  ui.settings(() => {}); eachTab('settings', 'settings');
+  ui.builder(); eachTab('builder', 'builder');
+  for (const t of ['profile', 'weapons', 'armour', 'pack']) { ui.armory(t, 'rifle', () => {}); if (t === 'profile') eachTab('armory-profile', 'pf'); else if (t === 'weapons') eachTab('armory-weapons', 'wp'); else measure('armory-' + t); }
+  ui.armory('weapons', 'sniper', () => {}); eachTab('armory-sniper', 'wp');
+  ui.controls(() => {}); measure('controls');
+  return { screens: seen.length, overflowing: bad };
+});
 
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {

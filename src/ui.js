@@ -30,17 +30,39 @@ const TIPS = [
 ];
 
 export class UI {
-  constructor(g) { this.g = g; this.el = document.getElementById('ui'); }
+  constructor(g) { this.g = g; this.el = document.getElementById('ui'); this.tabMem = {}; }
   get cast() { return this.g.save.cast; }
   T(s) { return esc(fill(s, this.cast)); }
   clear() { this.el.classList.remove('on', 'dark'); this.el.innerHTML = ''; }
   show(html, o = {}) {
-    this.el.innerHTML = `<div class="panel ${o.left ? 'left' : ''}">${html}</div>`;
+    this.el.innerHTML = `<div class="panel ${o.left ? 'left' : ''} ${o.wide ? 'wide' : ''}">${html}</div>`;
     this.el.classList.add('on'); this.el.classList.toggle('dark', !o.left); this.el.classList.toggle('armory', !!o.preview); this.g.previewOn = !!o.preview;
     this.el.scrollTop = 0;
+    this.el.querySelectorAll('.tabs[data-tabs]').forEach((bar) => {   // sub-tabs: every pane stays in the page, so typed values are kept
+      const id = bar.dataset.tabs;
+      bar.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => {
+        this.tabMem[id] = b.dataset.tab; this.g.audio.ui(); this.el.scrollTop = 0;
+        bar.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
+        this.el.querySelectorAll(`.pane[data-for="${id}"]`).forEach((p) => p.classList.toggle('on', p.dataset.pane === b.dataset.tab));
+      }));
+    });
     this.el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('click', () => { this.g.audio.init(); this.g.audio.ui(); o.on && o.on(b.dataset.a, b); }));
   }
   q(sel) { return this.el.querySelector(sel); }
+  // items: [[key, label, html], ...] -> a tab bar and one pane per item (the remembered or first one is shown)
+  tabbed(id, items) {
+    const cur = items.some((i) => i[0] === this.tabMem[id]) ? this.tabMem[id] : items[0][0];
+    return `<div class="tabs sub" data-tabs="${id}">${items.map(([k, l]) => `<button class="tab ${k === cur ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>`
+      + items.map(([k, , h]) => `<div class="pane ${k === cur ? 'on' : ''}" data-for="${id}" data-pane="${k}">${h}</div>`).join('');
+  }
+
+  // first screen: browsers only allow sound after a click or key press, so the home music starts here
+  splash() {
+    this.show(`<h1 class="logo">NIGHTFALL<br><span>PROTOCOL</span></h1><div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING</div>
+      <p class="blink">Click anywhere or press any key to start</p><p class="note">Sound on. Press M at any time to mute.</p>`, { left: true });
+    const go = () => { window.removeEventListener('keydown', go, true); this.el.removeEventListener('click', go); this.g.audio.init(); this.title(); };
+    window.addEventListener('keydown', go, true); this.el.addEventListener('click', go);
+  }
   armory(tab, slot, back) { armoryScreen(this, tab, slot, back); }
   controls(back) { controlsScreen(this, back); }
 
@@ -51,7 +73,7 @@ export class UI {
     this.show(`
       <h1 class="logo">NIGHTFALL<br><span>PROTOCOL</span></h1>
       <div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING · RIVERS</div>
-      <div class="menu">
+      <div class="menu two">
         ${hasGame ? `<button class="primary" data-a="continue">Continue campaign<small>${done ? 'Campaign complete - replay any mission' : this.T('Mission ' + s.unlocked + ': ' + CAMPAIGN[s.unlocked - 1].title)}</small></button>` : ''}
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
         ${hasGame ? '<button data-a="select">Mission select</button>' : ''}
@@ -59,8 +81,8 @@ export class UI {
         <button data-a="builder">Operation builder<small>Write your own story and mission</small></button>
         <button data-a="cast">Cast &amp; names<small>Rename the hero, villain, city - anyone</small></button>
         <button data-a="manual">Field manual<small>Controls and tips</small></button>
-        <button data-a="settings">Settings</button>
-      </div>`, { left: true, on: (a) => {
+        <button data-a="settings">Settings<small>Audio, graphics, controls</small></button>
+      </div>`, { left: true, wide: true, on: (a) => {
       if (a === 'new') this.castEditor(() => { this.g.newCampaign(); this.intro(0); }, true);
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
       else if (a === 'select') this.select();
@@ -77,16 +99,17 @@ export class UI {
     this.show(`
       <h2><small>${isNew ? 'NEW CAMPAIGN · STEP 1' : 'MAKE THE STORY YOURS'}</small>Cast &amp; names</h2>
       <p>Every name in the story is yours to change. Type whatever you like - the briefings, radio chatter and endings will all use it.</p>
-      <div class="grid2">
-        ${Object.keys(DEFAULT_CAST).map((k) => `<div><label class="f">${CAST_LABELS[k][0]}<em>${CAST_LABELS[k][1]}</em></label><input type="text" maxlength="28" data-k="${k}" value="${esc(c[k])}"></div>`).join('')}
-      </div>
-      ${isNew ? `<label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${this.g.save.settings.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>` : ''}
+      ${(() => {
+        const keys = Object.keys(DEFAULT_CAST), fld = (k) => `<div><label class="f">${CAST_LABELS[k][0]}<em>${CAST_LABELS[k][1]}</em></label><input type="text" maxlength="28" data-k="${k}" value="${esc(c[k])}"></div>`;
+        const diff = isNew ? `<label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${this.g.save.settings.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>` : '';
+        return this.tabbed('cast', [['people', 'People', `<div class="grid2">${keys.slice(0, 6).map(fld).join('')}</div>`], ['world', 'World & plot', `<div class="grid2">${keys.slice(6).map(fld).join('')}</div>${diff}`]]);
+      })()}
       <div class="row"><button class="primary" data-a="ok">${isNew ? 'Begin the story' : 'Save names'}</button><button data-a="reset">Reset to defaults</button><button data-a="back">Back</button></div>`,
     { on: (a) => {
       if (a === 'back') return this.title();
       if (a === 'reset') { Object.assign(c, DEFAULT_CAST); this.g.persist(); return this.castEditor(next, isNew); }
       this.el.querySelectorAll('input[data-k]').forEach((i) => { const v = i.value.trim(); c[i.dataset.k] = v || DEFAULT_CAST[i.dataset.k]; });
-      if (isNew) this.g.save.settings.difficulty = this.q('#diff').value;
+      if (isNew && this.q('#diff')) this.g.save.settings.difficulty = this.q('#diff').value;
       this.g.persist(); next();
     } });
   }
@@ -125,14 +148,16 @@ export class UI {
     const objs = typeof def.objectives === 'function' ? def.objectives(g.save.flags) : def.objectives;
     let ap = g.save.approach || 'ghost';
     const idx = CAMPAIGN.indexOf(def);
+    if (!decided || !this._briefDef || this._briefDef !== def) { this.tabMem.brief = 'story'; this._briefDef = def; }
     const draw = () => this.show(`
       <h2><small>${def.custom ? 'CUSTOM OPERATION' : 'MISSION ' + (idx + 1) + ' OF ' + CAMPAIGN.length} · ${esc(loc.name).toUpperCase()} · ${THEMES[def.time].label.toUpperCase()}</small>${this.T(def.title)}</h2>
-      <p class="note">${esc(loc.tagline)}</p>
-      ${def.brief.map((t) => `<p>${this.T(t)}</p>`).join('')}
-      <h3>OBJECTIVES</h3><ul class="objs">${objs.map((o) => `<li>${this.T(o.text)}</li>`).join('')}</ul>
-      <h3>APPROACH</h3><div class="grid2">${Object.entries(APPROACHES).map(([k, a]) => `<div class="opt ${k === ap ? 'sel' : ''}" data-a="ap:${k}"><b>${a.label}</b><span>${a.desc}</span></div>`).join('')}</div>
-      <div class="row"><button class="primary" data-a="go">Deploy</button><button data-a="gear">Loadout &amp; backpack</button><button data-a="manual">Field manual</button><button data-a="back">Back</button></div>
-      <p class="note" style="margin-top:14px">Click the game once to capture the mouse. Esc pauses.</p>`,
+      ${this.tabbed('brief', [
+        ['story', 'Story', `<p class="note">${esc(loc.tagline)}</p>${def.brief.map((t) => `<p>${this.T(t)}</p>`).join('')}`],
+        ['obj', 'Objectives', `<ul class="objs">${objs.map((o) => `<li>${this.T(o.text)}</li>`).join('')}</ul>`],
+        ['prep', 'Approach & loadout', `<div class="grid2">${Object.entries(APPROACHES).map(([k, a]) => `<div class="opt ${k === ap ? 'sel' : ''}" data-a="ap:${k}"><b>${a.label}</b><span>${a.desc}</span></div>`).join('')}</div><div class="row"><button data-a="gear">Loadout &amp; backpack</button><button data-a="manual">Field manual</button></div>`],
+      ])}
+      <div class="row"><button class="primary" data-a="go">Deploy</button><button data-a="back">Back</button></div>
+      <p class="note" style="margin-top:10px">Click the game once to capture the mouse. Esc pauses.</p>`,
     { on: (a) => {
       if (a.startsWith('ap:')) { ap = a.slice(3); draw(); }
       else if (a === 'go') { g.save.approach = ap; g.persist(); g.startMission(def, { approach: ap }); }
@@ -144,26 +169,40 @@ export class UI {
   }
 
   manual(back) {
+    const L = controlsList((id) => this.g.input.label(id)), tbl = ([h, rows]) => `<h3>${h.toUpperCase()}</h3><table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`;
+    const grp = (names) => L.filter(([n]) => names.includes(n)).map(tbl).join('');
     this.show(`<h2><small>FIELD MANUAL</small>How to play</h2>
-      ${controlsList((id) => this.g.input.label(id)).map(([h, rows]) => `<h3>${h.toUpperCase()}</h3><table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`).join('')}
-      <h3>TIPS</h3><ul class="objs">${TIPS.map((t) => `<li>${t}</li>`).join('')}</ul>
+      ${this.tabbed('manual', [
+        ['move', 'Move & stealth', tbl(['On foot', (L.find(([n]) => n === 'On foot') || ['', []])[1].slice(0, 7)])],
+        ['combat', 'Combat & items', tbl(['On foot', (L.find(([n]) => n === 'On foot') || ['', []])[1].slice(7)])],
+        ['veh', 'Vehicles', grp(['Car, motorbike & boat'])],
+        ['air', 'Air', grp(['Aircraft', 'Parachute'])],
+        ['gen', 'General', grp(['General'])],
+        ['tips', 'Tips', `<ul class="objs">${TIPS.slice(0, Math.ceil(TIPS.length / 2)).map((t) => `<li>${t}</li>`).join('')}</ul>`],
+        ['tips2', 'More tips', `<ul class="objs">${TIPS.slice(Math.ceil(TIPS.length / 2)).map((t) => `<li>${t}</li>`).join('')}</ul>`],
+      ])}
       <div class="row"><button class="primary" data-a="back">Back</button></div>`, { on: back });
   }
 
   settings(back) {
-    const s = this.g.save.settings;
+    const s = this.g.save.settings, sel = (id, opts, cur) => `<select id="${id}">${opts.map(([v, l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     this.show(`<h2><small>OPTIONS</small>Settings</h2>
-      <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
-      <label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
-      <label class="f">Music volume</label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${s.music ?? 0.6}">
-      <label class="f">Sound effects volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">
-      <label class="f">Difficulty</label><select id="diff">${['easy', 'normal', 'hard'].map((d) => `<option value="${d}" ${s.difficulty === d ? 'selected' : ''}>${d[0].toUpperCase() + d.slice(1)}</option>`).join('')}</select>
-      <label class="f">Graphics</label><select id="gfx"><option value="high" ${s.shadows ? 'selected' : ''}>High - shadows, glow and reflections</option><option value="low" ${s.shadows ? '' : 'selected'}>Low - no shadows or glow (faster)</option></select>
-      <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>
-      <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="controls">Customize controls</button><button data-a="wipe">Erase campaign progress</button></div>`,
+      ${this.tabbed('settings', [
+        ['play', 'Gameplay', `<label class="f">Difficulty</label>${sel('diff', [['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']], s.difficulty)}
+          <label class="f">Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="${s.sens}">
+          <label class="f"><input type="checkbox" id="inv" ${s.invertY ? 'checked' : ''}> Invert mouse Y</label>`],
+        ['audio', 'Audio', `<label class="f">Music volume<em>press M in game to mute everything</em></label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${s.music ?? 0.6}">
+          <label class="f">Sound effects volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">`],
+        ['gfx', 'Graphics', `<label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
+          <label class="f">Quality</label>${sel('gfx', [['high', 'High - shadows, glow and reflections'], ['low', 'Low - no shadows or glow (faster)']], s.shadows ? 'high' : 'low')}`],
+        ['ctrl', 'Controls & data', `<p>Every key can be changed.</p><div class="row" style="margin-top:0"><button data-a="controls">Customize controls</button></div>
+          <h3>DANGER ZONE</h3><div class="row" style="margin-top:0"><button data-a="wipe">Erase campaign progress</button></div>`],
+      ])}
+      <div class="row"><button class="primary" data-a="ok">Save</button><button data-a="cancel">Cancel</button></div>`,
     { on: (a) => {
       if (a === 'controls') return this.controls(() => this.settings(back));
       if (a === 'wipe') { this.g.wipe(); return this.title(); }
+      if (a === 'cancel') return back();
       s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
       this.g.applySettings(); this.g.persist(); back();
     } });
@@ -224,30 +263,29 @@ export class UI {
     const g = this.g, list = g.save.custom;
     const f = edit || { title: '', story: '', radio: '', leader: '', location: 'harbor', time: 'night', insertion: 'foot', exit: 'reach', objectives: ['collect', 'kill'], count: 3, enemies: 1 };
     const sel = (id, opts, cur) => `<select id="${id}">${opts.map(([v, l]) => `<option value="${v}" ${v === String(cur) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    if (!this._bOpen) { this.tabMem.builder = 'story'; this._bOpen = true; }
     this.show(`<h2><small>OPERATION BUILDER</small>Write your own mission</h2>
-      <p>Your story, your rules. Pick a district, write the briefing, choose what has to be done - then play it.</p>
-      ${list.length ? `<h3>YOUR SAVED OPERATIONS</h3><div class="menu mlist">${list.map((m, i) => `<div style="display:flex;gap:8px"><button style="flex:1" data-a="play:${i}"><b>▶</b>${esc(m.title || 'Untitled Operation')}<small>${esc(LOCATIONS[m.location].name)} · ${THEMES[m.time].label}</small></button><button data-a="edit:${i}">Edit</button><button data-a="del:${i}">Delete</button></div>`).join('')}</div>` : ''}
-      <h3>${edit ? 'EDIT OPERATION' : 'NEW OPERATION'}</h3>
-      <label class="f">Operation title</label><input type="text" id="b_title" maxlength="40" placeholder="e.g. Midnight Harvest" value="${esc(f.title)}">
-      <label class="f">Your story / briefing<em>shown before the mission - new line for a new paragraph. You can use {hero}, {villain}, {city} ...</em></label><textarea id="b_story" maxlength="1500" placeholder="Write what is happening and why the hero is going in...">${esc(f.story)}</textarea>
-      <div class="grid2">
-        <div><label class="f">Opening radio message</label><input type="text" id="b_radio" maxlength="160" placeholder="First thing your handler says" value="${esc(f.radio)}"></div>
-        <div><label class="f">Enemy leader's name</label><input type="text" id="b_leader" maxlength="28" placeholder="e.g. The Jackal" value="${esc(f.leader)}"></div>
-        <div><label class="f">District</label>${sel('b_loc', Object.entries(LOCATIONS).map(([k, l]) => [k, l.name]), f.location)}</div>
-        <div><label class="f">Time of day</label>${sel('b_time', Object.entries(THEMES).map(([k, t]) => [k, t.label]), f.time)}</div>
-        <div><label class="f">How you arrive</label>${sel('b_ins', [['foot', 'On foot'], ['car', 'By car'], ['bike', 'By motorbike'], ['boat', 'By boat (forest only)'], ['parachute', 'Fly in and parachute']], f.insertion)}</div>
-        <div><label class="f">How you leave</label>${sel('b_exit', [['reach', 'Reach the extraction point'], ['flyout', 'Steal a plane and fly out']], f.exit)}</div>
-        <div><label class="f">Items / hostages / targets each</label>${sel('b_count', [['1', '1'], ['2', '2'], ['3', '3']], f.count)}</div>
-        <div><label class="f">Enemy presence</label>${sel('b_en', [['0.6', 'Light'], ['1', 'Normal'], ['1.4', 'Heavy']], f.enemies)}</div>
-      </div>
-      <label class="f">What must be done<em>played in this order</em></label>
-      <div class="checks">${BUILDER_OBJECTIVES.map(([k, l]) => `<label><input type="checkbox" data-o="${k}" ${f.objectives.includes(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>
-      <div class="row"><button class="primary" data-a="save">Save &amp; play</button><button data-a="back">Back</button></div>`,
+      ${this.tabbed('builder', [
+        ['story', 'Story', `<label class="f">Operation title</label><input type="text" id="b_title" maxlength="40" placeholder="e.g. Midnight Harvest" value="${esc(f.title)}">
+          <label class="f">Your story / briefing<em>new line for a new paragraph. You can use {hero}, {villain}, {city} ...</em></label><textarea id="b_story" maxlength="1500" placeholder="Write what is happening and why the hero is going in...">${esc(f.story)}</textarea>
+          <div class="grid2"><div><label class="f">Opening radio message</label><input type="text" id="b_radio" maxlength="160" placeholder="First thing your handler says" value="${esc(f.radio)}"></div>
+          <div><label class="f">Enemy leader's name</label><input type="text" id="b_leader" maxlength="28" placeholder="e.g. The Jackal" value="${esc(f.leader)}"></div></div>`],
+        ['setup', 'Setup', `<div class="grid2">
+          <div><label class="f">District</label>${sel('b_loc', Object.entries(LOCATIONS).map(([k, l]) => [k, l.name]), f.location)}</div>
+          <div><label class="f">Time of day</label>${sel('b_time', Object.entries(THEMES).map(([k, t]) => [k, t.label]), f.time)}</div>
+          <div><label class="f">How you arrive</label>${sel('b_ins', [['foot', 'On foot'], ['car', 'By car'], ['bike', 'By motorbike'], ['boat', 'By boat (forest only)'], ['parachute', 'Fly in and parachute']], f.insertion)}</div>
+          <div><label class="f">How you leave</label>${sel('b_exit', [['reach', 'Reach the extraction point'], ['flyout', 'Steal a plane and fly out']], f.exit)}</div>
+          <div><label class="f">Items / hostages / targets each</label>${sel('b_count', [['1', '1'], ['2', '2'], ['3', '3']], f.count)}</div>
+          <div><label class="f">Enemy presence</label>${sel('b_en', [['0.6', 'Light'], ['1', 'Normal'], ['1.4', 'Heavy']], f.enemies)}</div></div>`],
+        ['todo', 'Objectives', `<label class="f">What must be done<em>played in this order</em></label><div class="checks">${BUILDER_OBJECTIVES.map(([k, l]) => `<label><input type="checkbox" data-o="${k}" ${f.objectives.includes(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>`],
+        ['saved', `Saved (${list.length})`, list.length ? `<div class="menu mlist">${list.map((m, i) => `<div style="display:flex;gap:8px"><button style="flex:1" data-a="play:${i}"><b>▶</b>${esc(m.title || 'Untitled Operation')}<small>${esc(LOCATIONS[m.location].name)} · ${THEMES[m.time].label}</small></button><button data-a="edit:${i}">Edit</button><button data-a="del:${i}">Delete</button></div>`).join('')}</div>` : '<p class="note">Nothing saved yet. Fill in the other tabs and press Save &amp; play.</p>'],
+      ])}
+      <div class="row"><button class="primary" data-a="save">${edit ? 'Save changes &amp; play' : 'Save &amp; play'}</button><button data-a="back">Back</button></div>`,
     { on: (a) => {
-      if (a === 'back') return this.title();
+      if (a === 'back') { this._bOpen = false; return this.title(); }
       const [cmd, i] = a.split(':');
-      if (cmd === 'play') return this.briefing(buildCustom(list[+i]));
-      if (cmd === 'edit') return this.builder({ ...list[+i], _i: +i });
+      if (cmd === 'play') { this._bOpen = false; return this.briefing(buildCustom(list[+i])); }
+      if (cmd === 'edit') { this.tabMem.builder = 'story'; return this.builder({ ...list[+i], _i: +i }); }
       if (cmd === 'del') { list.splice(+i, 1); g.persist(); return this.builder(); }
       const form = {
         id: f.id || 'c' + Date.now(), title: this.q('#b_title').value.trim(), story: this.q('#b_story').value.trim(), radio: this.q('#b_radio').value.trim(), leader: this.q('#b_leader').value.trim(),
@@ -255,7 +293,7 @@ export class UI {
         objectives: [...this.el.querySelectorAll('input[data-o]')].filter((c) => c.checked).map((c) => c.dataset.o),
       };
       if (f._i != null) list[f._i] = form; else list.push(form);
-      g.persist();
+      g.persist(); this._bOpen = false;
       this.briefing(buildCustom(form));
     } });
   }

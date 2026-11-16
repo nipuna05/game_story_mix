@@ -121,11 +121,15 @@ During a race a **route map** shows the whole track with numbered checkpoints, y
 
 Aiming zooms in (pistols 52 degrees, rifles 40, optics and scopes more). Enemies near the crosshair in line of sight get a tag with their type and distance for a few seconds, and show on the minimap.
 
+## Menus
+
+Every menu screen is split into sub-tabs (briefing, settings, manual, controls, operation builder, cast, profile and weapons) so nothing needs scrolling at 1280 x 720.
+
 ## Sound and music
 
 - **Guns:** each weapon has its own layered sound (crack, blast, thump and an echo tail), louder and sharper up close, duller and echoing far away, panned to where the shot came from. Shotguns pump and the sniper rifle works its bolt. Reloads, empty clicks, weapon swaps, footsteps, bullet impacts and hits have their own sounds.
 - **Vehicles:** the cars and the motorbike use real engine recordings that rise and fall with speed; tyres skid on sharp turns and crashes have an impact sound.
-- **Music:** a tense military score is generated live. It is calm in menus, a driving pulse during play, and turns intense when guards are alerted, an alarm sounds or you race. Volume sliders for music and effects are in Settings; **M** mutes everything.
+- **Music:** a splash screen (click or press a key, which browsers require before any sound) starts the music on the home screen. A tense military score is generated live. It is calm in menus, a driving pulse during play, and turns intense when guards are alerted, an alarm sounds or you race. Volume sliders for music and effects are in Settings; **M** mutes everything.
 - **Real gun recordings (optional):** put a short single-shot `.ogg` in `public/sounds/guns/` named after the weapon (`usp ak47 m4a1 mp5 p90 spas12 striker deagle glock l118a`, e.g. `ak47.ogg`) and the game uses it instead of the generated shot. Only add recordings you are allowed to ship.
 
 ## Stealth movement and cover

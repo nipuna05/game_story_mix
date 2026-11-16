@@ -139,6 +139,7 @@ export class Player {
       } else if (inp.pressed.KeyE) it.act();
     } else this.holdT = 0;
 
+    if (this.mode !== 'foot') return;   // the use key just put us in a vehicle: do not show the soldier standing outside it
     const h = this.h;
     h.group.visible = !(this.aiming && wd.scope);
     h.gun.visible = this.cur !== 'fists';
@@ -291,6 +292,7 @@ export class Player {
 
   updateVehicle(dt) {
     const g = this.g, inp = g.input, v = this.vehicle;
+    this.h.group.visible = false;   // you are the driver shown inside the vehicle
     if (!v || v.dead) { if (v) this.exitVehicle(true); return; }
     if (v.type === 'plane') {
       if (v.airborne) { if (inp.pressed.KeyJ || inp.pressed.KeyE) this.exitVehicle(); }

@@ -26,7 +26,9 @@ export const CAST_LABELS = {
   project: ['The enemy plan', "Codename of the villain's operation."],
 };
 
-export const fill = (s, cast) => String(s).replace(/\{(\w+)\}/g, (m, k) => cast[k] ?? m);
+export const fill = (s, cast) => String(s)
+  .replace(/\{(\w+)\}/g, (m, k) => cast[k] ?? m)
+  .replace(/(^|[.!?]\s+|\n)(the)\b/g, (m, a) => a + 'The');   // a name like "the Grey Cordon" can start a sentence
 
 export const INTRO = [
   "{hero} used to be a special-forces scout. One mission went wrong, people who trusted the plan did not come home, and {hero} walked away from the uniform for good.",

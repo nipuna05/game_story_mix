@@ -80,8 +80,10 @@ class Game {
       }
       if (this.input.mapCode(e.code) === 'KeyH' && this.state === 'playing') { this.pause(); this.ui.manual(() => this.ui.pause()); }
     });
+    // browsers only allow sound after a click or key press: start the audio (and the music) on the very first one
+    for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => { this.audio.init(); if (this.audio.ctx && !this.music.started) this.music.start(); }, { capture: true });
     this.applySettings(); this.resize();
-    this.backdrop(); this.ui.title();
+    this.backdrop(); this.ui.splash();
     requestAnimationFrame((t) => this.frame(t));
   }
 

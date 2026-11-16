@@ -17,7 +17,9 @@ export class Music {
     const a = this.sfx.ctx;
     if (!a || this.started) return;
     this.started = true; this.ctx = a;
-    this.out = a.createGain(); this.out.gain.value = 0; this.out.connect(a.destination);
+    this.out = a.createGain(); this.out.gain.value = 0;
+    const lim = a.createDynamicsCompressor(); lim.threshold.value = -14; lim.knee.value = 8; lim.ratio.value = 6; lim.attack.value = 0.005; lim.release.value = 0.25;
+    this.out.connect(lim).connect(a.destination);
     this.noise = a.createBuffer(1, a.sampleRate, a.sampleRate);
     const d = this.noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     this.next = a.currentTime + 0.1;
@@ -29,7 +31,7 @@ export class Music {
   refreshMute() { this.apply(); }
   apply() {
     if (!this.ctx) return;
-    const target = this.mode === 'off' || this.sfx.muted ? 0 : this.vol * 1.15;
+    const target = this.mode === 'off' || this.sfx.muted ? 0 : this.vol * 2.6;
     this.out.gain.cancelScheduledValues(this.ctx.currentTime);
     this.out.gain.setTargetAtTime(target, this.ctx.currentTime, 0.6);   // smooth fades between moods
   }
