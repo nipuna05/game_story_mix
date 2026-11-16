@@ -233,6 +233,7 @@ export class Enemy extends Walker {
   sync(dt) {
     const h = this.h;
     const g = this.g, pp = g.player.pos;
+    if (h.setLod) h.setLod(!this.dead && Math.hypot(pp.x - this.pos.x, pp.z - this.pos.z) > 100);
     animateHumanoid(h, { speed: this.speedNow, aim: this.def.gun && this.state === 'alert', far: Math.abs(pp.x - this.pos.x) + Math.abs(pp.z - this.pos.z) > 110 }, dt);
     h.group.position.copy(this.pos); h.group.rotation.y = this.yaw;
     if (g.world.waters.length && this.pos.y < 0.5 && g.world.inWater(this.pos.x, this.pos.z)) h.group.position.y -= 0.75;

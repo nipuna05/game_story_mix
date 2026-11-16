@@ -82,7 +82,7 @@ export class Car {
     } else if (this.ai) [thr, st] = this.aiDrive(dt);
     const max = this.max, sp = this.speed;
     if (thr > 0) this.speed += (sp < 0 ? 28 : this.def.accel * (1 - Math.max(0, sp) / max)) * dt;
-    else if (thr < 0) this.speed -= (sp > 1 ? 30 : 9) * dt;
+    else if (thr < 0) this.speed -= (sp > 1 ? 17 : 9) * dt;
     this.speed -= (this.speed * (thr > 0 ? 0.03 : 0.3) + Math.sign(this.speed) * 0.5) * dt;
     if (hb) this.speed -= this.speed * 1.6 * dt;
     if (!thr && Math.abs(this.speed) < 0.3) this.speed = 0;

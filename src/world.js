@@ -44,7 +44,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
-    this.bushes = []; this.interiors = []; this.models = new Map();
+    this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map();
     this._env();
   }
 
@@ -250,6 +250,13 @@ export class World {
     return (this.styleMats[key] = m);
   }
 
+  // split a building box into its wall part and roof part and queue both for merging
+  _addBldg(geo, side, roof) {
+    const idx = geo.index.array, sideI = [], roofI = [];
+    for (const g of geo.groups) { const arr = g.materialIndex === 2 || g.materialIndex === 3 ? roofI : sideI; for (let i = g.start; i < g.start + g.count; i++) arr.push(idx[i]); }
+    const part = (list) => { const c = new THREE.BufferGeometry(); c.setAttribute('position', geo.attributes.position); c.setAttribute('normal', geo.attributes.normal); c.setAttribute('uv', geo.attributes.uv); c.setIndex(list); return c; };
+    for (const [mat, list] of [[side, sideI], [roof, roofI]]) { let b = this.bmerge.get(mat); if (!b) { b = []; this.bmerge.set(mat, b); } b.push(part(list)); }
+  }
   building(x, z, w, d, h, style, r = Math.random) {
     const st = STYLES[style] || STYLES.city;
     const tint = st.tints[Math.floor(r() * st.tints.length)];
@@ -263,9 +270,8 @@ export class World {
       const fw = face < 2 ? d : w;
       uv.setXY(i, uv.getX(i) * Math.max(0.25, Math.round(fw / 3) / 4), uv.getY(i) * h / 12);
     }
-    const mesh = new THREE.Mesh(geo, [side, side, roof, roof, side, side]);
-    mesh.position.set(x, h / 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
-    this.root.add(mesh); this.disposables.push(geo);
+    geo.translate(x, h / 2, z);
+    this._addBldg(geo, side, roof);   // merged with every other building that shares the material (see finalize)
     this.solid(x, z, w, d, h);
     if (style !== 'warehouse' || h > 6) this.facade(x, z, w, d, h, style, r);
     if (h > 8 && r() < 0.6) this.deco(x + (r() - 0.5) * w * 0.4, h + 0.7, z + (r() - 0.5) * d * 0.4, 2.5, 1.4, 2.5, 0x555b63);
@@ -280,7 +286,6 @@ export class World {
       }
       if (h > 38) { this.inst('cyl', 0x555b63, x, h + 4, z, 0.3, 8, 0.3); this.inst('sph', 0xff2020, x, h + 8.2, z, 0.9, 0.9, 0.9, { glow: dark }); }
     }
-    return mesh;
   }
 
   // instanced details that sit flush on walls and roofs (no colliders): air-conditioners, rooftop tanks and vents, awnings with
@@ -530,6 +535,11 @@ export class World {
   }
 
   finalize() {
+    for (const [mat, list] of this.bmerge) {   // all buildings sharing a material become one mesh
+      const g = mergeGeometries(list); this.disposables.push(g);
+      const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; this.root.add(m);
+    }
+    this.bmerge.clear();
     for (const [, b] of this.models) {   // village-kit pieces: one instanced mesh per sub-part
       for (const part of b.m.parts) {
         const im = new THREE.InstancedMesh(part.geo, part.mat, b.mats.length);
@@ -547,11 +557,20 @@ export class World {
       else mat = new THREE.MeshLambertMaterial({ color: b.color, map: b.geo === 'box' && !o.layer ? this.grain() : null, flatShading: b.geo === 'ico' });
       if (o.layer) { mat.polygonOffset = true; mat.polygonOffsetFactor = -2 * o.layer; mat.polygonOffsetUnits = -2 * o.layer; }
       if (o.alpha && o.alpha < 1) { mat.transparent = true; mat.opacity = o.alpha; }
-      const im = new THREE.InstancedMesh(this.geo[b.geo], mat, b.mats.length);
-      b.mats.forEach((m, i) => im.setMatrixAt(i, m));
-      im.instanceMatrix.needsUpdate = true;
-      im.castShadow = !o.layer && !o.glow; im.receiveShadow = !o.add && !o.glow; im.frustumCulled = false;
-      this.root.add(im); this.disposables.push(mat);
+      const cast = !o.layer && !o.glow, recv = !o.add && !o.glow;
+      const make = (list, cull) => {
+        const im = new THREE.InstancedMesh(this.geo[b.geo], mat, list.length);
+        list.forEach((m, i) => im.setMatrixAt(i, m));
+        im.instanceMatrix.needsUpdate = true; im.castShadow = cast; im.receiveShadow = recv; im.frustumCulled = cull;
+        if (cull) im.computeBoundingSphere();
+        this.root.add(im);
+      };
+      if (b.mats.length > 240 && !o.layer) {   // big batches (trees, bushes, rocks): split into map cells so off-screen cells are skipped
+        const cells = new Map();
+        for (const m of b.mats) { const k = Math.floor(m.elements[12] / 160) + ',' + Math.floor(m.elements[14] / 160); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(m); }
+        for (const list of cells.values()) make(list, true);
+      } else make(b.mats, false);
+      this.disposables.push(mat);
     }
     this.batches.clear();
     this._buildNav();

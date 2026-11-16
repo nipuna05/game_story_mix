@@ -284,9 +284,32 @@ function buildBoat(color) {
   return { group: g, wheels: [], seat: seats[0], seats };
 }
 
+// A car is ~100 small pieces. Merge everything that is not a wheel into one mesh per material: far fewer draw calls.
+function mergeStatic(res) {
+  const root = res.group, skip = new Set(res.wheels.map((w) => w.pivot));
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), byMat = new Map(), dead = [];
+  const underSkip = (o) => { for (let q = o; q; q = q.parent) if (skip.has(q)) return true; return false; };
+  root.traverse((o) => {
+    if (!o.isMesh || underSkip(o)) return;
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(g); dead.push(o);
+  });
+  for (const o of dead) o.parent.remove(o);
+  for (const [mat, list] of byMat) {
+    const geo = mergeGeometries(list, false); list.forEach((x) => x.dispose());
+    const m = new THREE.Mesh(geo, mat); m.castShadow = !mat.transparent && !(mat.blending === THREE.AdditiveBlending); root.add(m);
+  }
+  return res;
+}
+
 export const HAS_MODEL = { sedan: true, sports: true, jeep: true, boat: true };
 export function buildVehicle(kind, color) {
-  if (kind === 'jeep') return buildJeep(color);
-  if (kind === 'boat') return buildBoat(color);
-  return buildCar(kind, color);
+  if (kind === 'jeep') return mergeStatic(buildJeep(color));
+  if (kind === 'boat') return mergeStatic(buildBoat(color));
+  return mergeStatic(buildCar(kind, color));
 }

@@ -121,7 +121,8 @@ function makeModel(o) {
   model.scale.setScalar(T.scale * (o.scale || 1)); model.position.y = T.offsetY * (o.scale || 1);
   model.traverse((m) => {
     if (!m.isMesh) return;
-    m.castShadow = true; m.frustumCulled = false;
+    m.castShadow = true;
+    m.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 90, 0), 140);   // generous fixed bounds so the soldier is skipped when off screen
     if (o.tint != null && o.tint !== 0xffffff) m.material = tintMat(m.material, o.tint);
   });
   body.add(model);
@@ -139,12 +140,17 @@ function makeModel(o) {
   const h = { group, body, model, mixer, A, b: ok ? b : null, punchT: 1, deadT: 0, crouchK: 0, aimK: 0, dead: false, guns: {}, gunKind: null, tick: 0, acc: 0 };
   h.gun = new THREE.Group(); h.gun.visible = false; group.add(h.gun);
   bindGunSlot(h);
+  // far away a 20,000-triangle soldier is a few pixels: show a cheap capsule instead
+  h.proxy = new THREE.Mesh(once2('proxyGeo', () => new THREE.CapsuleGeometry(0.24, 1.0, 2, 8)), gearMat(0x4a5238)); h.proxy.position.y = 0.85; h.proxy.visible = false; group.add(h.proxy);
+  h.setLod = (far) => { if (h.proxy.visible === far) return; h.proxy.visible = far; model.visible = !far; h.gun.visible = !!h.hasGun && !far; };
+  h.hasGun = !!o.gun;
   if (o.gun) { h.setGun(o.gunKind || 'ak47', o.gunOpts || {}); h.gun.visible = true; }
   if (o.mark) addMark(h);
   return h;
 }
 
 function animModel(h, s, dt) {
+  if (h.proxy && h.proxy.visible) return;   // far away: nothing to animate
   const A = h.A;
   if (s.dead) {
     if (!h.dead) { h.dead = true; for (const n of ['idle', 'walk', 'run']) A[n] && A[n].setEffectiveWeight(0); if (A.death) { A.death.reset().setEffectiveWeight(1).play(); } h.gun.visible = false; if (h.mark) h.mark.visible = false; }
