@@ -194,7 +194,7 @@ export class UI {
         ['audio', 'Audio', `<label class="f">Music volume<em>press M in game to mute everything</em></label><input type="range" id="mvol" min="0" max="1" step="0.05" value="${s.music ?? 0.6}">
           <label class="f">Sound effects volume</label><input type="range" id="vol" min="0" max="1" step="0.05" value="${s.vol}">`],
         ['gfx', 'Graphics', `<label class="f">Brightness<em>raise it if night missions look too dark on your screen (B in game)</em></label><input type="range" id="bright" min="0.7" max="2.4" step="0.05" value="${s.bright || 1.3}">
-          <label class="f">Quality</label>${sel('gfx', [['high', 'High - shadows, glow and reflections'], ['low', 'Low - no shadows or glow (faster)']], s.shadows ? 'high' : 'low')}`],
+          <label class="f">Quality</label>${sel('gfx', [['high', 'High - sharp shadows, glow and reflections'], ['medium', 'Medium - smaller shadows, lower resolution'], ['low', 'Low - no shadows or glow (fastest)']], s.quality || (s.shadows ? 'high' : 'low'))}`],
         ['ctrl', 'Controls & data', `<p>Every key can be changed.</p><div class="row" style="margin-top:0"><button data-a="controls">Customize controls</button></div>
           <h3>DANGER ZONE</h3><div class="row" style="margin-top:0"><button data-a="wipe">Erase campaign progress</button></div>`],
       ])}
@@ -203,7 +203,7 @@ export class UI {
       if (a === 'controls') return this.controls(() => this.settings(back));
       if (a === 'wipe') { this.g.wipe(); return this.title(); }
       if (a === 'cancel') return back();
-      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.shadows = this.q('#gfx').value === 'high'; s.invertY = this.q('#inv').checked;
+      s.sens = +this.q('#sens').value; s.vol = +this.q('#vol').value; s.music = +this.q('#mvol').value; s.bright = +this.q('#bright').value; s.difficulty = this.q('#diff').value; s.quality = this.q('#gfx').value; s.shadows = s.quality !== 'low'; s.invertY = this.q('#inv').checked;
       this.g.applySettings(); this.g.persist(); back();
     } });
   }

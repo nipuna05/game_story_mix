@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clamp } from './util.js';
 import { ASSETS } from './assets.js';
+import { parkedParts } from './carmodels.js';
+
+const opts_shadowSize = (w) => w.shadowSize;
 
 export const THEMES = {
   night: { label: 'Night', top: 0x070b1c, horizon: 0x2a3d68, fog: 0x1a2744, fogNear: 60, fogFar: 760, hemiSky: 0x8aa4e6, hemiGround: 0x2a3446, hemi: 4.2, sun: 0xb4c6ff, sunI: 3.0, sunDir: [-0.5, 0.8, 0.35], stars: true, view: 27, lit: 0.5, exposure: 1.85, bloom: 0.4, cloud: 0x2a3a5c, env: 1.6 },
@@ -27,7 +30,7 @@ export class World {
     this.scene = scene;
     this.themeName = THEMES[themeName] ? themeName : 'day';
     this.theme = THEMES[this.themeName];
-    this.shadows = opts.shadows !== false;
+    this.shadows = opts.shadows !== false; this.shadowSize = opts.shadowSize || 3072;
     this.root = new THREE.Group(); scene.add(this.root);
     this.boxes = [];
     this.batches = new Map();
@@ -44,7 +47,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
-    this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map();
+    this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map(); this.custom = {}; this.parkedCache = {};
     this._env();
   }
 
@@ -105,8 +108,9 @@ export class World {
     this.sun = new THREE.DirectionalLight(t.sun, t.sunI); this.sunDir = sd;
     if (this.shadows) {
       this.sun.castShadow = true;
-      const s = this.sun.shadow; s.mapSize.set(3072, 3072);
-      s.camera.left = -85; s.camera.right = 85; s.camera.top = 85; s.camera.bottom = -85; s.camera.near = 1; s.camera.far = 520;
+      const sz = opts_shadowSize(this), ext = sz < 2000 ? 65 : 85;
+      const s = this.sun.shadow; s.mapSize.set(sz, sz);
+      s.camera.left = -ext; s.camera.right = ext; s.camera.top = ext; s.camera.bottom = -ext; s.camera.near = 1; s.camera.far = 520;
       s.bias = -0.0006; s.normalBias = 0.4;
     }
     sc.add(this.sun); sc.add(this.sun.target);
@@ -341,10 +345,37 @@ export class World {
     }
   }
 
+  // a parked car, drawn with instancing from the detailed car model
+  parkedCar(x, z, yaw, kind, color) {
+    const key = kind + '|' + color;
+    const P = this.parkedCache[key] || (this.parkedCache[key] = parkedParts(kind, color));
+    this.custom['pk:' + kind + ':s'] = { parts: P.shared }; this.custom['pk:' + kind + ':' + color] = { parts: P.paint };
+    this.model('pk:' + kind + ':s', x, 0, z, yaw); this.model('pk:' + kind + ':' + color, x, 0, z, yaw);
+    (this.parkedList || (this.parkedList = [])).push({ x, z, yaw });
+    const along = Math.abs(Math.cos(yaw)) > 0.7;
+    this.solid(x, z, along ? 2.0 : 4.6, along ? 4.6 : 2.0, 1.6);
+  }
+  // street furniture (instanced, no colliders)
+  bench(x, z, ry) {
+    const c = Math.cos(ry), s = Math.sin(ry), at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c];
+    let p = at(0, 0); this.inst('box', 0x6a5238, p[0], 0.5, p[1], 1.7, 0.08, 0.5, { ry });
+    p = at(0, -0.22); this.inst('box', 0x6a5238, p[0], 0.85, p[1], 1.7, 0.45, 0.07, { ry });
+    for (const lx of [-0.7, 0.7]) { p = at(lx, 0); this.inst('box', 0x2a2d31, p[0], 0.25, p[1], 0.08, 0.5, 0.45, { ry }); }
+  }
+  bin(x, z) { this.inst('cyl', 0x2f4a38, x, 0.45, z, 0.6, 0.9, 0.6); this.inst('cyl', 0x1c2a22, x, 0.93, z, 0.66, 0.08, 0.66); }
+  hydrant(x, z) { this.inst('cyl', 0xb02a22, x, 0.4, z, 0.3, 0.8, 0.3); this.inst('sph', 0xb02a22, x, 0.85, z, 0.34, 0.24, 0.34); this.inst('cyl', 0xb02a22, x, 0.55, z, 0.55, 0.12, 0.16, { rz: Math.PI / 2 }); }
+  busStop(x, z, ry) {
+    const c = Math.cos(ry), s = Math.sin(ry), at = (lx, lz) => [x + lx * c + lz * s, z - lx * s + lz * c], dark = this.theme.lit > 0.1;
+    let p = at(0, 0); this.inst('box', 0x2f353c, p[0], 2.5, p[1], 3.4, 0.12, 1.6, { ry });
+    for (const lx of [-1.6, 1.6]) { p = at(lx, -0.7); this.inst('box', 0x2f353c, p[0], 1.25, p[1], 0.1, 2.5, 0.1, { ry }); }
+    p = at(0, -0.72); this.inst('box', 0x9fc4d8, p[0], 1.35, p[1], 3.2, 2.0, 0.05, { ry, alpha: 0.3 });
+    p = at(0, -0.3); this.inst('box', 0x6a5238, p[0], 0.5, p[1], 2.2, 0.08, 0.5, { ry });
+    p = at(1.9, 0); this.inst('box', 0x2f6fb5, p[0], 1.9, p[1], 0.08, 0.7, 0.5, { ry, glow: dark });
+  }
   // ---------- props ----------
   // place one copy of a flattened model-kit piece (instanced at finalize)
   model(name, x, y, z, ry = 0, sx = 1, sy = 1, sz = 1) {
-    const m = ASSETS.village[name]; if (!m) return false;
+    const m = this.custom[name] || ASSETS.village[name]; if (!m) return false;
     let b = this.models.get(name); if (!b) { b = { m, mats: [] }; this.models.set(name, b); }
     _e.set(0, ry, 0); _q.setFromEuler(_e); _m.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz)); b.mats.push(_m.clone());
     return true;
@@ -541,10 +572,12 @@ export class World {
     }
     this.bmerge.clear();
     for (const [, b] of this.models) {   // village-kit pieces: one instanced mesh per sub-part
-      for (const part of b.m.parts) {
-        const im = new THREE.InstancedMesh(part.geo, part.mat, b.mats.length);
-        b.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
-        im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+      const cells = new Map();   // split into map cells so off-screen copies are skipped
+      for (const mm of b.mats) { const k = Math.floor(mm.elements[12] / 120) + ',' + Math.floor(mm.elements[14] / 120); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(mm); }
+      for (const part of b.m.parts) for (const list of cells.values()) {
+        const im = new THREE.InstancedMesh(part.geo, part.mat, list.length);
+        list.forEach((mm, i) => im.setMatrixAt(i, mm));
+        im.instanceMatrix.needsUpdate = true; im.castShadow = !part.mat.transparent; im.receiveShadow = true; im.frustumCulled = true; im.computeBoundingSphere();
         this.root.add(im);
       }
     }

@@ -31,10 +31,12 @@ const radial = () => once('radial', () => {
 });
 
 // ---------------------------------------------------------------- helpers
-const UNIT = () => once('unit', () => new RoundedBoxGeometry(1, 1, 1, 3, 0.18));
+const DETAIL = { low: false };   // parked cars are built in a lighter version
+const lo = () => (DETAIL.low ? 'L' : '');
+const UNIT = () => once('unit' + lo(), () => new RoundedBoxGeometry(1, 1, 1, DETAIL.low ? 1 : 3, 0.18));
 const PLAIN = () => once('plain', () => new THREE.BoxGeometry(1, 1, 1));
-const CYL = () => once('cyl', () => new THREE.CylinderGeometry(0.5, 0.5, 1, 20));
-const SPH = () => once('sph', () => new THREE.SphereGeometry(0.5, 16, 12));
+const CYL = () => once('cyl' + lo(), () => new THREE.CylinderGeometry(0.5, 0.5, 1, DETAIL.low ? 10 : 20));
+const SPH = () => once('sph' + lo(), () => new THREE.SphereGeometry(0.5, DETAIL.low ? 8 : 16, DETAIL.low ? 6 : 12));
 
 function put(parent, geo, mat, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0) {
   const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.set(rx, ry, rz); m.castShadow = true; parent.add(m); return m;
@@ -48,7 +50,7 @@ function strut(p, mat, x, a, b, t = 0.06) {
 }
 // profile drawn in (z = forward, y = up), extruded across the width, smoothed but with crisp edges
 function prism(shape, depth, bev = 0.07) {
-  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 4, curveSegments: 22 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: DETAIL.low ? 1 : 4, curveSegments: DETAIL.low ? 8 : 22 });
   g.rotateY(-Math.PI / 2); g.translate(depth / 2, 0, 0);
   const out = toCreasedNormals(g, 0.7); g.dispose();
   return out;
@@ -56,16 +58,17 @@ function prism(shape, depth, bev = 0.07) {
 
 // ---------------------------------------------------------------- wheels
 function wheelGeos(r, w, spokes) {
-  return once('wheel' + r + '|' + w + '|' + spokes, () => {
-    const tire = new THREE.CylinderGeometry(r, r, w, 30).rotateZ(Math.PI / 2);
-    const disc = new THREE.CylinderGeometry(r * 0.66, r * 0.66, w + 0.014, 26).rotateZ(Math.PI / 2);
+  return once('wheel' + r + '|' + w + '|' + spokes + lo(), () => {
+    const seg = DETAIL.low ? 12 : 30;
+    const tire = new THREE.CylinderGeometry(r, r, w, seg).rotateZ(Math.PI / 2);
+    const disc = new THREE.CylinderGeometry(r * 0.66, r * 0.66, w + 0.014, DETAIL.low ? 10 : 26).rotateZ(Math.PI / 2);
     const parts = [];
     for (const s of [-1, 1]) {
       for (let k = 0; k < spokes; k++) {
         const sp = new THREE.BoxGeometry(0.04, r * 0.58, 0.085);
         sp.translate(0, r * 0.3, 0); sp.rotateX((k / spokes) * Math.PI * 2); sp.translate(s * (w / 2 + 0.01), 0, 0); parts.push(sp);
       }
-      const hub = new THREE.CylinderGeometry(r * 0.17, r * 0.17, 0.06, 16).rotateZ(Math.PI / 2); hub.translate(s * (w / 2 + 0.025), 0, 0); parts.push(hub);
+      const hub = new THREE.CylinderGeometry(r * 0.17, r * 0.17, 0.06, DETAIL.low ? 6 : 16).rotateZ(Math.PI / 2); hub.translate(s * (w / 2 + 0.025), 0, 0); parts.push(hub);
     }
     return { tire, disc, spokes: mergeGeometries(parts) };
   });
@@ -84,7 +87,7 @@ const CARS = {
 };
 
 function bodyGeo(P) {
-  return once('body' + P.id, () => {
+  return once('body' + P.id + lo(), () => {
     const { L, wb, r, sill } = P, h = L / 2, ar = r + 0.1, dx = Math.sqrt(ar * ar - (r - sill) * (r - sill)), a1 = Math.atan2(sill - r, dx), a2 = Math.PI - a1;
     const s = new THREE.Shape();
     s.moveTo(-h + 0.14, sill);
@@ -106,7 +109,7 @@ function bodyGeo(P) {
   });
 }
 function cabinGeo(P) {
-  return once('cabin' + P.id, () => {
+  return once('cabin' + P.id + lo(), () => {
     const s = new THREE.Shape(), b = P.belt, t = P.roof - 0.05;
     s.moveTo(P.cabRB, b); s.lineTo(P.cabFB, b); s.lineTo(P.cabFT + 0.08, t - 0.05);
     s.quadraticCurveTo(P.cabFT, t + 0.02, P.cabFT - 0.16, t + 0.02);
@@ -118,7 +121,7 @@ function cabinGeo(P) {
 }
 
 function doorGeo(P) {
-  return once('door' + P.id, () => {
+  return once('door' + P.id + lo(), () => {
     const s = new THREE.Shape(), z0 = P.cabRB - 0.03, z1 = P.cabFB + 0.12, y0 = P.floor - 0.06, y1 = P.belt + 0.01;
     s.moveTo(z0, y0); s.lineTo(z1, y0); s.lineTo(z1, y1 - 0.04); s.quadraticCurveTo(z1, y1, z1 - 0.06, y1); s.lineTo(z0 + 0.06, y1); s.quadraticCurveTo(z0, y1, z0, y1 - 0.04); s.closePath();
     return prism(s, 0.05, 0.03);
@@ -142,6 +145,7 @@ function buildCar(kind, color) {
   // interior seen through the glass: floor, dash, seats, wheel, console
   const mid = (P.cabRB + P.cabFB) / 2, dz = mid - 0.28, fl = P.floor;
   for (const sx of [-1, 1]) put(g, doorGeo(P), pm, sx * (W / 2 - 0.1), 0, 0);
+  if (!DETAIL.low) {   // a parked car does not need an interior
   sbox(g, M.dash(), 0, fl + 0.02, mid, W * 0.78, 0.04, P.cabFB - P.cabRB - 0.1);
   rbox(g, M.dash(), 0, P.belt - 0.13, P.cabFB - 0.18, W * 0.72, 0.3, 0.36);
   rbox(g, plastic, 0, fl + 0.2, dz + 0.1, 0.2, 0.3, 0.8);
@@ -153,6 +157,7 @@ function buildCar(kind, color) {
   rbox(g, M.seat(), 0, fl + 0.1, P.cabRB + 0.42, W * 0.72, 0.16, 0.5);
   rbox(g, M.seat(), 0, fl + 0.42, P.cabRB + 0.2, W * 0.72, 0.55, 0.14, -0.1);
   put(g, new THREE.TorusGeometry(0.17, 0.022, 8, 18), plastic, -0.4, P.belt - 0.12, dz + 0.5, 1, 1, 1, 1.0, 0, 0);
+  }
   // mirrors
   for (const sx of [-1, 1]) { rbox(g, pm, sx * (W / 2 + 0.06), P.belt + 0.08, P.cabFB - 0.08, 0.12, 0.1, 0.16); sbox(g, plastic, sx * (W / 2 - 0.02), P.belt + 0.04, P.cabFB - 0.08, 0.1, 0.03, 0.04); }
   // front: lights, grille, bumper
@@ -305,6 +310,29 @@ function mergeStatic(res) {
     const m = new THREE.Mesh(geo, mat); m.castShadow = !mat.transparent && !(mat.blending === THREE.AdditiveBlending); root.add(m);
   }
   return res;
+}
+
+// Static pieces of a parked car for instancing: the paint parts (per colour) and everything else (shared by all colours).
+const sharedCache = new Map();
+export function parkedParts(kind, color) {
+  DETAIL.low = true;
+  let res; try { res = buildVehicle(kind, color); } finally { DETAIL.low = false; }
+  const root = res.group;
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), byMat = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh || o.material.blending === THREE.AdditiveBlending) return;   // no under-glow on a parked car
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (!byMat.has(o.material)) byMat.set(o.material, []);
+    byMat.get(o.material).push(g);
+  });
+  const paintParts = [], sharedParts = [];
+  for (const [mat, list] of byMat) { const geo = mergeGeometries(list); list.forEach((x) => x.dispose()); (mat.clearcoat === 1 && !mat.transparent ? paintParts : sharedParts).push({ geo, mat }); }
+  if (!sharedCache.has(kind)) sharedCache.set(kind, sharedParts);
+  return { paint: paintParts, shared: sharedCache.get(kind) };
 }
 
 export const HAS_MODEL = { sedan: true, sports: true, jeep: true, boat: true };

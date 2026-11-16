@@ -454,6 +454,18 @@ await run('menu fit', () => {
   return { screens: seen.length, overflowing: bad };
 });
 
+
+// ---- graphics quality levels
+await run('quality levels', () => {
+  const g = window.game, out = {};
+  for (const q of ['medium', 'low', 'high']) {
+    g.settings.quality = q; g.applySettings(); g.startMission(window.M('m2'), {}); window.tick(20);
+    g.composer.render();
+    out[q] = { shadows: g.renderer.shadowMap.enabled, mapSize: g.world.sun.shadow ? g.world.sun.shadow.mapSize.x : 0, pixelRatio: g.renderer.getPixelRatio(), parked: Object.keys(g.world.custom || {}).filter((k) => k.startsWith('pk:')).length, state: g.state };
+  }
+  return out;
+});
+
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {

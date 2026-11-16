@@ -30,6 +30,21 @@ function townGrid(w, o) {
     if (o.skip && o.skip(i, j) === 'void') continue;
     w.flat(bx, bz, bs, bs, o.walkColor, 2);
     if (o.skip && o.skip(i, j)) continue;
+    // street furniture on the pavement and cars parked at the kerb
+    {
+      const edge = bs / 2 - 1.1, cn = [rng() < 0.5 ? -1 : 1, rng() < 0.5 ? -1 : 1];
+      w.hydrant(bx + cn[0] * edge, bz + cn[1] * edge); w.bin(bx - cn[0] * edge, bz + cn[1] * (edge - 5)); if (rng() < 0.5) w.bin(bx + cn[0] * (edge - 6), bz - cn[1] * edge);
+      const sz = rng() < 0.5 ? -1 : 1;
+      if (rng() < 0.6) w.bench(bx + (rng() - 0.5) * 16, bz + sz * edge, sz < 0 ? Math.PI : 0);
+      if (o.style === 'city' && rng() < 0.18) w.busStop(bx + edge, bz + (rng() - 0.5) * 14, Math.PI / 2);
+      const kinds = o.parkKinds || ['sedan', 'sedan', 'sports'], cols = { sedan: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a], sports: [0xd22b2b, 0xe8b020, 0x2a7ad2], jeep: [0x4d5a3a, 0x6a6048] };
+      for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (rng() > 0.2) continue;
+        const kind = kinds[Math.floor(rng() * kinds.length)], col = cols[kind][Math.floor(rng() * cols[kind].length)], u = (rng() < 0.5 ? -1 : 1) * (12 + rng() * 4);
+        const px = sx ? bx + sx * (bs / 2 + 1.8) : bx + u, pz = sy ? bz + sy * (bs / 2 + 1.8) : bz + u;
+        w.parkedCar(px, pz, sx ? (rng() < 0.5 ? 0 : Math.PI) : (rng() < 0.5 ? Math.PI / 2 : -Math.PI / 2), kind, col);
+      }
+    }
     for (let k = 0; k < 3; k++) { // brush along the pavements
       const t = rr(rng, -bs / 2 + 2, bs / 2 - 2), e = (rng() < 0.5 ? -1 : 1) * (bs / 2 - 1.2);
       if (rng() < 0.5) w.bush(bx + e, bz + t, rr(rng, 0.9, 1.4)); else w.bush(bx + t, bz + e, rr(rng, 0.9, 1.4));
@@ -265,7 +280,7 @@ export const LOCATIONS = {
     defaultTime: 'day', compound: 'the foundry fortress',
     build(w, rng) {
       w.ground(0xb59a6a);
-      const town = townGrid(w, { x0: -265, z0: -225, nx: 4, nz: 4, cell: 62, road: 14, rng, style: 'industrial', hMin: 5, hMax: 12, roadColor: 0x4a443c, walkColor: 0x8f7f62, lineColor: 0xc8b890, skip: (i, j) => i === 1 && j === 2 });
+      const town = townGrid(w, { x0: -265, z0: -225, nx: 4, nz: 4, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['jeep', 'sedan'], hMin: 5, hMax: 12, roadColor: 0x4a443c, walkColor: 0x8f7f62, lineColor: 0xc8b890, skip: (i, j) => i === 1 && j === 2 });
       const C = compound(w, { cx: 150, cz: 110, w: 240, d: 220, wall: 0x8a6f52, floor: 0x7d6c52, style: 'industrial', containers: false, rng,
         gates: [{ side: 's', off: -30, width: 14 }, { side: 'w', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['OCST', 'WC.W', 'TSCC', 'MWTS'] });
@@ -293,7 +308,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0xe2e9ef);
       w.setWeather('snow');
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', parkKinds: ['jeep'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 20, cz: 80, w: 250, d: 230, wall: 0x6a727a, floor: 0x8a9298, style: 'mountain', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'e', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['TCOS', 'WC.W', 'SCTC', 'MWST'] });
@@ -318,7 +333,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0x4f6f3c);
       const dirt = 0x6a5c44;
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', parkKinds: ['jeep'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
       const C = compound(w, { cx: -120, cz: 170, w: 240, d: 220, wall: 0x5a4a36, floor: 0x6a6248, style: 'cabin', containers: false, rng,
         gates: [{ side: 's', off: -80, width: 14 }, { side: 'e', off: 80, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['SCTO', 'WC.W', 'TSCC', 'MWST'] });

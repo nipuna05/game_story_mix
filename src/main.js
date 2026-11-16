@@ -33,7 +33,7 @@ const SPHERES = [[1.62, 0.21, true], [1.15, 0.4, false], [0.55, 0.36, false]];
 const _v = new THREE.Vector3();
 
 function loadSave() {
-  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, shadows: true, invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
+  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, shadows: true, quality: 'high', invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (s) return { ...base, ...s, settings: { ...base.settings, ...s.settings }, cast: { ...base.cast, ...s.cast }, profile: mergeProfile(s.profile) };
@@ -95,8 +95,10 @@ class Game {
     this.music.setVolume(this.settings.music ?? 0.6);
     if (this.world) this.renderer.toneMappingExposure = this.world.theme.exposure * (this.settings.bright || 1);
     this.audio.setVol(this.settings.vol);
-    this.renderer.shadowMap.enabled = !!this.settings.shadows;
-    const pr = Math.min(window.devicePixelRatio || 1, this.settings.shadows ? 1.5 : 1.25);
+    const q = this.settings.quality || (this.settings.shadows === false ? 'low' : 'high');
+    this.settings.quality = q; this.settings.shadows = q !== 'low';
+    this.renderer.shadowMap.enabled = this.settings.shadows;
+    const pr = Math.min(window.devicePixelRatio || 1, q === 'high' ? 1.5 : 1);
     this.renderer.setPixelRatio(pr); this.composer.setPixelRatio(pr); this.composer.setSize(window.innerWidth, window.innerHeight);
   }
   resize() {
@@ -111,9 +113,9 @@ class Game {
     this.audio.quiet();
     this.scene = new THREE.Scene();
     this.resetLists();
-    this.world = new World(this.scene, time, { shadows: this.settings.shadows, renderer: this.renderer });
+    this.world = new World(this.scene, time, { shadows: this.settings.shadows, shadowSize: this.settings.quality === 'high' ? 3072 : 1536, renderer: this.renderer });
     this.renderer.toneMappingExposure = this.world.theme.exposure * (this.settings.bright || 1);
-    this.renderPass.scene = this.scene; this.bloom.strength = this.world.theme.bloom;
+    this.renderPass.scene = this.scene; this.bloom.strength = this.world.theme.bloom * (this.settings.quality === 'medium' ? 0.7 : 1);
     this.P = LOCATIONS[location].build(this.world, rng(location.length * 7919 + 13));
     this.world.finalize();
     this.fx = new FX(this.scene);
