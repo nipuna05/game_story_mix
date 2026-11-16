@@ -81,7 +81,7 @@ class Game {
     requestAnimationFrame((t) => this.frame(t));
   }
 
-  resetLists() { this.enemies = []; this.hostages = []; this.vehicles = []; this.pickups = []; this.targets = []; this.grenades = []; this.interact = null; this.markerTarget = null; }
+  resetLists() { this.racePath = null; this.enemies = []; this.hostages = []; this.vehicles = []; this.pickups = []; this.targets = []; this.grenades = []; this.interact = null; this.markerTarget = null; }
   persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch { /* storage may be blocked */ } }
   wipe() { Object.assign(this.save, { unlocked: 1, started: false, flags: {}, best: {} }); this.persist(); }
   newCampaign() { Object.assign(this.save, { unlocked: 1, started: true, flags: {} }); this.persist(); }
@@ -313,11 +313,49 @@ class Game {
     if (info.from === 'player') this.stats.kills++;
     if (!info.silent) this.emitNoise(e.pos, 12, false);
     if (e.def.gun && !e.noAlarm) {
-      const vid = { guard: 'ak47', heavy: 'm4a1', sniper: 'l118a', boss: 'ak47' }[e.type];
+      const roll = Math.random();
+      const vid = e.type === 'guard' ? (roll < 0.55 ? 'ak47' : roll < 0.8 ? 'mp5' : roll < 0.92 ? 'spas12' : 'deagle') : e.type === 'heavy' ? (roll < 0.5 ? 'm4a1' : roll < 0.8 ? 'striker' : 'p90') : { sniper: 'l118a', boss: 'ak47' }[e.type];
       if (vid) { const v = VARIANTS[vid]; this.dropWeapon(vid, Math.max(3, Math.round(v.mag * (0.25 + Math.random() * 0.5))), v.mag, e.pos.x + (e.def.static ? 3.4 : 0), e.pos.z); }
     }
     if (e.pos.y < 1 && !e.noAlarm) { const k = Math.random(); if (k < 0.4) this.spawnPickup('ammo', e.pos.x, e.pos.z); else if (k < 0.52) this.spawnPickup('med', e.pos.x, e.pos.z); }
   }
+  // glowing arrows laid along the road for the current race, plus rings at the next two checkpoints
+  updateRacePath() {
+    const o = this.mission.cur, s = o && o.type === 'race' && o.st.cps ? o.st : null;
+    if (!s) { if (this.racePath) { this.scene.remove(this.racePath.group); this.racePath.geo.dispose(); this.racePath.ringGeo.dispose(); this.racePath = null; } return; }
+    if (!this.racePath || this.racePath.s !== s) {
+      const R = this.P.race, seq = [R[0], ...s.cps], dashes = [];
+      for (let i = 0; i < s.cps.length; i++) {
+        const a = seq[i], b = seq[i + 1], L = Math.hypot(b.x - a.x, b.z - a.z), yaw = Math.atan2(b.x - a.x, b.z - a.z);
+        for (let d = 8; d < L - 10; d += 7) dashes.push({ i, x: a.x + (b.x - a.x) * d / L, z: a.z + (b.z - a.z) * d / L, yaw });
+      }
+      const geo = new THREE.BoxGeometry(0.9, 0.05, 3.4), mat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+      const im = new THREE.InstancedMesh(geo, mat, Math.max(1, dashes.length)); im.frustumCulled = false;
+      const ringGeo = new THREE.RingGeometry(7.2, 9, 44).rotateX(-Math.PI / 2);
+      const rings = [0, 1].map((k) => { const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: k ? 0xffb23e : 0x4fd1c5, transparent: true, opacity: 0.9, fog: false, depthWrite: false, side: THREE.DoubleSide })); m.material.color.multiplyScalar(2.4); m.position.y = 0.2; return m; });
+      const group = new THREE.Group(); group.add(im, ...rings); this.scene.add(group);
+      this.racePath = { s, im, dashes, rings, group, geo, ringGeo, cp: -1 };
+    }
+    const rp = this.racePath, n = s.cps.length;
+    if (rp.cp !== s.cp) {   // re-colour only when the target checkpoint changes
+      rp.cp = s.cp;
+      const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
+      rp.dashes.forEach((d, k) => {
+        const hide = d.i < s.cp || d.i > s.cp + 3;
+        e.set(0, d.yaw, 0); q.setFromEuler(e);
+        m.compose(new THREE.Vector3(d.x, 0.12, d.z), q, new THREE.Vector3(hide ? 0 : 1, 1, hide ? 0 : 1)); rp.im.setMatrixAt(k, m);
+        rp.im.setColorAt(k, d.i === s.cp ? c.setRGB(0.4, 2.6, 2.4) : c.setRGB(2.6, 1.6, 0.3));
+      });
+      rp.im.instanceMatrix.needsUpdate = true; if (rp.im.instanceColor) rp.im.instanceColor.needsUpdate = true;
+    }
+    for (let k = 0; k < 2; k++) {
+      const cpk = s.cps[s.cp + k], r = rp.rings[k];
+      r.visible = !!cpk && (s.state === 'run' || s.state === 'count' || s.state === 'wait');
+      if (cpk) { r.position.x = cpk.x; r.position.z = cpk.z; r.scale.setScalar(1 + Math.sin(this.time * 4 + k) * 0.06); }
+    }
+    void n;
+  }
+
   // ---------------------------------------------------------------- guns on the ground, racks, previews
   spawnWeapon(vid, mag, res, x, z) {
     const v = VARIANTS[vid], grp = new THREE.Group(), gun = makeGun(v.model);
@@ -342,7 +380,7 @@ class Game {
     const alongX = Math.abs(fz) > 0.5;
     this.world.solid(x, z, alongX ? 2.7 : 0.7, alongX ? 0.7 : 2.7, 1.8);
     const at = (lx, lz) => [x + lx * Math.cos(r) + lz * Math.sin(r), z - lx * Math.sin(r) + lz * Math.cos(r)];
-    const stock = ['glock', 'ak47', 'm4a1', 'ak47', 'glock', 'l118a'], pick = () => stock[Math.floor(Math.random() * stock.length)];
+    const stock = ['glock', 'ak47', 'm4a1', 'mp5', 'spas12', 'deagle', 'p90', 'striker', 'l118a'], pick = () => stock[Math.floor(Math.random() * stock.length)];
     for (const lx of [-0.6, 0.6]) { const vid = pick(), v = VARIANTS[vid], [px, pz] = at(lx, 0.9); this.spawnWeapon(vid, v.mag, v.mag * 2, px, pz); }
     let [px, pz] = at(-1.15, 0.9); this.spawnPickup('ammo', px, pz);
     [px, pz] = at(1.15, 0.9); this.spawnPickup(Math.random() < 0.5 ? 'med' : 'armor', px, pz);
@@ -368,7 +406,7 @@ class Game {
   }
   renderPreview(dt) {
     const r = this.renderer, W = window.innerWidth, H = window.innerHeight, vx = Math.round(W * 0.56), vw = W - vx;
-    this.pFig.group.rotation.y += dt * 0.5;
+    if (this.previewSpin !== false) this.pFig.group.rotation.y += dt * 0.5;
     animateHumanoid(this.pFig, { speed: 0, aim: true, pitch: 0 }, dt);
     this.pcam.aspect = vw / H; this.pcam.position.set(0, 1.4, 5.4); this.pcam.lookAt(0, 0.95, 0); this.pcam.updateProjectionMatrix();
     r.autoClear = false; r.setScissorTest(true); r.setViewport(vx, 0, vw, H); r.setScissor(vx, 0, vw, H);
@@ -476,6 +514,7 @@ class Game {
     }
 
     // objective marker + light beam
+    this.updateRacePath();
     const t = this.markerTarget = this.mission.target();
     if (t) { const r = t.r || 1.2; this.beam.visible = true; this.beam.position.set(t.x, 150, t.z); this.beam.scale.set(r, 300, r); } else this.beam.visible = false;
 
@@ -483,7 +522,7 @@ class Game {
     const v = p.vehicle;
     if (v && v.type === 'car' && w.theme.lit !== 0) {
       const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw);
-      this.spot.intensity = 2600; this.spot.position.set(v.pos.x + fx * 1.5, 1.4, v.pos.z + fz * 1.5); this.spot.target.position.set(v.pos.x + fx * 30, 0, v.pos.z + fz * 30);
+      this.spot.intensity = 450; this.spot.position.set(v.pos.x + fx * 1.5, 1.4, v.pos.z + fz * 1.5); this.spot.target.position.set(v.pos.x + fx * 30, 0, v.pos.z + fz * 30);
     } else this.spot.intensity = 0;
 
     // looping audio

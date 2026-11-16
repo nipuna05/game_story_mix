@@ -357,6 +357,63 @@ await run('rebound via screen', () => { const g = window.game; return { label: g
 await shot('controls', 800);
 await run('reset keys', () => { const g = window.game; g.settings.keys = {}; g.input.setBindings({}); return g.input.label('KeyG'); });
 
+
+// ---- race route: map + path on the road
+await run('race route', () => {
+  const g = window.game;
+  const def = window.S.buildCustom({ title: 'R', story: 'x', location: 'downtown', time: 'dusk', insertion: 'foot', exit: 'reach', objectives: ['race'], count: 1, enemies: 0.3 });
+  g.startMission(def, {}); g.god = true; const p = g.player, o = g.mission.cur, s = o.st;
+  window.tick(3);
+  const out = { mapBeforeEntering: document.getElementById('racemap').style.display, pathBuilt: !!g.racePath, dashes: g.racePath ? g.racePath.dashes.length : 0 };
+  p.pos.set(s.car.pos.x + 2.6, 0, s.car.pos.z); window.tick(2); g.findInteract().act(); window.tick(130);
+  out.state = s.state; out.ringsVisible = g.racePath.rings.map((r) => r.visible); out.mapNow = document.getElementById('racemap').style.display;
+  const before = g.racePath.cp; const k = g.input.keys; let f = 0;
+  while (s.cp < 2 && f < 3000) { const c = s.cps[Math.min(s.cp, s.cps.length - 1)], car = s.car; let d = Math.atan2(c.x - car.pos.x, c.z - car.pos.z) - car.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); k.KeyA = d > 0.06; k.KeyD = d < -0.06; const slow = Math.abs(d) > 0.5 && car.speed > 14; k.KeyW = !slow; k.KeyS = slow; window.tick(1); f++; }
+  k.KeyW = k.KeyA = k.KeyD = k.KeyS = false; window.tick(2);
+  out.cpAdvanced = g.racePath.cp !== before; out.cp = s.cp; out.rivals = s.rivals.length;
+  return out;
+});
+await shot('race-route', 800);
+await run('race route cleaned up', () => { const g = window.game; g.startMission(window.M('m1'), {}); window.tick(3); return { path: g.racePath, map: document.getElementById('racemap').style.display }; });
+
+// ---- aiming zooms in and tags enemies
+await run('aim zoom + tags', () => {
+  const g = window.game; g.startMission(window.M('m5'), { approach: 'storm' }); g.god = true; const p = g.player, W = g.world;
+  window.tick(3); p.exitVehicle(); p.mode = 'foot'; p.vy = 0;
+  let pick = null;
+  for (const e of g.enemies) { if (e.dead || e.def.static || e.pos.y > 1) continue; for (const [ox, oz] of [[0, -30], [0, 30], [-30, 0], [30, 0], [0, -45], [0, 45]]) { if (W.los(e.pos.x + ox, 1.6, e.pos.z + oz, e.pos.x, 1.3, e.pos.z) && !W.inside(e.pos.x + ox, 1, e.pos.z + oz)) { pick = { e, ox, oz }; break; } } if (pick) break; }
+  if (!pick) return { error: 'no enemy with a clear sight line found' };
+  const { e, ox, oz } = pick; p.pos.set(e.pos.x + ox, 0, e.pos.z + oz); p.give('rifle'); p.switchTo('rifle'); window.tick(3);
+  const out = { fovBefore: Math.round(g.camera.fov), taggedBefore: e.tagT > 0 };
+  g.input.buttons[2] = true;
+  for (let i = 0; i < 40; i++) { p.yaw = Math.atan2(e.pos.x - p.pos.x, e.pos.z - p.pos.z); const c = g.camera.position, dy = e.pos.y + 1.3 - c.y; p.pitch = Math.atan2(dy, Math.hypot(e.pos.x - c.x, e.pos.z - c.z)); window.tick(1); }
+  out.fovAiming = Math.round(g.camera.fov); out.tagged = e.tagT > 0; out.tagShown = [...document.querySelectorAll('.etag')].filter((n) => n.style.display === 'block').map((n) => n.textContent);
+  g.input.buttons[2] = false; window.tick(40); out.fovAfter = Math.round(g.camera.fov);
+  for (const [w, slot] of [['pistol', 'pistol'], ['rifle', 'rifle']]) { p.switchTo(slot); g.input.buttons[2] = true; window.tick(40); out['fov_' + w] = Math.round(g.camera.fov); g.input.buttons[2] = false; }
+  return out;
+});
+await shot('aim-zoom', 600);
+
+// ---- new weapons: shotgun pellets, previews
+await run('shotgun pellets', () => {
+  const g = window.game, p = g.player; g.save.profile.own.variants.push('spas12', 'mp5', 'deagle', 'p90', 'striker');
+  p.var.rifle = 'spas12'; p.rebuildW('rifle'); p.inv.rifle = { mag: 6, res: 24 }; p.switchTo('rifle'); window.tick(2);
+  const e = g.enemies.find((x) => !x.dead && x.pos.y < 1), s0 = g.stats.shots, h0 = g.stats.hits;
+  p.pos.set(e.pos.x, 0, e.pos.z - 6); const c = g.camera.position;
+  p.yaw = Math.atan2(e.pos.x - p.pos.x, e.pos.z - p.pos.z); p.pitch = 0; window.tick(4);
+  const hp0 = e.hp, s1 = g.stats.shots, h1 = g.stats.hits; g.input.btnPressed[0] = true; window.tick(1);
+  return { name: p.W.rifle.name, pellets: p.W.rifle.pellets, shots: g.stats.shots - s1, hits: g.stats.hits - h1, damage: Math.round(hp0 - e.hp), mag: p.inv.rifle.mag };
+});
+await run('weapon previews', () => { const g = window.game; g.toMenu(true); g.save.profile.credits = 9000; g.save.profile.equip.rifle = 'spas12'; g.save.profile.equip.pistol = 'deagle'; g.ui.armory('weapons', 'rifle', () => g.ui.title()); return document.querySelectorAll('#ui [data-a]').length; });
+await shot('weapon-spas12', 1500);
+await run('preview mp5', () => { const g = window.game; g.save.profile.equip.rifle = 'mp5'; g.ui.armory('weapons', 'rifle', () => g.ui.title()); return 1; });
+await shot('weapon-mp5', 1500);
+await run('preview deagle', () => { const g = window.game; g.ui.armory('weapons', 'pistol', () => g.ui.title()); return 1; });
+await shot('weapon-deagle', 1500);
+await run('preview p90+striker', () => { const g = window.game; g.save.profile.equip.rifle = 'striker'; g.ui.armory('weapons', 'rifle', () => g.ui.title()); return 1; });
+await shot('weapon-striker', 1500);
+await run('restore gear', () => { const g = window.game; const e = g.save.profile.equip; e.rifle = 'm4a1'; e.pistol = 'usp'; return 1; });
+
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {

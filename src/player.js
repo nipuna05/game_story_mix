@@ -5,7 +5,7 @@ import { VARIANTS, weaponDef, OUTFITS, PACK_ITEMS } from './gear.js';
 
 const ORDER = ['fists', 'pistol', 'rifle', 'sniper'];
 const SLOT_LIST = ['pistol', 'rifle', 'sniper'];
-const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3();
+const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3(), _f = new THREE.Vector3();
 
 export class Player {
   constructor(g) {
@@ -100,6 +100,7 @@ export class Player {
     if (inp.wheel) { let i = ORDER.indexOf(this.cur); for (let n = 0; n < 4; n++) { i = (i + Math.sign(inp.wheel) + 4) % 4; if (this.inv[ORDER[i]]) break; } this.switchTo(ORDER[i]); }
     if (this.lockFists && this.cur !== 'fists') this.cur = 'fists';
     const wd = this.W[this.cur], st = this.inv[this.cur];
+    if (this.aiming && this.cur !== 'fists') this.scanTargets(wd);
     if (this.reloadT > 0) {
       this.reloadT -= dt;
       if (this.reloadT <= 0) { const n = Math.min(wd.mag - st.mag, st.res); st.mag += n; st.res -= n; }
@@ -148,6 +149,18 @@ export class Player {
     this.chute.visible = false;
   }
 
+  // zooming in lets you identify enemies: anything near the crosshair in line of sight gets tagged for a few seconds
+  scanTargets(wd) {
+    const g = this.g, cam = g.camera, w = g.world, f = _f;
+    cam.getWorldDirection(f);
+    const cosT = Math.cos((cam.fov * Math.PI / 360) * 0.85), range = wd.scope ? 280 : 160;
+    for (const e of g.enemies) {
+      if (e.dead || e.neutral) continue;
+      const dx = e.pos.x - cam.position.x, dy = e.pos.y + 1.3 - cam.position.y, dz = e.pos.z - cam.position.z, d = Math.hypot(dx, dy, dz);
+      if (d > range || d < 2 || (dx * f.x + dy * f.y + dz * f.z) / d < cosT) continue;
+      if (w.los(cam.position.x, cam.position.y, cam.position.z, e.pos.x, e.pos.y + 1.3, e.pos.z)) e.tagT = 6;
+    }
+  }
   rebuildW(slot) { this.W[slot] = weaponDef(this.var[slot], this.g.save.profile, this.var[slot] === this.g.save.profile.equip[slot]); }
   packUsed() { return Object.values(this.pack).reduce((a, b) => a + b, 0); }
   addPack(kind) { if (this.packUsed() >= this.packCap) return false; this.pack[kind] = (this.pack[kind] || 0) + 1; return true; }
@@ -198,13 +211,17 @@ export class Player {
     st.mag--; this.fireCd = wd.rate;
     const cam = g.camera; cam.getWorldDirection(_d);
     let sp = wd.spread * (this.aiming ? (wd.scope ? 0.02 : 0.4) : 1) * (this.speed > 2 ? 1.6 : 1) * (this.prone ? 0.5 : this.crouch ? 0.7 : 1) * (sprint ? 2 : 1);
-    _d.x += rnd(-sp, sp); _d.y += rnd(-sp, sp); _d.z += rnd(-sp, sp); _d.normalize();
-    const head = _v.set(this.pos.x, this.pos.y + 1.5, this.pos.z);
-    const tMin = Math.max(0, head.sub(cam.position).dot(_d));
-    const hit = g.shootRay(cam.position, _d, 450, tMin, { dmg: wd.dmg, from: 'player' });
+    const base = _d.clone(), n = wd.pellets || 1, h0 = g.stats.hits, ends = [];
+    for (let i = 0; i < n; i++) {   // shotguns fire several pellets; each one can hit
+      _d.copy(base); _d.x += rnd(-sp, sp); _d.y += rnd(-sp, sp); _d.z += rnd(-sp, sp); _d.normalize();
+      const head = _v.set(this.pos.x, this.pos.y + 1.5, this.pos.z);
+      const tMin = Math.max(0, head.sub(cam.position).dot(_d));
+      ends.push(g.shootRay(cam.position, _d, wd.range || 450, tMin, { dmg: wd.dmg, from: 'player' }));
+    }
+    if (g.stats.hits - h0 > 1) g.stats.hits = h0 + 1;   // accuracy counts shots, not pellets
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     const mz = new THREE.Vector3(this.pos.x + rx * 0.14 + Math.sin(this.yaw) * 0.9, this.pos.y + (this.prone ? 0.4 : this.wet ? 0.8 : this.crouch ? 1.05 : 1.5), this.pos.z + rz * 0.14 + Math.cos(this.yaw) * 0.9);
-    g.fx.tracer(mz, hit, 0xfff0b0);
+    for (let i = 0; i < ends.length; i += (n > 3 ? 2 : 1)) g.fx.tracer(mz, ends[i], 0xfff0b0);
     if (wd.snd !== 'pistol' && !wd.supp) g.fx.flash(mz, 0xffc070, 40, 0.06);
     this.pitch += wd.recoil; this.recoil = Math.min(0.2, (this.recoil || 0) + wd.recoil); this.yaw += rnd(-wd.recoil, wd.recoil) * 0.25;
     g.audio.shot(wd.snd, wd.supp ? 0.3 : 1);
@@ -357,7 +374,7 @@ export class Player {
         const t = w.raycast(px, py, pz, -_d.x, -_d.y, -_d.z, dist + 0.3);
         const dd = Math.max(0.3, Math.min(dist, t - 0.25));
         cam.position.set(px - _d.x * dd, py - _d.y * dd, pz - _d.z * dd);
-        fov = this.aiming ? (wdc.zoom || 46) : 68;
+        fov = this.aiming ? (wdc.zoom || wdc.aimFov || 46) : 68;
       }
       cam.lookAt(cam.position.x + _d.x, cam.position.y + _d.y, cam.position.z + _d.z);
     }

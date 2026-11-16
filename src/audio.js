@@ -41,6 +41,7 @@ export class Sfx {
   shot(kind, vol = 1) {
     if (vol < 0.03) return;
     if (kind === 'pistol') { this._noise(0.09, 1500, 0.3 * vol); this._tone(300, 0.05, 0.1 * vol, 'square', 120); }
+    else if (kind === 'shotgun') { this._noise(0.3, 1700, 1.1 * vol); this._tone(95, 0.22, 0.6 * vol, 'sawtooth', 38); }
     else if (kind === 'sniper') { this._noise(0.45, 2200, 1.0 * vol); this._tone(110, 0.3, 0.6 * vol, 'sawtooth', 35); }
     else { this._noise(0.16, 3000, 0.6 * vol); this._tone(160, 0.1, 0.35 * vol, 'sawtooth', 55); }
   }

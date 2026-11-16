@@ -1,0 +1,30 @@
+// Passengers and bike test: node tools/ride.mjs  (needs the dev server)
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
+await page.addInitScript(() => { Element.prototype.requestPointerLock = () => {}; });
+const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+await page.goto('http://localhost:5173/'); await page.waitForFunction(() => window.game, null, { timeout: 60000 }); await page.waitForTimeout(1500);
+const r = await page.evaluate(async () => {
+  const S = await import('/src/story.js'); const g = window.game, out = {};
+  const tick = (n) => { for (let i = 0; i < n && g.state === 'playing'; i++) { g.update(1 / 30); g.input.frameEnd(); } };
+  g.startMission(S.CAMPAIGN.find((m) => m.id === 'm3'), {}); g.god = true; const p = g.player;
+  const hs = g.mission.cur.st.hostages; hs.forEach((h) => h.free());
+  const car = g.vehicles.find((v) => v.type === 'car' && v.kind === 'sedan');
+  car.teleport(p.pos.x + 8, p.pos.z, 0); hs.forEach((h, i) => h.pos.set(car.pos.x + 3 + i, 0, car.pos.z + 2)); p.pos.set(car.pos.x + 2.7, 0, car.pos.z); tick(3);
+  g.findInteract().act(); tick(10);
+  out.states = hs.map((h) => h.state); out.seats = car.occ.map((o) => !!o); out.sitting = hs.map((h) => h.h.group.visible && h.h.group.parent === car.body);
+  out.playerHidden = !p.h.group.visible;
+  const z0 = car.pos.z; g.input.keys.KeyW = true; tick(60); g.input.keys.KeyW = false;
+  out.moved = Math.round(car.pos.z - z0); out.ridersFollow = hs.every((h) => Math.hypot(h.pos.x - car.pos.x, h.pos.z - car.pos.z) < 0.5);
+  p.exitVehicle(); tick(15); out.afterExit = hs.map((h) => h.state); out.onGround = hs.map((h) => h.h.group.parent === g.scene);
+  const bike = g.vehicles.find((v) => v.kind === 'bike'); bike.teleport(p.pos.x + 6, p.pos.z, 0); hs[0].pos.set(bike.pos.x + 2, 0, bike.pos.z); p.pos.set(bike.pos.x + 1.4, 0, bike.pos.z); tick(2);
+  g.findInteract().act(); tick(10); out.bike = { passenger: hs[0].state, seated: !!bike.occ[1] };
+  const seen = [];
+  g.scene.traverse((o) => { if (o.isSkinnedMesh) { let v = true, q = o; while (q) { if (!q.visible) v = false; q = q.parent; } if (v) { const w = o.getWorldPosition(new o.position.constructor()); seen.push([Math.round(w.x), Math.round(w.z)]); } } });
+  out.visibleFigures = seen.length; out.bikeAt = [Math.round(bike.pos.x), Math.round(bike.pos.z)]; out.figuresAt = seen;
+  return out;
+});
+console.log(JSON.stringify(r)); console.log('errors', errs);
+await page.waitForTimeout(500); await page.screenshot({ path: 'test-shots/ride-bike.png' });
+await b.close();

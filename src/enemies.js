@@ -64,7 +64,7 @@ export class Enemy extends Walker {
     this.route = o.route || null; this.ri = o.ri || 0; this.wait = 0;
     this.state = this.route ? 'patrol' : 'idle';
     this.aw = 0; this.last = { x, z }; this.lostT = 0; this.alertT = 0; this.searchT = 0; this.lookT = 0;
-    this.fireCd = rnd(0.2, 0.8); this.burstN = 0; this.react = 0; this.strafe = 1; this.strafeT = 0;
+    this.tagT = 0; this.fireCd = rnd(0.2, 0.8); this.burstN = 0; this.react = 0; this.strafe = 1; this.strafeT = 0;
     this.losT = Math.random() * 0.15; this.sees = false; this.dead = false; this.deadT = 0;
     this.neutral = !!o.neutral; this.noAlarm = !!o.noAlarm; this.name = o.name || null;
     this.stagger = 0; this.windup = 0; this.meleeCd = 0; this.seed = Math.random() * 10;
@@ -98,7 +98,7 @@ export class Enemy extends Walker {
   update(dt) {
     const g = this.g, p = g.player;
     if (this.dead) { animateHumanoid(this.h, { dead: true }, dt); return; }
-    this.speedNow = 0;
+    this.speedNow = 0; if (this.tagT > 0) this.tagT -= dt;
     if (this.stagger > 0) { this.stagger -= dt; this.sync(dt); return; }
     const tp = p.targetPos(), dx = tp.x - this.pos.x, dz = tp.z - this.pos.z, d = Math.hypot(dx, dz);
     if (!this.neutral && !p.dead && !(g.truce && !this.noAlarm)) {
@@ -253,27 +253,38 @@ export class Hostage extends Walker {
     this.h.group.position.copy(this.pos); g.scene.add(this.h.group);
   }
   free() { if (this.state === 'captive') this.state = 'follow'; }
+  getOff() {
+    const v = this.ridingIn; this.ridingIn = null;
+    if (v) {
+      v.freeSeat(this); this.g.scene.add(this.h.group);
+      this.pos.set(v.pos.x + Math.cos(v.yaw) * (v.r + 1.4), 0, v.pos.z - Math.sin(v.yaw) * (v.r + 1.4)); this.g.world.resolveCircle(this.pos, 0.4, 0, 1.8);
+    }
+    this.h.group.visible = true; this.h.group.rotation.set(0, this.yaw, 0); this.state = 'follow';
+  }
   update(dt) {
     const g = this.g, p = g.player;
     this.speedNow = 0;
     if (this.state === 'follow' || this.state === 'riding') {
-      const z = g.rescueZone;
-      if (p.mode === 'car' && (this.state === 'riding' || dist2(this.pos.x, this.pos.z, p.pos.x, p.pos.z) < 9)) {
-        this.state = 'riding'; this.pos.copy(p.pos); this.h.group.visible = false;
-      } else {
-        if (this.state === 'riding') {
-          this.state = 'follow'; this.h.group.visible = true;
-          this.pos.set(p.pos.x + rnd(-2, 2), 0, p.pos.z + rnd(-2, 2)); g.world.resolveCircle(this.pos, 0.4, 0, 1.8);
-        }
+      const z = g.rescueZone, v = p.vehicle;
+      const canBoard = p.mode === 'car' && v && !v.dead && (this.state === 'riding' || (dist2(this.pos.x, this.pos.z, p.pos.x, p.pos.z) < 9 && v.seatsFree() > 0));
+      if (canBoard && this.state !== 'riding') {
+        const i = v.takeSeat(this);
+        if (i >= 0) { this.state = 'riding'; this.ridingIn = v; g.audio.click(); }
+      }
+      if (this.state === 'riding' && (!canBoard || this.ridingIn !== v || this.ridingIn.dead)) this.getOff();
+      if (this.state === 'riding') this.pos.copy(this.ridingIn.pos);
+      else {
         const d = dist2(this.pos.x, this.pos.z, p.pos.x, p.pos.z);
         if (p.mode === 'foot' && d > 3) this.moveTo(p.pos.x, p.pos.z, Math.min(7.4, 2 + d * 0.8), dt);
       }
       if (z && dist2(this.pos.x, this.pos.z, z.x, z.z) < 11) {
+        if (this.state === 'riding') this.getOff();
         this.state = 'safe'; this.h.group.visible = true;
         this.pos.set(z.x + rnd(-4, 4), 0, z.z + rnd(-4, 4));
         g.audio.blip(700);
       }
     }
+    if (this.state === 'riding') return;   // the vehicle animates and positions its passengers
     animateHumanoid(this.h, { speed: this.speedNow, kneel: this.state === 'captive' || this.state === 'safe', hands: this.state === 'captive' ? 'tied' : null }, dt);
     this.h.group.position.copy(this.pos); this.h.group.rotation.y = this.yaw;
     if (g.world.waters.length && g.world.inWater(this.pos.x, this.pos.z)) this.h.group.position.y -= 0.75;

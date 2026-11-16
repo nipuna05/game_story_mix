@@ -3,6 +3,7 @@ import { clamp, damp, angDiff, turnToward, dist2 } from './util.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { cmat, makeHumanoid, animateHumanoid } from './characters.js';
 import { ASSETS } from './assets.js';
+import { buildVehicle, HAS_MODEL } from './carmodels.js';
 
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const GEO = {
@@ -38,20 +39,25 @@ export class Car {
     this.pos = new THREE.Vector3(x, 0, z); this.yaw = yaw; this.speed = 0; this.steer = 0;
     this.hp = this.def.hp; this.max = this.def.max; this.r = this.def.r;
     this.driver = null; this.ai = null; this.frozen = false; this.locked = false; this.dead = false; this.lean = 0;
-    this.name = this.def.name;
+    this.name = this.def.name; this.seats = []; this.occ = [];
     const c = color ?? this.def.colors[Math.floor(Math.random() * this.def.colors.length)];
     const grp = this.mesh = new THREE.Group(); grp.rotation.order = 'YXZ';
     const body = this.body = new THREE.Group(); grp.add(body);
     const bm = vmat(c), dk = vmat(0x15171a, 0.7, 0.2);
     this.wheels = [];
-    if (kind === 'boat') {
-      part(body, 2.3, 0.8, 5.2, vmat(c, 0.7, 0.1), 0, 0.35, 0); part(body, 1.5, 0.75, 1.6, vmat(c, 0.7, 0.1), 0, 0.36, 3.0);
-      part(body, 1.9, 0.12, 4.6, vmat(0x3a2e22, 0.9, 0), 0, 0.72, 0); part(body, 1.7, 0.5, 0.3, dk, 0, 1.0, 1.2);
-      part(body, 0.5, 0.9, 0.5, dk, 0, 0.8, -2.8);
+    if (HAS_MODEL[kind]) {
+      const m = buildVehicle(kind, c); body.add(m.group); this.wheelSet = m.wheels;
+      if (m.seat) { // a driver you can see sitting inside
+        this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, tint: 0xb9c8e6 });
+        this.rider.group.position.set(m.seat.x, m.seat.y, m.seat.z); this.rider.group.visible = false; body.add(this.rider.group);
+        this.seatPose = { kneel: !!m.seat.kneel, hands: 'drive' };
+        this.seats = m.seats;
+      }
     } else if (kind === 'bike' && ASSETS.bike) {
       const m = ASSETS.bike.clone(true); body.add(m);
       this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, tint: 0xb9c8e6 });
       this.rider.group.position.set(0, 0.18, -0.3); this.rider.group.visible = false; body.add(this.rider.group);
+      this.seats = [{ x: 0, y: 0.18, z: -0.3 }, { x: 0, y: 0.2, z: -0.88, kneel: false, crouch: true, hands: 'drive' }];
     } else if (kind === 'bike') {
       part(body, 0.34, 0.5, 1.5, bm, 0, 0.78, 0); part(body, 0.3, 0.16, 0.7, dk, 0, 1.08, -0.35);
       part(body, 0.7, 0.08, 0.08, dk, 0, 1.25, 0.55); part(body, 0.12, 0.6, 0.12, dk, 0, 0.9, 0.62);
@@ -59,19 +65,6 @@ export class Car {
       for (const z of [0.85, -0.8]) { const w = new THREE.Mesh(GEO.bwheel, dk); w.position.set(0, 0.4, z); w.castShadow = true; body.add(w); this.wheels.push(w); }
       this.rider = makeHumanoid({ shirt: 0x3b5876, pants: 0x3a4250, hat: 0x101010, tint: 0xb9c8e6 });
       this.rider.group.position.set(0, 0.18, -0.3); this.rider.group.visible = false; body.add(this.rider.group);
-    } else {
-      const L = kind === 'jeep' ? 4.2 : 4.4, Wd = kind === 'jeep' ? 2.0 : 1.9, lo = kind === 'sports' ? 0.5 : kind === 'jeep' ? 0.95 : 0.65;
-      part(body, Wd, lo, L, bm, 0, 0.42 + lo / 2, 0);
-      const ch = kind === 'sports' ? 0.42 : 0.62;
-      part(body, Wd - 0.25, ch, L * 0.46, kind === 'jeep' ? cmat(0x3a4030) : glass, 0, 0.42 + lo + ch / 2, -L * 0.07);
-      part(body, Wd - 0.2, 0.06, L * 0.48, bm, 0, 0.42 + lo + ch + 0.03, -L * 0.07);
-      for (const sx of [-1, 1]) { part(body, 0.34, 0.16, 0.06, glow, sx * (Wd / 2 - 0.3), 0.5 + lo * 0.6, L / 2 + 0.01); part(body, 0.34, 0.14, 0.06, tail, sx * (Wd / 2 - 0.3), 0.5 + lo * 0.6, -L / 2 - 0.01); }
-      if (kind === 'sports') part(body, Wd, 0.06, 0.4, dk, 0, 1.2, -L / 2 + 0.2);
-      for (const sx of [-1, 1]) for (const sz of [1, -1]) {
-        const w = new THREE.Mesh(GEO.wheel, dk); w.position.set(sx * (Wd / 2 - 0.05), 0.42, sz * L * 0.32); w.castShadow = true; grp.add(w);
-        w.add(new THREE.Mesh(GEO.rim, rimMat));
-        if (sz > 0) this.wheels.push(w);
-      }
     }
     grp.position.copy(this.pos); grp.rotation.y = yaw;
     g.scene.add(grp);
@@ -128,11 +121,24 @@ export class Car {
     this.lean = damp(this.lean, -this.steer * clamp(a / 20, 0, 1) * (this.kind === 'bike' ? 0.5 : 0.06), 6, dt);
     this.mesh.position.set(this.pos.x, 0, this.pos.z);
     this.mesh.rotation.y = this.yaw; this.body.rotation.z = this.lean;
-    if (this.kind !== 'bike') for (const w of this.wheels) w.rotation.y = this.steer * 0.45;
-    if (this.rider) { this.rider.group.visible = !!this.driver; if (this.driver) animateHumanoid(this.rider, { crouch: true, hands: 'drive' }, dt); }
+    if (this.wheelSet) for (const w of this.wheelSet) { if (w.front) w.pivot.rotation.y = this.steer * 0.45; w.spin.rotation.x += this.speed * dt / w.r; }
+    if (this.rider) { this.rider.group.visible = !!(this.driver || this.ai); if (this.rider.group.visible) animateHumanoid(this.rider, this.seatPose || { crouch: true, hands: 'drive' }, dt); }
     if (this.def.water) this.mesh.position.y = -0.12 + Math.sin(g.time * 1.7 + this.pos.x) * 0.05;
+    for (let i = 1; i < this.occ.length; i++) if (this.occ[i]) { const s = this.seats[i]; animateHumanoid(this.occ[i].h, { kneel: !!s.kneel, crouch: !!s.crouch, hands: s.hands || null }, dt); }
   }
 
+  // passengers: hostages sit in the free seats
+  seatsFree() { let n = 0; for (let i = 1; i < this.seats.length; i++) if (!this.occ[i]) n++; return n; }
+  takeSeat(h) {
+    for (let i = 1; i < this.seats.length; i++) {
+      if (this.occ[i]) continue;
+      const s = this.seats[i]; this.occ[i] = h;
+      h.h.group.position.set(s.x, s.y, s.z); h.h.group.rotation.set(0, 0, 0); h.h.group.visible = true; this.body.add(h.h.group);
+      return i;
+    }
+    return -1;
+  }
+  freeSeat(h) { for (let i = 1; i < this.occ.length; i++) if (this.occ[i] === h) this.occ[i] = null; }
   aiDrive(dt) {
     const ai = this.ai, n = ai.route.length;
     if (ai.i >= n) return [this.speed > 1 ? -1 : 0, 0];

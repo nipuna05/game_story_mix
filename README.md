@@ -101,11 +101,21 @@ Tab toggles the objective list, H opens the field manual, Esc pauses.
 Open **Profile & armory** from the main menu (or **Loadout & backpack** on any mission briefing).
 
 - **Profile:** your callsign (the hero's name), rank and level, service record and best mission ranks. Missions pay credits and XP.
-- **Weapons:** you carry one gun per slot - sidearm, primary and heavy - plus fists and a kick. Buy better guns (G-17, AK-47), fit attachments (suppressor, extended magazine, stabiliser grip, optic) and pick a finish colour. A live 3D preview shows your soldier with the gun.
+- **Weapons:** you carry one gun per slot - sidearm, primary and heavy - plus fists and a kick. Buy better guns (G-17, D-50 Magnum, AK-47, MP5, P90, SPAS-12 and Striker shotguns), fit attachments (suppressor, extended magazine, stabiliser grip, optic) and pick a finish colour. A live 3D preview shows your soldier with the gun.
 - **Armour & outfit:** body armour tiers worn at the start of every mission, and an outfit colour for the soldier.
 - **Backpack:** medkits, armour plates, noisemakers, ammo boxes and grenades. Capacity is limited and can be upgraded. Use them in the field with Q, X, T and Y.
 
 In the field, **enemies drop their guns**. Press the use key next to a gun to take it - it swaps with the gun you carry in that slot, and yours is dropped. U drops the gun you hold. Weapon racks with guns, ammo and medkits are hidden in compounds and in some buildings. Medkits and plates you find are free; the ones from your own stock are only used up when you use them.
+
+## Vehicles, passengers and races
+
+Cars, the jeep and the boat are detailed models built in code (curved bodies, glass over a visible interior, spinning wheels, lights). Your driver is visible at the wheel. Rescued hostages board when you drive up and sit in the free seats (sedan 3 passengers, jeep 3, sports car 1, boat 3, motorbike 1 on the back) and step out beside you when you get out or reach the safe zone.
+
+During a race a **route map** shows the whole track with numbered checkpoints, your position and the rivals, and glowing arrows are laid along the road to the next checkpoints.
+
+## Aiming and spotting
+
+Aiming zooms in (pistols 52 degrees, rifles 40, optics and scopes more). Enemies near the crosshair in line of sight get a tag with their type and distance for a few seconds, and show on the minimap.
 
 ## Stealth movement and cover
 
@@ -129,6 +139,7 @@ Every key can be changed: **Settings -> Customize controls**. Click an action, p
 ```
 index.html          page shell and HUD markup
 src/main.js         game loop, spawning, combat helpers, mission flow
+src/carmodels.js   detailed cars, jeep and boat built in code
 src/world.js        scene, lighting themes, collision, ray casting, navigation graph
 src/gear.js         weapons, attachments, armour, backpack items and the profile data
 src/armory.js       profile / armory / backpack and key-binding screens

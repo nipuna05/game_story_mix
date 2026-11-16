@@ -7,6 +7,11 @@ export const SLOT_NAMES = { pistol: 'Sidearm', rifle: 'Primary', sniper: 'Heavy'
 export const VARIANTS = {
   usp: { slot: 'pistol', name: 'USP-9', model: 'usp', dmg: 36, rate: 0.2, mag: 12, spread: 0.01, noise: 12, reload: 1.2, recoil: 0.012, price: 0, desc: 'Accurate, quiet sidearm' },
   glock: { slot: 'pistol', name: 'G-17 Rapid', model: 'glock', dmg: 27, rate: 0.12, mag: 17, spread: 0.016, noise: 18, reload: 1.1, recoil: 0.011, price: 500, desc: 'Fires faster, hits lighter' },
+  deagle: { slot: 'pistol', name: 'D-50 Magnum', model: 'deagle', dmg: 70, rate: 0.45, mag: 7, spread: 0.012, noise: 45, reload: 1.6, recoil: 0.03, price: 900, desc: 'Slow, loud, hits like a truck' },
+  mp5: { slot: 'rifle', name: 'MP5 SMG', model: 'mp5', dmg: 20, rate: 0.075, mag: 30, spread: 0.028, noise: 55, reload: 1.7, recoil: 0.007, auto: true, price: 700, desc: 'Very fast close-range fire' },
+  p90: { slot: 'rifle', name: 'P90 PDW', model: 'p90', dmg: 18, rate: 0.06, mag: 50, spread: 0.03, noise: 60, reload: 2.2, recoil: 0.006, auto: true, price: 1100, desc: '50 rounds, shreds up close' },
+  spas12: { slot: 'rifle', name: 'SPAS-12 Shotgun', model: 'spas12', snd: 'shotgun', dmg: 14, pellets: 8, range: 45, rate: 0.9, mag: 6, spread: 0.06, noise: 90, reload: 2.4, recoil: 0.04, price: 800, desc: '8 pellets per shot - devastating close up' },
+  striker: { slot: 'rifle', name: 'Striker Auto-shotgun', model: 'striker', snd: 'shotgun', dmg: 11, pellets: 8, range: 40, rate: 0.3, mag: 12, spread: 0.07, noise: 90, reload: 3.0, recoil: 0.028, auto: true, price: 1400, desc: 'Fully automatic shotgun' },
   m4a1: { slot: 'rifle', name: 'M4A1 Carbine', model: 'm4a1', dmg: 27, rate: 0.1, mag: 30, spread: 0.022, noise: 75, reload: 1.8, recoil: 0.009, auto: true, price: 0, desc: 'Balanced assault rifle' },
   ak47: { slot: 'rifle', name: 'AK-47', model: 'ak47', dmg: 34, rate: 0.12, mag: 30, spread: 0.03, noise: 85, reload: 2.0, recoil: 0.013, auto: true, price: 900, desc: 'Hits hard, kicks harder' },
   l118a: { slot: 'sniper', name: 'L118A Longbow', model: 'l118a', dmg: 160, rate: 1.1, mag: 5, spread: 0.03, noise: 95, reload: 2.5, recoil: 0.05, scope: true, price: 0, desc: 'One-shot long range' },
@@ -91,7 +96,7 @@ export function clampCarry(p) {
 
 // the stats of one gun with the owner's attachments and finish applied
 export function weaponDef(id, prof, equipped) {
-  const v = VARIANTS[id], d = { ...v, snd: v.slot, id, finish: 0, supp: false };
+  const v = VARIANTS[id], d = { ...v, snd: v.snd || v.slot, id, finish: 0, supp: false, aimFov: v.aimFov || ({ pistol: 52, rifle: 40, sniper: 46 })[v.slot] };
   if (equipped && prof) {
     const att = prof.equip.att[v.slot] || [];
     if (att.includes('supp')) { d.noise *= 0.3; d.dmg *= 0.92; d.supp = true; }

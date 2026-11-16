@@ -4,6 +4,8 @@ import { clamp, dist2 } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const _v = new THREE.Vector3();
+const TAG_NAMES = { guard: 'GUARD', heavy: 'HEAVY', sniper: 'SNIPER', thug: 'FIGHTER', boss: 'TARGET' };
+const RIVAL_HEX = ['e8b020', '2a7ad2', '30a860', 'b040c0'];
 const keysets = (L) => ({
   foot: [[`${L('KeyW')} ${L('KeyA')} ${L('KeyS')} ${L('KeyD')}`, 'Move'], ['Mouse', 'Look'], [L('ShiftLeft'), 'Sprint'], [L('KeyC'), 'Crouch'], [L('KeyZ'), 'Crawl (prone)'], [L('KeyV'), 'Sneak walk (hold)'], [L('Space'), 'Jump / stand up'], ['L-click', 'Fire / punch'], ['R-click', 'Aim / block'], [L('KeyR'), 'Reload'], ['1-4', 'Weapons'], [L('KeyF'), 'Kick / takedown'], [L('KeyG'), 'Grenade'], [L('KeyE'), 'Use · pick up · enter'], [L('KeyU'), 'Drop weapon'], [`${L('KeyQ')} ${L('KeyX')} ${L('KeyT')} ${L('KeyY')}`, 'Backpack items'], [L('KeyB'), 'Brightness'], [L('KeyH'), 'Full manual']],
   car: [[`${L('KeyW')} / ${L('KeyS')}`, 'Gas / brake'], [`${L('KeyA')} / ${L('KeyD')}`, 'Steer'], [L('Space'), 'Handbrake'], [L('KeyE'), 'Get out'], [L('KeyB'), 'Brightness']],
@@ -16,10 +18,10 @@ export class Hud {
   constructor(g) {
     this.g = g;
     this.el = $('hud');
-    this.map = $('minimap').getContext('2d');
+    this.map = $('minimap').getContext('2d'); this.rmap = $('racemap').getContext('2d');
     this.queue = []; this.radioT = 0; this.bannerT = 0; this.hitT = 0; this.hurtK = 0;
     this.timer = ''; this.big = ''; this.objDirty = true; this.showObj = true; this.frame = 0; this.keysOn = false; this.keysT = 0;
-    this.cache = {};
+    this.cache = {}; this.tagEls = [];
   }
   show(on) { this.el.classList.toggle('hidden', !on); }
   reset() { this.keysT = 20; this.cache.keysSet = null; this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
@@ -133,7 +135,79 @@ export class Hud {
       this.set('markerText', 'text', `${t.label}  ${d > 999 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}`);
     } else this.set('marker', 'display', 'none');
 
+    this.updateTags(p);
     if (this.frame % 2 === 0) this.drawMap(t);
+    const ro = m && m.cur && m.cur.type === 'race' ? m.cur : null;
+    this.set('racemap', 'display', ro ? 'block' : 'none');
+    if (ro && this.frame % 2 === 0) this.drawRaceMap(ro);
+  }
+
+  // whole-track map for races: roads, the route with arrows, numbered checkpoints, you and the rivals
+  drawRaceMap(o) {
+    const g = this.g, p = g.player, s = o.st, c = this.rmap, S = 210, pad = 22, R = g.P.race, n = R.length;
+    if (!s.cps) return;
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const q of R) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+    const span = Math.max(x1 - x0, z1 - z0, 80), sc = (S - 2 * pad) / span, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const X = (x) => S / 2 + (x - cx) * sc, Y = (z) => S / 2 - (z - cz) * sc;
+    if (!s.mapBase) { // buildings never move: draw them once
+      const b = document.createElement('canvas'); b.width = b.height = S;
+      const bc = b.getContext('2d'); bc.fillStyle = 'rgba(150,170,190,0.30)';
+      for (const bx of g.world.boxes) {
+        if (bx.y1 < 1.5) continue;
+        const px = X(bx.x0), py = Y(bx.z1), w = (bx.x1 - bx.x0) * sc, h = (bx.z1 - bx.z0) * sc;
+        if (px + w < 0 || px > S || py + h < 0 || py > S) continue;
+        bc.fillRect(px, py, Math.max(1, w), Math.max(1, h));
+      }
+      s.mapBase = b;
+    }
+    c.clearRect(0, 0, S, S); c.drawImage(s.mapBase, 0, 0);
+    const seq = [R[0], ...s.cps], cp = Math.min(s.cp, s.cps.length - 1);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (let i = 0; i < s.cps.length; i++) {   // route: done = dim, current = cyan, ahead = amber
+      const a = seq[i], b = seq[i + 1], done = i < s.cp, cur = i === s.cp;
+      c.strokeStyle = done ? 'rgba(255,255,255,0.15)' : cur ? '#4fd1c5' : 'rgba(255,178,62,0.85)';
+      c.lineWidth = cur ? 4 : 3; c.beginPath(); c.moveTo(X(a.x), Y(a.z)); c.lineTo(X(b.x), Y(b.z)); c.stroke();
+      if (!done) { // direction arrow at the middle of the leg
+        const mx = (X(a.x) + X(b.x)) / 2, my = (Y(a.z) + Y(b.z)) / 2, ang = Math.atan2(Y(b.z) - Y(a.z), X(b.x) - X(a.x));
+        c.save(); c.translate(mx, my); c.rotate(ang); c.fillStyle = c.strokeStyle; c.beginPath(); c.moveTo(5, 0); c.lineTo(-4, -4); c.lineTo(-4, 4); c.fill(); c.restore();
+      }
+    }
+    c.font = '700 10px Consolas, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let k = 0; k < n; k++) {   // checkpoints: S/F is the start line, then 1, 2, 3 ...
+      const q = R[k], isNext = s.state === 'run' && q === s.cps[cp];
+      c.fillStyle = k === 0 ? '#ffffff' : isNext ? '#4fd1c5' : '#ffb23e'; c.beginPath(); c.arc(X(q.x), Y(q.z), isNext ? 8 : 6.5, 0, 7); c.fill();
+      c.fillStyle = '#111'; c.fillText(k === 0 ? 'S' : String(k), X(q.x), Y(q.z) + 0.5);
+    }
+    for (let i = 0; i < s.rivals.length; i++) { const r = s.rivals[i]; c.fillStyle = '#' + RIVAL_HEX[i % RIVAL_HEX.length]; c.beginPath(); c.arc(X(r.pos.x), Y(r.pos.z), 3.5, 0, 7); c.fill(); }
+    if (p.vehicle !== s.car) { c.fillStyle = '#4fd1c5'; c.fillRect(X(s.car.pos.x) - 4, Y(s.car.pos.z) - 4, 8, 8); }
+    const yaw = p.vehicle ? p.vehicle.yaw : p.yaw;
+    c.save(); c.translate(X(p.pos.x), Y(p.pos.z)); c.rotate(yaw); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(0, -7); c.lineTo(5, 6); c.lineTo(0, 3); c.lineTo(-5, 6); c.closePath(); c.fill(); c.stroke(); c.restore();
+    c.fillStyle = 'rgba(255,255,255,0.8)'; c.textAlign = 'left'; c.textBaseline = 'top';
+    const laps = Math.max(1, Math.round(s.cps.length / n)), lap = Math.min(laps, Math.floor(Math.min(s.cp, s.cps.length - 1) / n) + 1);
+    c.fillText('RACE ROUTE' + (laps > 1 ? `  LAP ${lap}/${laps}` : ''), 8, 6);
+    c.textAlign = 'right'; c.fillStyle = s.state === 'run' ? '#4fd1c5' : '#ffb23e'; c.fillText(s.state === 'run' ? (((s.cp + 1) % n === 0) ? 'NEXT: FINISH' : `NEXT: CP ${(s.cp + 1) % n}`) : s.state === 'count' ? 'GET READY' : 'GET IN THE CAR', S - 8, 6);
+  }
+
+  // name tags over enemies you have zoomed in on
+  updateTags(p) {
+    const g = this.g, cam = g.camera, W = innerWidth, H = innerHeight;
+    let n = 0;
+    for (const e of g.enemies) {
+      if (e.dead || !(e.tagT > 0) || n >= 12) continue;
+      _v.set(e.pos.x, e.pos.y + 2.3, e.pos.z);
+      if (_v.clone().applyMatrix4(cam.matrixWorldInverse).z > 0) continue;
+      _v.project(cam);
+      let el = this.tagEls[n];
+      if (!el) { el = document.createElement('div'); $('etags').appendChild(el); this.tagEls[n] = el; }
+      el.style.display = 'block'; el.style.transform = `translate(${((_v.x * 0.5 + 0.5) * W) | 0}px,${((-_v.y * 0.5 + 0.5) * H) | 0}px)`;
+      const cls = 'etag ' + (e.alerted ? 'hot' : 'cold'); if (el.className !== cls) el.className = cls;
+      const txt = `${TAG_NAMES[e.type] || 'ENEMY'} ${Math.round(dist2(e.pos.x, e.pos.z, p.pos.x, p.pos.z))}m${e.alerted ? ' !' : ''}`;
+      if (el.textContent !== txt) el.textContent = txt;
+      n++;
+    }
+    for (let i = n; i < this.tagEls.length; i++) this.tagEls[i].style.display = 'none';
   }
 
   drawMap(t) {
@@ -158,7 +232,7 @@ export class Hud {
     for (const tg of g.targets) if (tg.state !== 'dead') dot(tg.pos.x, tg.pos.z, 3.4, tg.state === 'armed' ? '#ff4d4d' : '#ffb23e');
     for (const e of g.enemies) {
       if (e.dead || e.neutral) continue;
-      if (dist2(e.pos.x, e.pos.z, px, pz) > range * 1.1 && !e.alerted) continue;
+      if (dist2(e.pos.x, e.pos.z, px, pz) > range * 1.1 && !e.alerted && !(e.tagT > 0)) continue;
       const col = e.alerted ? '#ff3b3b' : e.aw > 0.3 ? '#ffb23e' : '#e06060';
       c.strokeStyle = col; c.lineWidth = 1.2 / sc; c.beginPath(); c.moveTo(e.pos.x, e.pos.z); c.lineTo(e.pos.x + Math.sin(e.yaw) * 5 / sc * 1.4, e.pos.z + Math.cos(e.yaw) * 5 / sc * 1.4); c.stroke();
       dot(e.pos.x, e.pos.z, 2.6, col);

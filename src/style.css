@@ -127,3 +127,10 @@ button em { margin-left: 10px; }
 #keys { top: 232px; width: 250px; padding: 6px 10px; }
 #keys div { padding: 0; line-height: 1.3; font-size: 11px; }
 #keys b { flex: 0 0 82px; }
+
+#racemap { position: absolute; left: 16px; bottom: 150px; width: 210px; height: 210px; display: none; border-radius: 8px; background: rgba(6, 10, 14, 0.82); border: 2px solid var(--line); }
+
+#etags { position: absolute; inset: 0; pointer-events: none; }
+.etag { position: absolute; left: 0; top: 0; margin: -26px 0 0 -34px; padding: 1px 7px; font: 700 11px var(--mono); letter-spacing: 1px; background: rgba(0, 0, 0, 0.6); border: 1px solid; white-space: nowrap; }
+.etag::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -5px; border: 5px solid transparent; border-top-color: currentColor; border-bottom: 0; }
+.etag.hot { color: #ff5a5a; } .etag.cold { color: #ffb23e; }

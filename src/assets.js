@@ -6,7 +6,7 @@ export const ASSETS = { cole: null, guns: {}, bike: null };
 
 const BASE = import.meta.env.BASE_URL;
 // file, length in metres, flip (model's stock end is in front)
-const GUNS = { usp: [0.34, false], glock: [0.26, true], m4a1: [0.86, false], ak47: [0.88, true], l118a: [1.25, false] };
+const GUNS = { usp: [0.34, false], glock: [0.26, true], deagle: [0.4, true], m4a1: [0.86, false], ak47: [0.88, true], mp5: [0.62, true], p90: [0.56, true], spas12: [0.95, true], striker: [0.82, true], l118a: [1.25, false] };
 
 // Turn a gun model so the barrel points along +Z with the grip at the origin.
 function prepareGun(src, len, flip) {

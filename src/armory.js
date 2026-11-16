@@ -45,7 +45,7 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
       <h3>${SLOT_NAMES[slot].toUpperCase()} WEAPON</h3>
       <div class="grid2">${Object.entries(VARIANTS).filter(([, v]) => v.slot === slot).map(([id, v]) => {
         const own = prof.own.variants.includes(id), on = eq[slot] === id;
-        return `<div class="opt ${on ? 'sel' : ''}" data-a="${own ? 'equip:' : 'buy:'}${id}"><b>${v.name} ${on ? '· EQUIPPED' : own ? '· owned' : price(v.price)}</b><span>${v.desc}</span><div class="sts">${stat('DMG', v.dmg)}${stat('RATE', (1 / v.rate).toFixed(1) + '/s')}${stat('MAG', v.mag)}${stat('NOISE', v.noise)}</div></div>`;
+        return `<div class="opt ${on ? 'sel' : ''}" data-a="${own ? 'equip:' : 'buy:'}${id}"><b>${v.name} ${on ? '· EQUIPPED' : own ? '· owned' : price(v.price)}</b><span>${v.desc}</span><div class="sts">${stat('DMG', v.pellets ? v.dmg + '×' + v.pellets : v.dmg)}${stat('RATE', (1 / v.rate).toFixed(1) + '/s')}${stat('MAG', v.mag)}${stat('NOISE', v.noise)}</div></div>`;
       }).join('')}</div>
       <h3>ATTACHMENTS</h3>
       <div class="grid2">${Object.entries(ATTACH).filter(([, a]) => a.slots.includes(slot)).map(([id, a]) => {
