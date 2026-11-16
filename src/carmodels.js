@@ -83,6 +83,9 @@ function makeWheel(r, w, spokes = 5) {
 // ---------------------------------------------------------------- cars
 const CARS = {
   sedan: { id: 'sedan', L: 4.5, W: 1.84, wb: 2.78, r: 0.38, tw: 0.27, sill: 0.28, floor: 0.32, tail: 0.92, belt: 0.98, nose: 0.74, roof: 1.5, cabRB: -1.22, cabFB: 0.78, cabRT: -0.84, cabFT: 0.28, spokes: 5 },
+  suv: { id: 'suv', L: 4.7, W: 1.94, wb: 2.85, r: 0.46, tw: 0.3, sill: 0.4, floor: 0.46, tail: 1.22, belt: 1.2, nose: 1.0, roof: 1.82, cabRB: -2.05, cabFB: 0.72, cabRT: -1.95, cabFT: 0.3, spokes: 6, dz: -0.55, rz: -1.45, rails: true },
+  pickup: { id: 'pickup', L: 5.2, W: 1.95, wb: 3.1, r: 0.45, tw: 0.3, sill: 0.38, floor: 0.46, tail: 1.1, belt: 1.15, nose: 1.0, roof: 1.85, cabRB: -0.6, cabFB: 0.85, cabRT: -0.5, cabFT: 0.45, spokes: 6, two: true, bed: true },
+  van: { id: 'van', L: 5.2, W: 2.0, wb: 3.2, r: 0.4, tw: 0.28, sill: 0.36, floor: 0.42, tail: 1.22, belt: 1.25, nose: 1.0, roof: 2.3, cabRB: -2.55, cabFB: 0.95, cabRT: -2.5, cabFT: 0.72, spokes: 5, dz: -0.3, rz: -1.2, van: true },
   sports: { id: 'sports', L: 4.4, W: 1.96, wb: 2.62, r: 0.37, tw: 0.32, sill: 0.2, floor: 0.22, tail: 0.84, belt: 0.84, nose: 0.52, roof: 1.35, cabRB: -1.12, cabFB: 0.7, cabRT: -0.66, cabFT: 0.02, spokes: 7, sport: true },
 };
 
@@ -143,7 +146,7 @@ function buildCar(kind, color) {
     sbox(g, plastic, sx * (W / 2 + 0.005), P.belt - 0.04, (P.cabRB + P.cabFB) / 2 - 0.1, 0.02, 0.025, P.cabFB - P.cabRB - 0.1); // window sill trim
   }
   // interior seen through the glass: floor, dash, seats, wheel, console
-  const mid = (P.cabRB + P.cabFB) / 2, dz = mid - 0.28, fl = P.floor;
+  const mid = (P.cabRB + P.cabFB) / 2, dz = P.dz ?? mid - 0.28, fl = P.floor, rz = P.rz ?? P.cabRB + 0.42, noRear = P.sport || P.two;
   for (const sx of [-1, 1]) put(g, doorGeo(P), pm, sx * (W / 2 - 0.1), 0, 0);
   if (!DETAIL.low) {   // a parked car does not need an interior
   sbox(g, M.dash(), 0, fl + 0.02, mid, W * 0.78, 0.04, P.cabFB - P.cabRB - 0.1);
@@ -154,8 +157,10 @@ function buildCar(kind, color) {
     rbox(g, M.seat(), sx * 0.4, fl + 0.45, dz - 0.2, 0.5, 0.62, 0.14, -0.15);
     rbox(g, M.seat(), sx * 0.4, fl + 0.84, dz - 0.25, 0.28, 0.16, 0.1);
   }
-  rbox(g, M.seat(), 0, fl + 0.1, P.cabRB + 0.42, W * 0.72, 0.16, 0.5);
-  rbox(g, M.seat(), 0, fl + 0.42, P.cabRB + 0.2, W * 0.72, 0.55, 0.14, -0.1);
+  if (!P.two) {
+    rbox(g, M.seat(), 0, fl + 0.1, rz, W * 0.72, 0.16, 0.5);
+    rbox(g, M.seat(), 0, fl + 0.42, rz - 0.22, W * 0.72, 0.55, 0.14, -0.1);
+  }
   put(g, new THREE.TorusGeometry(0.17, 0.022, 8, 18), plastic, -0.4, P.belt - 0.12, dz + 0.5, 1, 1, 1, 1.0, 0, 0);
   }
   // mirrors
@@ -180,6 +185,18 @@ function buildCar(kind, color) {
     rbox(g, chrome, x + sx * 0.008, P.belt - 0.14, mid - 0.78, 0.02, 0.03, 0.16);
     rbox(g, plastic, sx * (W / 2 - 0.03), sill + 0.05, 0, 0.06, 0.1, P.wb - 1.0);
   }
+  if (P.rails) for (const sx of [-1, 1]) rbox(g, trim, sx * (W * 0.4 - 0.1), P.roof + 0.09, (P.cabRT + P.cabFT) / 2 - 0.05, 0.05, 0.05, P.cabFT - P.cabRT + 0.1);   // roof rails
+  if (P.bed) {   // open load bed: side walls, tailgate, bulkhead and a dark liner
+    rbox(g, trim, 0, P.tail + 0.04, (-h + P.cabRB) / 2 - 0.05, W - 0.34, 0.03, P.cabRB + h - 0.35);
+    for (const sx of [-1, 1]) rbox(g, pm, sx * (W / 2 - 0.1), P.tail + 0.22, (-h + P.cabRB) / 2 - 0.02, 0.08, 0.42, P.cabRB + h - 0.1);
+    rbox(g, pm, 0, P.tail + 0.22, -h + 0.06, W - 0.2, 0.42, 0.08);
+    rbox(g, pm, 0, P.tail + 0.22, P.cabRB - 0.22, W - 0.2, 0.42, 0.08);
+    rbox(g, chrome, 0, P.tail + 0.3, -h + 0.0, 0.3, 0.04, 0.02);
+  }
+  if (P.van) {   // sliding-door line, roof vent and a side stripe
+    rbox(g, plastic, 0, P.roof + 0.07, -0.9, 0.5, 0.07, 0.8);
+    for (const sx of [-1, 1]) rbox(g, trim, sx * (W / 2 + 0.006), P.belt - 0.55, -0.6, 0.012, 0.18, 3.6);
+  }
   if (P.sport) {
     rbox(g, plastic, 0, 0.1, h - 0.15, W * 1.0, 0.05, 0.5);                       // front splitter
     rbox(g, plastic, 0, 0.16, -h + 0.1, W * 0.8, 0.14, 0.3);                     // diffuser
@@ -201,7 +218,7 @@ function buildCar(kind, color) {
   }
   const sy = fl + 0.21 + 0.04 - 0.43, ry = fl + 0.18 + 0.04 - 0.43;
   const seats = [{ x: -0.4, y: sy, z: dz, kneel: true }, { x: 0.4, y: sy, z: dz, kneel: true }];
-  if (!P.sport) seats.push({ x: -0.4, y: ry, z: P.cabRB + 0.45, kneel: true }, { x: 0.4, y: ry, z: P.cabRB + 0.45, kneel: true });
+  if (!noRear) seats.push({ x: -0.4, y: ry, z: rz + 0.03, kneel: true }, { x: 0.4, y: ry, z: rz + 0.03, kneel: true });
   return { group: g, wheels, seat: seats[0], seats };
 }
 
@@ -335,7 +352,7 @@ export function parkedParts(kind, color) {
   return { paint: paintParts, shared: sharedCache.get(kind) };
 }
 
-export const HAS_MODEL = { sedan: true, sports: true, jeep: true, boat: true };
+export const HAS_MODEL = { sedan: true, sports: true, suv: true, pickup: true, van: true, jeep: true, boat: true };
 export function buildVehicle(kind, color) {
   if (kind === 'jeep') return mergeStatic(buildJeep(color));
   if (kind === 'boat') return mergeStatic(buildBoat(color));

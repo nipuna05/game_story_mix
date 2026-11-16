@@ -37,7 +37,7 @@ function townGrid(w, o) {
       const sz = rng() < 0.5 ? -1 : 1;
       if (rng() < 0.6) w.bench(bx + (rng() - 0.5) * 16, bz + sz * edge, sz < 0 ? Math.PI : 0);
       if (o.style === 'city' && rng() < 0.18) w.busStop(bx + edge, bz + (rng() - 0.5) * 14, Math.PI / 2);
-      const kinds = o.parkKinds || ['sedan', 'sedan', 'sports'], cols = { sedan: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a], sports: [0xd22b2b, 0xe8b020, 0x2a7ad2], jeep: [0x4d5a3a, 0x6a6048] };
+      const kinds = o.parkKinds || ['sedan', 'sedan', 'sports', 'suv', 'van', 'pickup'], cols = { sedan: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a], sports: [0xd22b2b, 0xe8b020, 0x2a7ad2], jeep: [0x4d5a3a, 0x6a6048], suv: [0x2b2f33, 0xd8d8d0, 0x4a5a4a, 0x7a2a2a], pickup: [0xb8b0a0, 0x7a3a2a, 0x3f5a3a], van: [0xe8e8e4, 0x9aa4ae, 0x2a3a52] };
       for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         if (rng() > 0.2) continue;
         const kind = kinds[Math.floor(rng() * kinds.length)], col = cols[kind][Math.floor(rng() * cols[kind].length)], u = (rng() < 0.5 ? -1 : 1) * (12 + rng() * 4);
@@ -288,7 +288,7 @@ export const LOCATIONS = {
       return withCover(finish(C, town, air, {
         lz: { x: 175, z: -25 }, extract: { x: -352, z: -5 }, footSpawn: { x: 60, z: -70, yaw: -0.5 }, carSpawn: { x: -70, z: -5, yaw: Math.PI / 2 },
         flyStart: { x: 175, y: 330, z: -1500, yaw: 0 }, arenaBlock: [3, 2], raceIdx: [[0, 0], [4, 0], [8, 0], [8, 4], [4, 4], [0, 4]],
-        parked: [[2, 1, 'sedan'], [5, 2, 'bike'], [6, 0, 'sedan']],
+        parked: [[2, 1, 'sedan'], [5, 2, 'bike'], [6, 0, 'suv']],
       }), w, rng, [town.rect, C.rect, air.runway, [-370, 70, -20, 10], [-10, 10, -80, 20]], 'harbor');
     },
   },
@@ -315,7 +315,7 @@ export const LOCATIONS = {
       return withCover(finish(C, town, air, {
         lz: { x: park.x, z: park.z }, extract: { x: -280, z: -280 }, footSpawn: { x: fs.x + 12, z: fs.z + 12, yaw: 0.8 }, carSpawn: { x: fs.x + 5, z: fs.z + 26, yaw: 0 },
         flyStart: { x: park.x, y: 340, z: -1500, yaw: 0 }, arenaBlock: [3, 3],
-        raceIdx: [[1, 1], [4, 1], [6, 1], [6, 4], [4, 4], [4, 7], [1, 7], [1, 4]], parked: [[2, 2, 'sedan'], [3, 5, 'bike'], [5, 2, 'sedan'], [2, 6, 'sedan']],
+        raceIdx: [[1, 1], [4, 1], [6, 1], [6, 4], [4, 4], [4, 7], [1, 7], [1, 4]], parked: [[2, 2, 'sedan'], [3, 5, 'bike'], [5, 2, 'van'], [2, 6, 'pickup']],
       }), w, rng, [town.rect, C.rect, air.runway], 'downtown');
     },
   },
@@ -325,7 +325,7 @@ export const LOCATIONS = {
     defaultTime: 'day', compound: 'the foundry fortress',
     build(w, rng) {
       w.ground(0xb59a6a);
-      const town = townGrid(w, { x0: -265, z0: -225, nx: 4, nz: 4, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['jeep', 'sedan'], hMin: 5, hMax: 12, roadColor: 0x4a443c, walkColor: 0x8f7f62, lineColor: 0xc8b890, skip: (i, j) => i === 1 && j === 2 });
+      const town = townGrid(w, { x0: -265, z0: -225, nx: 4, nz: 4, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['jeep', 'sedan', 'pickup', 'van'], hMin: 5, hMax: 12, roadColor: 0x4a443c, walkColor: 0x8f7f62, lineColor: 0xc8b890, skip: (i, j) => i === 1 && j === 2 });
       const C = compound(w, { cx: 150, cz: 110, w: 240, d: 220, wall: 0x8a6f52, floor: 0x7d6c52, style: 'industrial', containers: false, rng,
         gates: [{ side: 's', off: -30, width: 14 }, { side: 'w', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['OCST', 'WC.W', 'TSCC', 'MWTS'] });
@@ -342,7 +342,7 @@ export const LOCATIONS = {
       return withCover(finish(C, town, air, {
         lz: { x: -110, z: 60 }, extract: { x: -352, z: 40 }, footSpawn: { x: 60, z: -120, yaw: 0.4 }, carSpawn: { x: -40, z: -150, yaw: Math.PI / 2 },
         flyStart: { x: -110, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 2], raceIdx: [[0, 0], [4, 0], [4, 4], [0, 4]],
-        parked: [[1, 1, 'jeep'], [3, 2, 'bike'], [2, 3, 'sedan']],
+        parked: [[1, 1, 'jeep'], [3, 2, 'bike'], [2, 3, 'pickup']],
       }), w, rng, [town.rect, C.rect, air.runway, [-340, -240, 110, 130], [-250, 130, -160, -140], [110, 130, -150, 0]], 'industrial');
     },
   },
@@ -353,7 +353,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0xe2e9ef);
       w.setWeather('snow'); w.snowy = true;
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', parkKinds: ['jeep'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', parkKinds: ['jeep', 'pickup', 'suv'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 20, cz: 80, w: 250, d: 230, wall: 0x6a727a, floor: 0x8a9298, style: 'mountain', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'e', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['TCOS', 'WC.W', 'SCTC', 'MWST'] });
@@ -367,7 +367,7 @@ export const LOCATIONS = {
       return withCover(finish(C, town, air, {
         lz: { x: -160, z: 60 }, extract: { x: -352, z: -110 }, footSpawn: { x: -150, z: -215, yaw: 0.6 }, carSpawn: { x: -130, z: -245, yaw: Math.PI / 2 },
         flyStart: { x: -160, y: 340, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [3, 0], [3, 3], [0, 3]],
-        parked: [[1, 0, 'jeep'], [2, 2, 'bike']],
+        parked: [[1, 0, 'jeep'], [2, 2, 'bike'], [0, 2, 'suv']],
       }), w, rng, [town.rect, C.rect, air.runway, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], 'mountain');
     },
   },
@@ -378,7 +378,7 @@ export const LOCATIONS = {
     build(w, rng) {
       w.ground(0x4f6f3c);
       const dirt = 0x6a5c44;
-      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', parkKinds: ['jeep'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
+      const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 2, cell: 62, road: 14, rng, style: 'cabin', parkKinds: ['jeep', 'pickup'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 7, roadColor: dirt, walkColor: 0x64743f, lineColor: 0x7a6c52, tree: 'fir', skip: (i, j) => i === 1 && j === 0 });
       const C = compound(w, { cx: -120, cz: 170, w: 240, d: 220, wall: 0x5a4a36, floor: 0x6a6248, style: 'cabin', containers: false, rng,
         gates: [{ side: 's', off: -80, width: 14 }, { side: 'e', off: 80, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['SCTO', 'WC.W', 'TSCC', 'MWST'] });

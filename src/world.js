@@ -361,7 +361,7 @@ export class World {
     this.model('pk:' + kind + ':s', x, 0, z, yaw); this.model('pk:' + kind + ':' + color, x, 0, z, yaw);
     (this.parkedList || (this.parkedList = [])).push({ x, z, yaw });
     const along = Math.abs(Math.cos(yaw)) > 0.7;
-    this.solid(x, z, along ? 2.0 : 4.6, along ? 4.6 : 2.0, 1.6);
+    this.solid(x, z, along ? 2.0 : 4.8, along ? 4.8 : 2.0, 1.6);
   }
   // street furniture (instanced, no colliders)
   bench(x, z, ry) {

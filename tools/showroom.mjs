@@ -26,7 +26,7 @@ const info = await page.evaluate(async () => {
   return { vehicles: g.vehicles.length };
 });
 console.log(JSON.stringify(info));
-const shots = [['sedan', 0.7], ['sedan', 2.5], ['sports', 0.7], ['sports', 3.4], ['jeep', 0.7], ['jeep', 2.4], ['boat', 0.8], ['bike', 0.9], ['bike', 2.4]];
+const shots = [['suv', 0.7], ['suv', 2.5], ['pickup', 0.7], ['pickup', 2.5], ['van', 0.7], ['van', 2.5]];
 for (const [k, a] of shots) {
   await page.evaluate(([k, a]) => { window.show(k, a, k === 'boat' ? 10 : k === 'bike' ? 4.5 : 8, k === 'bike' ? 1.6 : 2.6); }, [k, a]);
   await page.waitForTimeout(500);
