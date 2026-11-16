@@ -176,7 +176,7 @@ function airstrip(w, o) {
   const hx = o.x + (o.hangarSide || -1) * 36;
   w.building(hx, o.z0 + 40, 26, 30, 10, 'warehouse');
   w.addNav(o.x, o.z0 + 10); w.addNav(o.x, zc); w.addNav(o.x, o.z1 - 10);
-  return { plane: { x: o.x, z: o.z0 + 16, yaw: 0 }, flyout: { x: o.x, y: 160, z: o.z1 + 650 }, rect: [o.x - 55, o.x + 55, o.z0 - 6, o.z1 + 6] };
+  return { plane: { x: o.x, z: o.z0 + 16, yaw: 0 }, flyout: { x: o.x, y: 160, z: o.z1 + 650 }, rect: [o.x - 55, o.x + 55, o.z0 - 6, o.z1 + 6], runway: [o.x - 20, o.x + 20, o.z0 - 6, o.z1 + 6] };
 }
 
 function scatter(rng, n, avoid, fn, R = 390) {
@@ -194,7 +194,52 @@ function lush(w, rng, avoid, o) {
   scatter(rng, o.trees || 0, av, (x, z) => w.tree(x, z, pick(rng, o.kinds || ['leaf']), rr(rng, 0.85, 1.5)));
   scatter(rng, o.bushes || 0, av, (x, z) => w.bush(x, z, rr(rng, 0.9, 1.7)));
   scatter(rng, o.rocks || 0, av, (x, z) => w.rock(x, z, rr(rng, 1.4, 4)));
+  scatter(rng, o.boulders || 0, av, (x, z) => w.boulder(x, z, rr(rng, 3, 7)));
+  scatter(rng, o.grass || 0, av, (x, z) => w.tuftPatch(x, z, o.dry));
+  if (o.ring) {   // cover around the enemy compound: bushes, trees and boulders to creep up behind
+    const [x0, x1, z0, z1] = o.ring, outside = (x, z, m) => x > x0 - m && x < x1 + m && z > z0 - m && z < z1 + m;
+    const spot = (fn, n) => { let made = 0, tries = 0; while (made < n && tries++ < n * 20) { const x = rr(rng, x0 - 26, x1 + 26), z = rr(rng, z0 - 26, z1 + 26); if (!outside(x, z, 26) || outside(x, z, 8) || av.some((a) => x > a[0] - 4 && x < a[1] + 4 && z > a[2] - 4 && z < a[3] + 4 && a !== o.ring)) continue; fn(x, z); made++; } };
+    spot((x, z) => w.bush(x, z, rr(rng, 1, 1.8)), 70); spot((x, z) => w.boulder(x, z, rr(rng, 3, 6)), 8); spot((x, z) => w.tree(x, z, pick(rng, o.kinds || ['leaf']), rr(rng, 0.9, 1.5)), 14);
+  }
 }
+
+// Find every open gap (no cover within 17 m) and put a hiding cluster there, so nowhere is a long dash from cover.
+function clusterMaker(w, rng, style) {
+  const types = { harbor: ['crates', 'wreck', 'grove', 'hedge', 'rocks'], downtown: ['hedge', 'wreck', 'crates', 'grove'], industrial: ['crates', 'wreck', 'rocks', 'wall', 'drums'], mountain: ['rocks', 'grove', 'log', 'wall'], forest: ['grove', 'log', 'rocks', 'hedge'] }[style];
+  const kinds = { harbor: ['leaf', 'palm'], downtown: ['leaf'], industrial: ['palm', 'leaf'], mountain: ['pine', 'fir'], forest: ['fir', 'leaf'] }[style];
+  return (x, z) => {
+    const t = types[Math.floor(rng() * types.length)], out = [[x, z]];
+    const around = (n, r, f) => { for (let i = 0; i < n; i++) { const a = rng() * 6.283, d = 1.5 + rng() * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; f(px, pz, i); out.push([px, pz]); } };
+    if (t === 'grove') { around(4, 7, (px, pz) => w.tree(px, pz, pick(rng, kinds), rr(rng, 0.9, 1.5))); around(6, 8, (px, pz) => w.bush(px, pz, rr(rng, 1, 1.8))); }
+    else if (t === 'rocks') { w.boulder(x, z, rr(rng, 4, 7)); around(2, 6, (px, pz) => w.boulder(px, pz, rr(rng, 3, 5))); around(3, 7, (px, pz) => w.bush(px, pz, rr(rng, 1, 1.5))); }
+    else if (t === 'hedge') { w.hedge(x, z, rr(rng, 9, 14), rng() < 0.5 ? 0 : Math.PI / 2); w.bush(x + 3, z + 3, 1.4); w.bush(x - 3, z - 3, 1.3); }
+    else if (t === 'crates') { for (let i = 0; i < 5; i++) w.crate(x + rr(rng, -3, 3), z + rr(rng, -3, 3), rr(rng, 1.2, 2.2)); w.barrel(x + 2.5, z - 2); w.barrel(x + 3.3, z - 1.4, 0x2a4a6a); w.sandbags(x - 4, z + 3, 5); }
+    else if (t === 'wreck') { w.parkedCar(x, z, rr(rng, 0, 6.28), 'sedan', 0x4a4a4a); around(2, 4, (px, pz) => w.barrel(px, pz, 0x6a3a2a)); around(2, 5, (px, pz) => w.bush(px, pz, 1.2)); }
+    else if (t === 'wall') { w.wall(x, z, rr(rng, 8, 12), 0); w.wall(x + 4.8, z + 3.6, 7, Math.PI / 2); w.bush(x - 2, z + 4, 1.3); }
+    else if (t === 'log') { w.log(x, z, rng() < 0.5 ? 0 : Math.PI / 2); w.log(x + 2.5, z + 3, rng() < 0.5 ? 0 : Math.PI / 2); around(4, 5, (px, pz) => w.bush(px, pz, rr(rng, 1.1, 1.8))); }
+    else if (t === 'drums') { around(8, 3.5, (px, pz) => w.barrel(px, pz, [0x8a2a22, 0x2a4a6a, 0x6a6a2a][Math.floor(rng() * 3)])); w.container(x + 6, z, true, 0x6a6f78, 1); }
+    return out;
+  };
+}
+function fillCover(w, rng, avoid, keep, style) {
+  const R = 17, step = 17, B = 385, pts = [];
+  for (const b of w.boxes) if (b.y1 >= 0.9 && !b.roof) pts.push([(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2]);
+  for (const bu of w.bushes) pts.push([bu.x, bu.z]);
+  const cells = [];
+  for (let x = -B; x <= B; x += step) for (let z = -B; z <= B; z += step) cells.push([x + rr(rng, -5, 5), z + rr(rng, -5, 5)]);
+  for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+  const make = clusterMaker(w, rng, style);
+  for (const [x, z] of cells) {
+    if (z > w.zMax - 8 || Math.abs(x) > w.bound - 6 || Math.abs(z) > w.bound - 6) continue;
+    if (avoid.some((a) => x > a[0] - 3 && x < a[1] + 3 && z > a[2] - 3 && z < a[3] + 3)) continue;
+    if (keep.some((k) => Math.hypot(k.x - x, k.z - z) < 14)) continue;
+    if (w.inside(x, 1, z, 4) || w.inWater(x, z)) continue;
+    let near = false; for (const p of pts) if (Math.hypot(p[0] - x, p[1] - z) < R) { near = true; break; }
+    if (near) continue;
+    for (const q of make(x, z)) pts.push(q);
+  }
+}
+const withCover = (P, w, rng, avoid, style) => { fillCover(w, rng, avoid, [P.lz, P.extract, P.footSpawn, P.carSpawn, P.arena, P.plane].filter(Boolean), style); return P; };
 
 function finish(C, town, air, x) {
   const P = { ...C, ...x, plane: air.plane, flyout: air.flyout };
@@ -238,13 +283,13 @@ export const LOCATIONS = {
       for (let x = -350; x < 60; x += 40) w.lamp(x, -13);
       arenaRing(w, town.block(3, 2), 0x3a2a22);
       scatter(rng, 45, [town.rect, C.rect, air.rect, [-370, 70, -20, 10], [-10, 10, -80, 20]], (x, z) => (rng() < 0.75 ? w.tree(x, z, 'leaf', rr(rng, 0.8, 1.3)) : w.rock(x, z, rr(rng, 1, 2.2))));
-      lush(w, rng, [town.rect, C.rect, air.rect, [-370, 70, -20, 10], [-10, 10, -80, 20]], { trees: 60, bushes: 150, rocks: 40, kinds: ['leaf', 'leaf', 'palm'], water: 248 });
+      lush(w, rng, [town.rect, C.rect, air.rect, [-370, 70, -20, 10], [-10, 10, -80, 20]], { trees: 100, bushes: 260, rocks: 60, boulders: 14, grass: 520, ring: C.rect, kinds: ['leaf', 'leaf', 'palm'], water: 248 });
       w.mountains(22, 1500, 2100, 180, 420, 0x1a2230, null);
-      return finish(C, town, air, {
+      return withCover(finish(C, town, air, {
         lz: { x: 175, z: -25 }, extract: { x: -352, z: -5 }, footSpawn: { x: 60, z: -70, yaw: -0.5 }, carSpawn: { x: -70, z: -5, yaw: Math.PI / 2 },
         flyStart: { x: 175, y: 330, z: -1500, yaw: 0 }, arenaBlock: [3, 2], raceIdx: [[0, 0], [4, 0], [8, 0], [8, 4], [4, 4], [0, 4]],
         parked: [[2, 1, 'sedan'], [5, 2, 'bike'], [6, 0, 'sedan']],
-      });
+      }), w, rng, [town.rect, C.rect, air.runway, [-370, 70, -20, 10], [-10, 10, -80, 20]], 'harbor');
     },
   },
 
@@ -264,14 +309,14 @@ export const LOCATIONS = {
       for (let k = 0; k < 9; k++) if (k !== 4) w.tree(park.x + (k % 3 - 1) * 20, park.z + (Math.floor(k / 3) - 1) * 20, 'leaf', 1.2);
       arenaRing(w, town.block(3, 3), 0x402020);
       scatter(rng, 30, [town.rect, C.rect, air.rect], (x, z) => w.tree(x, z, 'leaf', rr(rng, 0.8, 1.4)));
-      lush(w, rng, [town.rect, C.rect, air.rect], { trees: 40, bushes: 120, rocks: 30 });
+      lush(w, rng, [town.rect, C.rect, air.rect], { trees: 70, bushes: 200, rocks: 45, boulders: 6, grass: 240, ring: C.rect });
       w.mountains(26, 1500, 2200, 200, 520, 0x2a2438, null);
       const fs = town.inter(1, 1);
-      return finish(C, town, air, {
+      return withCover(finish(C, town, air, {
         lz: { x: park.x, z: park.z }, extract: { x: -280, z: -280 }, footSpawn: { x: fs.x + 12, z: fs.z + 12, yaw: 0.8 }, carSpawn: { x: fs.x + 5, z: fs.z + 26, yaw: 0 },
         flyStart: { x: park.x, y: 340, z: -1500, yaw: 0 }, arenaBlock: [3, 3],
         raceIdx: [[1, 1], [4, 1], [6, 1], [6, 4], [4, 4], [4, 7], [1, 7], [1, 4]], parked: [[2, 2, 'sedan'], [3, 5, 'bike'], [5, 2, 'sedan'], [2, 6, 'sedan']],
-      });
+      }), w, rng, [town.rect, C.rect, air.runway], 'downtown');
     },
   },
 
@@ -292,13 +337,13 @@ export const LOCATIONS = {
       w.flat(-60, -150, 380, 12, 0x4a443c, 1); w.flat(120, -75, 12, 150, 0x4a443c, 1);
       arenaRing(w, town.block(1, 2), 0x6a4a3a);
       scatter(rng, 55, [town.rect, C.rect, air.rect, [-340, -240, 110, 130], [-250, 130, -160, -140], [110, 130, -150, 0]], (x, z) => (rng() < 0.4 ? w.tree(x, z, 'palm', rr(rng, 0.9, 1.3)) : w.rock(x, z, rr(rng, 1.2, 3))));
-      lush(w, rng, [town.rect, C.rect, air.rect, [-340, -240, 110, 130], [-250, 130, -160, -140], [110, 130, -150, 0]], { trees: 40, bushes: 110, rocks: 70, kinds: ['palm', 'leaf'] });
+      lush(w, rng, [town.rect, C.rect, air.rect, [-340, -240, 110, 130], [-250, 130, -160, -140], [110, 130, -150, 0]], { trees: 65, bushes: 190, rocks: 90, boulders: 18, grass: 480, dry: true, ring: C.rect, kinds: ['palm', 'leaf'] });
       w.mountains(24, 1500, 2200, 160, 380, 0x9a7a52, null);
-      return finish(C, town, air, {
+      return withCover(finish(C, town, air, {
         lz: { x: -110, z: 60 }, extract: { x: -352, z: 40 }, footSpawn: { x: 60, z: -120, yaw: 0.4 }, carSpawn: { x: -40, z: -150, yaw: Math.PI / 2 },
         flyStart: { x: -110, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 2], raceIdx: [[0, 0], [4, 0], [4, 4], [0, 4]],
         parked: [[1, 1, 'jeep'], [3, 2, 'bike'], [2, 3, 'sedan']],
-      });
+      }), w, rng, [town.rect, C.rect, air.runway, [-340, -240, 110, 130], [-250, 130, -160, -140], [110, 130, -150, 0]], 'industrial');
     },
   },
 
@@ -307,7 +352,7 @@ export const LOCATIONS = {
     defaultTime: 'dawn', compound: 'the ridge base',
     build(w, rng) {
       w.ground(0xe2e9ef);
-      w.setWeather('snow');
+      w.setWeather('snow'); w.snowy = true;
       const town = townGrid(w, { x0: -310, z0: -300, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'mountain', parkKinds: ['jeep'], cottages: true, hollow: 0, big: 0, hMin: 4, hMax: 9, roadColor: 0x3a3d42, walkColor: 0xc8d0d8, lineColor: 0xe8e8d8, tree: 'pine', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 20, cz: 80, w: 250, d: 230, wall: 0x6a727a, floor: 0x8a9298, style: 'mountain', containers: true, rng,
         gates: [{ side: 's', off: 0, width: 14 }, { side: 'e', off: 0, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
@@ -316,14 +361,14 @@ export const LOCATIONS = {
       w.flat(-140, -245, 130, 12, 0x3a3d42, 1); w.flat(20, -150, 12, 240, 0x3a3d42, 1); w.flat(-70, -245, 190, 12, 0x3a3d42, 1);
       arenaRing(w, town.block(1, 1), 0x5a626a);
       scatter(rng, 130, [town.rect, C.rect, air.rect, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], (x, z) => (rng() < 0.85 ? w.tree(x, z, 'pine', rr(rng, 0.9, 1.6)) : w.rock(x, z, rr(rng, 1.5, 3.5))));
-      lush(w, rng, [town.rect, C.rect, air.rect, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], { trees: 140, bushes: 130, rocks: 80, kinds: ['pine', 'pine', 'fir'] });
+      lush(w, rng, [town.rect, C.rect, air.rect, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], { trees: 230, bushes: 230, rocks: 100, boulders: 24, grass: 140, dry: true, ring: C.rect, kinds: ['pine', 'pine', 'fir'] });
       scatter(rng, 6, [town.rect, C.rect, air.rect], (x, z) => w.wagon(x, z, rr(rng, 0, 6.28)));
       w.mountains(30, 1300, 2100, 260, 640, 0x5a6672, 0xf2f6fa);
-      return finish(C, town, air, {
+      return withCover(finish(C, town, air, {
         lz: { x: -160, z: 60 }, extract: { x: -352, z: -110 }, footSpawn: { x: -150, z: -215, yaw: 0.6 }, carSpawn: { x: -130, z: -245, yaw: Math.PI / 2 },
         flyStart: { x: -160, y: 340, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [3, 0], [3, 3], [0, 3]],
         parked: [[1, 0, 'jeep'], [2, 2, 'bike']],
-      });
+      }), w, rng, [town.rect, C.rect, air.runway, [-240, 30, -255, -235], [10, 30, -260, -30], [-200, -120, 20, 100]], 'mountain');
     },
   },
 
@@ -344,9 +389,9 @@ export const LOCATIONS = {
       w.flat(-200, -150, 10, 100, dirt, 1); w.flat(-200, -7, 10, 136, dirt, 1); w.flat(75, 250, 150, 8, dirt, 1); w.flat(245, 250, 150, 8, dirt, 1);
       for (const [x, z] of [[-214, -112], [-186, -68], [272, -112], [165, 238]]) w.sandbags(x, z, 5);
       arenaRing(w, town.block(1, 0), 0x5a4a36);
-      const avoid = [town.rect, C.rect, air.rect, [-425, 425, -108, -72], [137, 163, -80, 415], [-208, -192, -205, 65], [0, 325, 243, 257], [50, 115, 90, 150], [-372, -332, -190, -150]];
+      const avoid = [town.rect, C.rect, air.runway, [-425, 425, -108, -72], [137, 163, -80, 415], [-208, -192, -205, 65], [0, 325, 243, 257], [50, 115, 90, 150], [-372, -332, -190, -150]];
       scatter(rng, 560, avoid, (x, z) => { const k = rng(); if (k < 0.5) w.tree(x, z, 'fir', rr(rng, 0.9, 1.7)); else if (k < 0.9) w.tree(x, z, 'leaf', rr(rng, 0.9, 1.5)); else w.rock(x, z, rr(rng, 1.2, 3)); });
-      lush(w, rng, avoid, { trees: 260, bushes: 460, rocks: 70, kinds: ['fir', 'leaf'] });
+      lush(w, rng, avoid, { trees: 420, bushes: 700, rocks: 100, boulders: 26, grass: 1100, ring: C.rect, kinds: ['fir', 'leaf'] });
       scatter(rng, 8, avoid, (x, z) => w.wagon(x, z, rr(rng, 0, 6.28)));
       w.mountains(26, 1500, 2200, 180, 420, 0x3f5a3a, null);
       const P = finish(C, town, air, {
@@ -356,7 +401,7 @@ export const LOCATIONS = {
         parked: [[1, 1, 'jeep'], [2, 1, 'bike']],
       });
       P.cars.push({ x: -120, z: -90, yaw: Math.PI / 2, kind: 'boat' }, { x: 225, z: -90, yaw: -Math.PI / 2, kind: 'boat' });
-      return P;
+      return withCover(P, w, rng, avoid, 'forest');
     },
   },
 };

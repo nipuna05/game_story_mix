@@ -39,6 +39,7 @@ export class Sfx {
       for (let ch = 0; ch < 2; ch++) { const x = ir.getChannelData(ch); let lp = 0; for (let i = 0; i < len; i++) { lp += (Math.random() * 2 - 1 - lp) * 0.35; x[i] = lp * Math.pow(1 - i / len, 3.2); } }
       this.wet = c.createConvolver(); this.wet.buffer = ir;
       const wg = c.createGain(); wg.gain.value = 0.7; this.wet.connect(wg).connect(this.master);
+      const warm = c.createBufferSource(); warm.buffer = c.createBuffer(1, 4096, c.sampleRate); warm.connect(this.wet); warm.start();   // wake the echo effect up now, not on the first shot
       const load = (key, url) => fetch(url).then((r) => (r.ok && /audio|ogg|octet/.test(r.headers.get('content-type') || '') ? r.arrayBuffer() : null))
         .then((ab) => (ab ? c.decodeAudioData(ab) : null)).then((b) => { if (b) this.samples[key] = b; }).catch(() => undefined);
       for (const k of ['engine', 'engine-motorcycle', 'skid', 'impact']) load(k, `${BASE}sounds/${k}.ogg`);

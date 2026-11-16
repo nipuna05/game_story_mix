@@ -123,6 +123,29 @@ class Game {
     this.beam = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc040, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, fog: false }));
     this.beam.visible = false; this.scene.add(this.beam);
     this.spot = new THREE.SpotLight(0xfff0d0, 0, 90, 0.55, 0.6, 1.3); this.scene.add(this.spot); this.scene.add(this.spot.target);
+    this.warmUp();   // last: shaders depend on the number of lights in the scene
+  }
+  // Compile the shaders for tracers, sparks, explosions and grenades now, so the first shot does not stall the game while the
+  // graphics card builds them. (Also compiles every material in the scene up front.)
+  warmUp() {
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]);
+    const ptGeo = new THREE.BufferGeometry(); ptGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0]), 3));
+    // these materials are kept for the whole session: disposing them would throw the compiled shaders away again
+    const mats = this._warmMats || (this._warmMats = [new THREE.LineBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.9 }), new THREE.PointsMaterial({ color: 0xffd070, size: 0.1, transparent: true }),
+      new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.9 }), new THREE.MeshBasicMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.7 })]);
+    const objs = [new THREE.Line(lineGeo, mats[0]), new THREE.Points(ptGeo, mats[1]), new THREE.Mesh(this.world.geo.sph, mats[2]), new THREE.Mesh(this.world.geo.sph, mats[3]), new THREE.Mesh(this.world.geo.sph, cmat(0x2a3a2a))];
+    for (const o of objs) { o.position.set(0, -800, 0); o.frustumCulled = false; this.scene.add(o); }
+    // fire the real effects once, far below the map, so their exact shaders get built too
+    const n0 = this.fx.items.length, far = new THREE.Vector3(0, -800, 0);
+    this.fx.explosion(far, 3); this.fx.sparks(far, 0xb01818, 4, 2, 0.3, 0.09); this.fx.tracer(far, new THREE.Vector3(0, -800, 3));
+    try {   // draw one real frame through the normal path (including the glow effect) so exactly the right shaders are built
+      if (this.settings.shadows) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    } catch { /* warming up is only an optimisation */ }
+    const keep = this._warmKeep || (this._warmKeep = []);
+    for (const it of this.fx.items.splice(n0)) { this.scene.remove(it.o); keep.push(it.o.material); }   // materials stay alive, so the shaders do too
+    while (keep.length > 10) keep.shift().dispose();
+    for (const o of objs) this.scene.remove(o);
+    lineGeo.dispose(); ptGeo.dispose();
   }
   backdrop() { this.buildScene('downtown', 'dusk'); this.camera.fov = 55; this.camera.updateProjectionMatrix(); }
   toMenu(silent) {

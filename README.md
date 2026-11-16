@@ -124,6 +124,12 @@ During a race a **route map** shows the whole track with numbered checkpoints, y
 - **Enemy tactics:** after a few bursts or when hit, guards dive behind cover and shoot from there. Heavies and the boss throw grenades; a GRENADE! warning appears, so move.
 - **Gamepad:** plug one in and press a button. Sticks move and look, RT fires, LT aims, A jumps, B crouches, X reloads, Y uses, LB grenade, RB next weapon, d-pad items, Start pauses. Menus need the mouse.
 
+## Vegetation and cover
+
+Trees, bushes, grass and rocks are drawn with leaf, needle, bark and stone textures made in code (no image files): leafy broadleaf trees, spruces with needle branches, palms, dense bushes, grass tufts and noise-shaped boulders. Bushes hide you when you crouch or crawl in them.
+
+Every map is checked for open gaps: if a spot is more than about 17 m from cover, a hiding cluster is placed there (groves, boulders, hedges, low walls, crate piles, wrecked cars, logs, drum stacks). Cover also ring-fences each enemy compound so you can creep up on it. On the five maps the farthest point from cover is now 37 to 52 m (it was 75 to 126 m), and 94 to 99% of the ground is within 25 m of cover.
+
 ## Graphics quality
 
 Settings -> Graphics has three levels: **High** (sharp shadows, glow, reflections), **Medium** (smaller shadows, lower resolution) and **Low** (no shadows or glow, fastest). Streets have parked cars (the same detailed models, drawn cheaply), benches, bins, hydrants and bus stops.

@@ -545,6 +545,17 @@ await run('gamepad', () => {
   navigator.getGamepads = real; return out;
 });
 
+
+// ---- the first shot must not stall: no new shaders may be compiled when it happens
+await run('first shot compiles nothing', () => {
+  const g = window.game; g.startMission(window.M('m1'), { approach: 'storm' }); g.god = true; g.audio.init(); window.tick(10);
+  g.composer.render(); g.composer.render(); const before = g.renderer.info.programs.length;
+  const p = g.player; p.give('rifle'); p.switchTo('rifle'); window.tick(5);
+  g.input.buttons[0] = true; g.input.btnPressed[0] = true; window.tick(1); g.composer.render(); window.tick(8); g.composer.render(); g.input.buttons[0] = false;
+  g.fx.sparks(p.pos.clone(), 0xb01818, 6, 2.5, 0.3, 0.09); g.composer.render();
+  return { before, after: g.renderer.info.programs.length, same: before === g.renderer.info.programs.length };
+});
+
 // ---- custom builder mission in every district
 for (const loc of ['harbor', 'downtown', 'industrial', 'mountain', 'forest']) {
   await run('custom ' + loc, (l) => {

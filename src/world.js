@@ -3,6 +3,12 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clamp } from './util.js';
 import { ASSETS } from './assets.js';
 import { parkedParts } from './carmodels.js';
+import { getNature } from './nature.js';
+
+const hash01 = (x, z) => Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+const pickH = (arr, h) => arr[Math.floor(h * arr.length) % arr.length];
+const LEAF = [0x56883a, 0x4a7a35, 0x63923c, 0x3f6f30, 0x7a9a40], PINE = [0x2f5d3a, 0x28502f, 0x35683e], SNOWPINE = [0x8fb0a0, 0x7fa092, 0x9bb8aa];
+const BUSHC = [0x4a7a35, 0x3f6f30, 0x568a3a, 0x658f3c], GRASSC = [0x6a9a42, 0x587f36, 0x78a048], DRYC = [0xa09a58, 0x8a8a4a, 0xb0a868], ROCKC = [0xa8a49a, 0x948f84, 0xb8b2a4, 0x8a867c];
 
 const opts_shadowSize = (w) => w.shadowSize;
 
@@ -47,7 +53,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
-    this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map(); this.custom = {}; this.parkedCache = {};
+    this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map(); this.custom = {}; this.parkedCache = {}; this.nat = getNature();
     this._env();
   }
 
@@ -181,15 +187,17 @@ export class World {
   }
 
   ground(color) {
-    const g = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color, map: this.grainRep(700, 700) }));
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color, map: this.nat.tex.ground }));
     g.receiveShadow = true; this.root.add(g);
   }
 
   // ---------- batched primitives ----------
   inst(geo, color, x, y, z, sx, sy, sz, o = {}) {
-    const key = geo + '|' + color + '|' + (o.glow ? 1 : 0) + '|' + (o.layer || 0) + '|' + (o.alpha || 1) + '|' + (o.add ? 1 : 0);
+    const nat = !!this.nat.kind[geo];   // vegetation and rocks: one batch per shape, the tint is stored per instance
+    const key = nat ? geo + '|nat' : geo + '|' + color + '|' + (o.glow ? 1 : 0) + '|' + (o.layer || 0) + '|' + (o.alpha || 1) + '|' + (o.add ? 1 : 0);
     let b = this.batches.get(key);
-    if (!b) { b = { geo, color, o: { glow: o.glow, layer: o.layer, alpha: o.alpha, add: o.add }, mats: [] }; this.batches.set(key, b); }
+    if (!b) { b = { geo, color: nat ? 0xffffff : color, o: { glow: o.glow, layer: o.layer, alpha: o.alpha, add: o.add }, mats: [], cols: nat ? [] : null }; this.batches.set(key, b); }
+    if (b.cols) b.cols.push(color);
     _e.set(o.rx || 0, o.ry || 0, o.rz || 0); _q.setFromEuler(_e);
     _m.compose(_p.set(x, y, z), _q, _s.set(sx, sy, sz));
     b.mats.push(_m.clone());
@@ -488,31 +496,55 @@ export class World {
     }
     this.interiors.push({ x: x - nx * (halfN - 3.6), z: z - nz * (halfN - 3.6), cx: x, cz: z, w, d, door: { x: x + nx * (halfN + 2.4), z: z + nz * (halfN + 2.4), nx, nz } });
   }
+  // a cluster of big boulders you can hide behind (solid)
+  boulder(x, z, s = 4) {
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 6.28 + Math.random(), r = i ? s * 0.5 : 0, k = i ? 0.5 + Math.random() * 0.35 : 1, h = Math.random();
+      this.inst(['rockA', 'rockB', 'rockC'][i % 3], pickH(ROCKC, h), x + Math.cos(a) * r, s * k * 0.14, z + Math.sin(a) * r, s * k * 1.7, s * k * 1.2, s * k * 1.45, { ry: h * 6.28 });
+    }
+    this.solid(x, z, s * 1.6, s * 1.4, s * 0.8);
+  }
+  rock(x, z, s = 2) {
+    const h = hash01(x, z);
+    this.inst(['rockA', 'rockB', 'rockC'][Math.floor(h * 3) % 3], pickH(ROCKC, h), x, s * 0.14, z, s * 1.7, s * 1.15, s * 1.4, { ry: h * 6.28 });
+    this.solid(x, z, s, s * 0.8, s * 0.7);
+  }
+  // grass tufts: a cheap, dense ground cover
+  tuft(x, z, s = 1, dry = false) { const h = hash01(x, z); this.inst('tuft', pickH(dry ? DRYC : GRASSC, h), x, 0, z, s, s * (0.8 + h * 0.6), s, { ry: h * 6.28 }); }
+  tuftPatch(x, z, dry) { const n = 3 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) this.tuft(x + (Math.random() - 0.5) * 3, z + (Math.random() - 0.5) * 3, 0.8 + Math.random() * 0.7, dry); }
   // walkable brush: stand in it crouched or prone and guards struggle to see you
   bush(x, z, s = 1) {
-    const cols = [0x2f6a2c, 0x3a7a34, 0x285a28];
-    for (let i = 0; i < 3; i++) this.inst('ico', cols[i], x + (i - 1) * 0.9 * s, 0.65 * s, z + (((i * 7) % 3) - 1) * 0.7 * s, 1.9 * s, 1.3 * s, 1.9 * s, { ry: i * 2 });
-    this.bushes.push({ x, z, r: 1.7 * s });
+    const h = hash01(x, z);
+    this.inst('bush', pickH(BUSHC, h), x, 0, z, s * 1.25, s * (0.9 + h * 0.4), s * 1.25, { ry: h * 6.28 });
+    if (h > 0.3) { this.tuft(x + 1.3 * s, z + 0.4 * s, 0.9); this.tuft(x - 1.1 * s, z - 0.8 * s, 0.8); }
+    this.bushes.push({ x, z, r: 1.6 * s });
   }
   inBush(x, z) {
     for (const b of this.bushes) if (Math.hypot(x - b.x, z - b.z) < b.r) return true;
     return false;
   }
+  // a solid hedge, a low stone wall and a fallen log: things to crouch behind (axis-aligned: ry is 0 or PI/2)
+  hedge(x, z, len, ry) {
+    const n = Math.ceil(len / 1.6);
+    for (let i = 0; i < n; i++) { const al = (i - (n - 1) / 2) * 1.6; this.inst('bush', pickH(BUSHC, hash01(x + i, z)), x + Math.cos(ry) * al, 0, z - Math.sin(ry) * al, 1.9, 1.7, 1.9, { ry: i * 1.7 }); }
+    if (Math.abs(Math.cos(ry)) > 0.7) this.solid(x, z, len, 1.4, 1.6); else this.solid(x, z, 1.4, len, 1.6);
+  }
+  wall(x, z, len, ry) { if (Math.abs(Math.cos(ry)) > 0.7) this.block(x, z, len, 0.4, 1.6, 0x7a766c); else this.block(x, z, 0.4, len, 1.6, 0x7a766c); }
+  log(x, z, ry) {
+    const alongX = Math.abs(Math.cos(ry)) > 0.7;
+    this.inst('cyl', 0x5a4632, x, 0.45, z, 0.9, 5.2, 0.9, alongX ? { rz: Math.PI / 2 } : { rx: Math.PI / 2 });
+    this.solid(x, z, alongX ? 5.2 : 0.9, alongX ? 0.9 : 5.2, 0.9);
+  }
   tree(x, z, kind = 'leaf', s = 1) {
-    if (kind === 'pine' || kind === 'fir') {
-      this.inst('cyl', 0x4a3520, x, 1.2 * s, z, 0.5 * s, 2.4 * s, 0.5 * s);
-      this.inst('cone', 0x1b4229, x, 3.4 * s, z, 4.8 * s, 3.6 * s, 4.8 * s, { ry: x });
-      this.inst('cone', 0x21502f, x, 5.4 * s, z, 3.7 * s, 3.3 * s, 3.7 * s, { ry: z });
-      this.inst('cone', 0x286038, x, 7.2 * s, z, 2.6 * s, 3 * s, 2.6 * s, { ry: x + z });
-      if (kind === 'pine') this.inst('cone', 0xeef4f8, x, 8.3 * s, z, 1.35 * s, 1.4 * s, 1.35 * s);
-    } else if (kind === 'palm') {
-      this.inst('cyl', 0x7a6040, x, 3 * s, z, 0.4 * s, 6 * s, 0.4 * s, { rz: 0.08 });
-      for (let i = 0; i < 5; i++) this.inst('box', 0x3f7a35, x + Math.sin(i * 1.26) * 1.4 * s, 6 * s, z + Math.cos(i * 1.26) * 1.4 * s, 1.3 * s, 0.12, 3.4 * s, { ry: i * 1.26, rx: 0.35 });
+    const h = hash01(x, z), ry = h * 6.28, bark = pickH([0x8a7258, 0x7a634c, 0x96806a], h);
+    if (kind === 'palm') { this.inst('trunkPalm', 0xa89a78, x, 0, z, s, s, s, { ry }); this.inst('palmCrown', 0x5a8a3a, x, 0, z, s, s, s, { ry }); }
+    else if (kind === 'pine' || kind === 'fir') {
+      const c = this.snowy ? pickH(SNOWPINE, h) : pickH(PINE, h), k = 0.9 + h * 0.35;
+      this.inst('trunkP', bark, x, 0, z, s, s, s, { ry }); this.inst('pineCrown', c, x, 0, z, s * k, s * (0.95 + (1 - h) * 0.3), s * k, { ry });
     } else {
-      this.inst('cyl', 0x4a3520, x, 1.5 * s, z, 0.5 * s, 3 * s, 0.5 * s);
-      this.inst('ico', 0x2d5a2a, x, 4.4 * s, z, 4.4 * s, 3.8 * s, 4.4 * s, { ry: x });
-      this.inst('ico', 0x35682f, x + 1.3 * s, 5.2 * s, z + 0.6 * s, 3 * s, 2.8 * s, 3 * s, { ry: z });
-      this.inst('ico', 0x264e25, x - 1.2 * s, 4.0 * s, z - 0.9 * s, 3.2 * s, 2.6 * s, 3.2 * s, { ry: x + z });
+      const k = 0.85 + h * 0.45;
+      this.inst('trunkL', bark, x, 0, z, s, s, s, { ry }); this.inst(h > 0.5 ? 'crownA' : 'crownB', pickH(LEAF, h), x, 0, z, s * k, s * (0.9 + h * 0.3), s * k, { ry });
     }
     this.solid(x, z, 0.7, 0.7, 3);
   }
@@ -533,7 +565,6 @@ export class World {
   }
   barrel(x, z, color = 0x8a2a22) { this.inst('cyl', color, x, 0.6, z, 0.9, 1.2, 0.9); this.solid(x, z, 0.8, 0.8, 1.2); }
   sandbags(x, z, w, alongX = true) { this.block(x, z, alongX ? w : 0.9, alongX ? 0.9 : w, 1.05, 0x9a8a66); }
-  rock(x, z, s = 2) { this.inst('sph', 0x6a6660, x, s * 0.3, z, s * 1.6, s, s * 1.3, { ry: x }); this.solid(x, z, s, s * 0.8, s * 0.7); }
   tower(x, z, h = 9) {
     for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
       this.inst('box', 0x4a3f33, x + a * 1.7, h / 2, z + b * 1.7, 0.35, h, 0.35);
@@ -585,24 +616,32 @@ export class World {
     for (const b of this.batches.values()) {
       const o = b.o;
       let mat;
-      if (o.add) mat = new THREE.MeshBasicMaterial({ color: b.color, map: this.radial(), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
+      const nk = this.nat.kind[b.geo];   // vegetation and rocks: textured, alpha-cut leaves, bark and stone
+      if (nk) {
+        const alpha = nk === 'leaf' || nk === 'pine' || nk === 'frond' || nk === 'grass';
+        mat = nk === 'rock' ? new THREE.MeshStandardMaterial({ color: b.color, map: this.nat.tex.rock, roughness: 0.95, metalness: 0 })
+          : new THREE.MeshLambertMaterial({ color: b.color, map: this.nat.tex[nk], alphaTest: alpha ? 0.45 : 0, side: alpha ? THREE.DoubleSide : THREE.FrontSide });
+      } else if (o.add) mat = new THREE.MeshBasicMaterial({ color: b.color, map: this.radial(), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
       else if (o.glow) { mat = new THREE.MeshBasicMaterial({ color: b.color }); mat.color.multiplyScalar(2.6); }
       else mat = new THREE.MeshLambertMaterial({ color: b.color, map: b.geo === 'box' && !o.layer ? this.grain() : null, flatShading: b.geo === 'ico' });
       if (o.layer) { mat.polygonOffset = true; mat.polygonOffsetFactor = -2 * o.layer; mat.polygonOffsetUnits = -2 * o.layer; }
       if (o.alpha && o.alpha < 1) { mat.transparent = true; mat.opacity = o.alpha; }
       const cast = !o.layer && !o.glow, recv = !o.add && !o.glow;
+      const col = new THREE.Color();
       const make = (list, cull) => {
-        const im = new THREE.InstancedMesh(this.geo[b.geo], mat, list.length);
-        list.forEach((m, i) => im.setMatrixAt(i, m));
-        im.instanceMatrix.needsUpdate = true; im.castShadow = cast; im.receiveShadow = recv; im.frustumCulled = cull;
+        const im = new THREE.InstancedMesh(this.geo[b.geo] || this.nat.geo[b.geo], mat, list.length);
+        list.forEach((it, i) => { im.setMatrixAt(i, it.m); if (it.c != null) im.setColorAt(i, col.set(it.c)); });
+        im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
+        im.castShadow = cast; im.receiveShadow = recv; im.frustumCulled = cull;
         if (cull) im.computeBoundingSphere();
         this.root.add(im);
       };
-      if (b.mats.length > 240 && !o.layer) {   // big batches (trees, bushes, rocks): split into map cells so off-screen cells are skipped
+      const items = b.mats.map((m, i) => ({ m, c: b.cols ? b.cols[i] : null }));
+      if (items.length > (b.cols ? 30 : 240) && !o.layer) {   // big batches (trees, bushes, rocks, grass): split into map cells so off-screen cells are skipped
         const cells = new Map();
-        for (const m of b.mats) { const k = Math.floor(m.elements[12] / 160) + ',' + Math.floor(m.elements[14] / 160); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(m); }
+        for (const it of items) { const k = Math.floor(it.m.elements[12] / 128) + ',' + Math.floor(it.m.elements[14] / 128); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(it); }
         for (const list of cells.values()) make(list, true);
-      } else make(b.mats, false);
+      } else make(items, false);
       this.disposables.push(mat);
     }
     this.batches.clear();
