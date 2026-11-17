@@ -5,7 +5,7 @@ const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
 await page.addInitScript(() => { Element.prototype.requestPointerLock = () => {}; });
 const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await page.goto('http://localhost:5173/'); await page.waitForFunction(() => window.game, null, { timeout: 60000 }); await page.waitForTimeout(1200);
-for (const [id, yaw] of [['m3c', 0.4], ['m3c', 2.6], ['m4c', 1.0]]) {
+for (const [id, yaw] of (process.argv[2] ? process.argv[2].split(',').map((s) => [s.split(':')[0], +s.split(':')[1]]) : [['m3c', 0.4], ['m3c', 2.6], ['m4c', 1.0]])) {
   const info = await page.evaluate(async ([id, yaw]) => {
     const S = await import('/src/story.js'); const g = window.game;
     g.startMission(S.CAMPAIGN.find((m) => m.id === id), {}); g.god = true; g.hud.show(false);

@@ -205,8 +205,8 @@ function lush(w, rng, avoid, o) {
 
 // Find every open gap (no cover within 17 m) and put a hiding cluster there, so nowhere is a long dash from cover.
 function clusterMaker(w, rng, style) {
-  const types = { harbor: ['crates', 'wreck', 'grove', 'hedge', 'rocks'], downtown: ['hedge', 'wreck', 'crates', 'grove'], industrial: ['crates', 'wreck', 'rocks', 'wall', 'drums'], mountain: ['rocks', 'grove', 'log', 'wall'], forest: ['grove', 'log', 'rocks', 'hedge'], desert: ['rocks', 'crates', 'wreck', 'wall', 'drums', 'grove'] }[style];
-  const kinds = { harbor: ['leaf', 'palm'], downtown: ['leaf'], industrial: ['palm', 'leaf'], mountain: ['pine', 'fir'], forest: ['fir', 'leaf'], desert: ['palm', 'leaf'] }[style];
+  const types = { harbor: ['crates', 'wreck', 'grove', 'hedge', 'rocks'], downtown: ['hedge', 'wreck', 'crates', 'grove'], industrial: ['crates', 'wreck', 'rocks', 'wall', 'drums'], mountain: ['rocks', 'grove', 'log', 'wall'], forest: ['grove', 'log', 'rocks', 'hedge'], desert: ['rocks', 'crates', 'wreck', 'wall', 'drums', 'grove'], island: ['rocks', 'crates', 'wreck', 'wall', 'drums', 'grove'] }[style];
+  const kinds = { harbor: ['leaf', 'palm'], downtown: ['leaf'], industrial: ['palm', 'leaf'], mountain: ['pine', 'fir'], forest: ['fir', 'leaf'], desert: ['palm', 'leaf'], island: ['palm', 'leaf'] }[style];
   return (x, z) => {
     const t = types[Math.floor(rng() * types.length)], out = [[x, z]];
     const around = (n, r, f) => { for (let i = 0; i < n; i++) { const a = rng() * 6.283, d = 1.5 + rng() * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; f(px, pz, i); out.push([px, pz]); } };
@@ -426,6 +426,34 @@ export const LOCATIONS = {
         flyStart: { x: -60, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [2, 0], [2, 2], [0, 2]],
         parked: [[0, 1, 'pickup'], [2, 1, 'bike'], [1, 2, 'suv']],
       }), w, rng, [town.rect, C.rect, air.runway], 'desert');
+    },
+  },
+  island: {
+    name: 'Saltwind Cay', tagline: 'A fortified island in the shallows. Come by boat, leave by plane.',
+    defaultTime: 'dusk', compound: 'the island fortress',
+    build(w, rng) {
+      w.ground(0xd2c29a);
+      // the island is ringed by water on every side
+      const seas = [[0, 335, 900, 170], [0, -335, 900, 170], [-335, 0, 170, 900], [335, 0, 170, 900]];
+      for (const [x, z, ww, dd] of seas) w.river(x, z, ww, dd);
+      const town = townGrid(w, { x0: -240, z0: -210, nx: 3, nz: 3, cell: 56, road: 13, rng, style: 'port', parkKinds: ['jeep', 'pickup', 'suv'], hMin: 4, hMax: 9, big: 0.15, roadColor: 0x4a4a48, walkColor: 0xb8a880, lineColor: 0xd8c8a0, tree: 'palm', skip: (i, j) => i === 1 && j === 1 });
+      const C = compound(w, { cx: 40, cz: 70, w: 220, d: 180, wall: 0x8a8a84, floor: 0x9a9078, style: 'port', containers: true, rng,
+        gates: [{ side: 's', off: -30, width: 14 }, { side: 'w', off: 10, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
+        pattern: ['OCST', 'WC.W', 'TSCC', 'MWTS'] });
+      const air = airstrip(w, { x: 205, z0: -230, z1: -30 });
+      arenaRing(w, town.block(1, 1), 0x6a5a40);
+      const avoid = [town.rect, C.rect, air.rect, [-500, 500, 250, 500], [-500, 500, -500, -250], [-500, -250, -500, 500], [250, 500, -500, 500]];
+      scatter(rng, 60, avoid, (x, z) => (rng() < 0.6 ? w.tree(x, z, 'palm', rr(rng, 0.9, 1.4)) : w.rock(x, z, rr(rng, 1.4, 3.4))), 240);
+      lush(w, rng, avoid, { trees: 50, bushes: 140, rocks: 100, boulders: 32, grass: 300, dry: true, ring: C.rect, kinds: ['palm', 'palm', 'leaf'] });
+      w.mountains(22, 1500, 2200, 160, 380, 0x4a6a8a, null);
+      const P = finish(C, town, air, {
+        lz: { x: -50, z: -30 }, extract: { x: -232, z: 5 }, footSpawn: { x: -200, z: -20, yaw: 1.2 }, carSpawn: { x: -180, z: -40, yaw: Math.PI / 2 },
+        boatSpawn: { x: -330, z: 0, yaw: Math.PI / 2 },
+        flyStart: { x: -50, y: 330, z: -1500, yaw: 0 }, arenaBlock: [1, 1], raceIdx: [[0, 0], [3, 0], [3, 3], [0, 3]],
+        parked: [[0, 1, 'pickup'], [2, 1, 'bike'], [1, 2, 'jeep']],
+      });
+      P.cars.push({ x: -300, z: -60, yaw: Math.PI / 2, kind: 'boat' }, { x: 300, z: 40, yaw: -Math.PI / 2, kind: 'boat' });
+      return withCover(P, w, rng, avoid, 'island');
     },
   },
 };

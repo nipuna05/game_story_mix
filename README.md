@@ -39,9 +39,11 @@ and endings use whatever you type.
 | 3 | Rust and Chains | Industrial Zone, day | Free three hostages, blow up fuel convoys, eliminate the enemy lieutenant |
 | 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
 | 3c | Redrock Run | Redrock Canyon, day | Pickup time trial through the canyon, copy shipping manifests, burn two fuel trucks |
+| 3d | Saltwind Landing | Saltwind Cay, dusk | Arrive by boat, copy shipping logs, burn three fuel depots, escape from the west dock |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
 | 4b | Dead Drop | Greenwater Forest, day | Arrive by boat, rescue couriers, hunt the Warden |
 | 4c | Quarry Break | Redrock Canyon, dusk | Free three engineers from the quarry and take down the Quartermaster |
+| 4d | Tide Break | Saltwind Cay, dawn | Parachute onto the island, free two couriers, steal the plane and fly out |
 | 5 | Nightfall | Downtown, blackout | Fly in, parachute into the dark city and face the commander |
 
 Before the final mission you choose how the night goes, which changes the objectives and the ending:
@@ -186,7 +188,7 @@ src/world.js        scene, lighting themes, collision, ray casting, navigation g
 src/gear.js         weapons, attachments, armour, backpack items and the profile data
 src/armory.js       profile / armory / backpack and key-binding screens
 src/input.js        keyboard and mouse with rebindable keys
-src/locations.js    the six districts (town grids, walled compounds, airstrips)
+src/locations.js    the seven districts (town grids, walled compounds, airstrips)
 src/player.js       on-foot, parachute and vehicle control, weapons, camera
 src/enemies.js      guard / sniper / thug / boss AI and hostages
 src/vehicles.js     cars, motorbike, aircraft and racing AI

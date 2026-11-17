@@ -546,6 +546,18 @@ await run('gamepad', () => {
 });
 
 
+// ---- the island and the desert: everything on land, boat starts in the water and stays there
+await run('island and desert layout', () => {
+  const g = window.game, out = {};
+  for (const id of ['m3d', 'm3c']) {
+    g.startMission(window.M(id), {}); g.god = true;
+    const P = g.P, w = g.world, wet = (q) => w.inWater(q.x, q.z, true);
+    out[id] = { footWet: wet(P.footSpawn), extractWet: wet(P.extract), targetsWet: P.targets.filter(wet).length, intelWet: P.intel.filter(wet).length, guardsWet: g.enemies.filter((e) => wet(e.pos)).length, enemies: g.enemies.length };
+  }
+  g.startMission(window.M('m3d'), {}); const boat = g.player.vehicle; out.boatStartsWet = !!boat && g.world.inWater(boat.pos.x, boat.pos.z, true);
+  return out;
+});
+
 // ---- the first shot must not stall: no new shaders may be compiled when it happens
 await run('first shot compiles nothing', () => {
   const g = window.game; g.startMission(window.M('m1'), { approach: 'storm' }); g.god = true; g.audio.init(); window.tick(10);
