@@ -19,7 +19,7 @@ await page.evaluate(async () => {
     g.renderer.toneMappingExposure = 1.0; g.composer.render();
   };
 });
-for (const [name, types, ang] of [['front', ['guard', 'heavy', 'sniper', 'thug', 'boss'], Math.PI], ['side', ['guard', 'heavy', 'sniper', 'thug', 'boss'], Math.PI * 0.6], ['back', ['guard', 'heavy', 'sniper', 'thug', 'boss'], 0]]) {
+for (const [name, types, ang] of [['front', ['guard', 'guard', 'guard', 'guard', 'guard'], Math.PI], ['mix', ['guard', 'heavy', 'sniper', 'thug', 'boss'], Math.PI], ['side', ['guard', 'heavy', 'sniper', 'thug', 'boss'], Math.PI * 0.6], ['back', ['guard', 'heavy', 'sniper', 'thug', 'boss'], 0]]) {
   await page.evaluate(([t, a]) => window.row(t, a), [types, ang]); await page.waitForTimeout(500);
   await page.evaluate(() => window.game.composer.render()); await page.screenshot({ path: `test-shots/enemies-${name}.png` });
 }

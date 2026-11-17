@@ -3,11 +3,19 @@ import { makeHumanoid, animateHumanoid } from './characters.js';
 import { clamp, angDiff, turnToward, dist2, rnd } from './util.js';
 
 const HOODS = [0x7a2a2a, 0x2a4a7a, 0x4a4a4a, 0x6a5a2a, 0x3a6a4a, 0x5a2a6a];
+const TONES = [0xffffff, 0xf4dcc8, 0xe4c4a4, 0xcca684, 0xb08c6c];   // slight skin-tone shifts, so a squad is not made of clones
+const CAMO = [[0x4d5a3a, 0x2e3524], [0x5a5240, 0x3a3526], [0x3f4a4f, 0x262d31], [0x4a4e3a, 0x30331f]];
+const CIV_SHIRT = [0xd8cdb8, 0x8aa0b8, 0xb8a090, 0x9ab08a, 0xc0a0a0, 0x6a7a8a], CIV_PANTS = [0x55606e, 0x4a4a52, 0x6a5a48, 0x3a4a5a];
+const oneOf = (a) => a[Math.floor(Math.random() * a.length)];
 const VOICE_OF = { guard: 'ak47', heavy: 'm4a1', sniper: 'l118a', boss: 'ak47' };
 const TINTS = [0xffa0a0, 0xa0b8ff, 0xc8c8c8, 0xffe090, 0xa0ffc8, 0xe0a0ff];
 export const ENEMY_TYPES = {
-  guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => ({ shirt: 0x4d5a3a, pants: 0x2e3524, hat: 0x8a1c1c, tint: 0xffffff, gunKind: 'ak47', gearList: [['beret', 0xa81e1e]] }) },
-  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, nade: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.1, tint: 0x6f6f78, gunKind: 'm4a1', gearList: [['pack', 0x2c2c26], ['rig', 0x1a1b1e]] }) },
+  guard: { hp: 100, speed: 4.2, dmg: 7, acc: 0.5, burst: 3, range: 60, gun: true, look: () => {
+    const c = oneOf(CAMO), r = Math.random(), gear = r < 0.5 ? [['beret', 0xa81e1e]] : r < 0.7 ? [['cap', 0x2a3520]] : r < 0.85 ? [['cap', 0x6b5a3a]] : [['beret', 0x1e1e22]];
+    if (Math.random() < 0.35) gear.push(['pack', 0x34382a]);
+    return { shirt: c[0], pants: c[1], hat: 0x8a1c1c, tint: oneOf(TONES), scale: 0.96 + Math.random() * 0.1, gunKind: 'ak47', gearList: gear };
+  } },
+  heavy: { hp: 220, speed: 3.4, dmg: 12, acc: 0.55, burst: 5, range: 60, gun: true, nade: true, look: () => ({ shirt: 0x2b2b30, pants: 0x1a1a1e, hat: 0x111111, scale: 1.07 + Math.random() * 0.06, tint: 0x6f6f78, gunKind: 'm4a1', gearList: [['pack', 0x2c2c26], ['rig', 0x1a1b1e]] }) },
   sniper: { hp: 80, speed: 0, dmg: 24, acc: 0.5, burst: 1, range: 150, gun: true, static: true, look: () => ({ shirt: 0x3a4a2a, pants: 0x2a3520, hat: 0x2a3520, tint: 0xa8c890, gunKind: 'l118a', gearList: [['boonie', 0x6b6a3e]] }) },
   thug: { hp: 110, speed: 5.0, dmg: 13, melee: true, look: () => { const i = Math.floor(Math.random() * HOODS.length); return { shirt: HOODS[i], pants: 0x22252c, hat: Math.random() < 0.5 ? 0x151515 : null, tint: TINTS[i], gearList: Math.random() < 0.6 ? [['cap', [0x151515, 0x7a2a2a, 0x2a4a7a][i % 3]]] : [] }; } },
   boss: { hp: 480, speed: 3.8, dmg: 13, acc: 0.62, burst: 4, range: 70, gun: true, nade: true, look: () => ({ shirt: 0x151515, pants: 0x101010, hat: 0xb01818, scale: 1.14, tint: 0xb06060, gunKind: 'ak47', gearList: [['beret', 0x0e0e10], ['pack', 0x2a2a2c]] }) },
@@ -286,7 +294,7 @@ export class Hostage extends Walker {
     super();
     this.g = g; this.pos = new THREE.Vector3(x, 0, z); this.yaw = Math.random() * 6.28;
     this.state = 'captive'; this.initWalk();
-    this.h = makeHumanoid({ shirt: 0xd8cdb8, pants: 0x55606e, tint: 0xf0dcc0 });
+    this.h = makeHumanoid({ shirt: oneOf(CIV_SHIRT), pants: oneOf(CIV_PANTS), tint: oneOf(TONES), scale: 0.94 + Math.random() * 0.12, gearList: Math.random() < 0.3 ? [['cap', oneOf([0x2a4a7a, 0x7a2a2a, 0x3a3a3a])]] : [] });
     this.h.group.position.copy(this.pos); g.scene.add(this.h.group);
   }
   free() { if (this.state === 'captive') this.state = 'follow'; }
