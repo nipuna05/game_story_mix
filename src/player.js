@@ -215,7 +215,7 @@ export class Player {
     const cam = g.camera; cam.getWorldDirection(_d);
     let sp = wd.spread * (this.aiming ? (wd.scope ? 0.02 : 0.4) : 1) * (this.speed > 2 ? 1.6 : 1) * (this.prone ? 0.5 : this.crouch ? 0.7 : 1) * (sprint ? 2 : 1);
     const base = _d.clone(), n = wd.pellets || 1, h0 = g.stats.hits, ends = [];
-    for (let i = 0; i < n; i++) {   // shotguns fire several pellets; each one can hit
+    for (let i = 0; i < (wd.launch ? 0 : n); i++) {   // shotguns fire several pellets; each one can hit
       _d.copy(base); _d.x += rnd(-sp, sp); _d.y += rnd(-sp, sp); _d.z += rnd(-sp, sp); _d.normalize();
       const head = _v.set(this.pos.x, this.pos.y + 1.5, this.pos.z);
       const tMin = Math.max(0, head.sub(cam.position).dot(_d));
@@ -224,12 +224,13 @@ export class Player {
     if (g.stats.hits - h0 > 1) g.stats.hits = h0 + 1;   // accuracy counts shots, not pellets
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     const mz = new THREE.Vector3(this.pos.x + rx * 0.14 + Math.sin(this.yaw) * 0.9, this.pos.y + (this.prone ? 0.4 : this.wet ? 0.8 : this.crouch ? 1.05 : 1.5), this.pos.z + rz * 0.14 + Math.cos(this.yaw) * 0.9);
+    if (wd.launch) g.launchShell(wd, base, mz);
     for (let i = 0; i < ends.length; i += (n > 3 ? 2 : 1)) g.fx.tracer(mz, ends[i], 0xfff0b0);
     if (wd.snd !== 'pistol' && !wd.supp) g.fx.flash(mz, 0xffc070, 40, 0.06);
     this.pitch += wd.recoil; this.recoil = Math.min(0.2, (this.recoil || 0) + wd.recoil); this.yaw += rnd(-wd.recoil, wd.recoil) * 0.25;
     g.audio.gun(wd.id, wd.supp ? 0.55 : 1, 0, wd.supp ? 0.55 : 0, true);
     g.emitNoise(this.pos, wd.noise, wd.noise > 30);
-    g.stats.shots++;
+    if (!wd.launch) g.stats.shots++;
     if (st.mag <= 0 && st.res > 0) { this.reloadT = wd.reload; g.audio.reload(wd.reload); }
   }
 

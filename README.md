@@ -107,7 +107,7 @@ Tab toggles the objective list, H opens the field manual, Esc pauses.
 Open **Profile & armory** from the main menu (or **Loadout & backpack** on any mission briefing).
 
 - **Profile:** your callsign (the hero's name), rank and level, service record and best mission ranks. Missions pay credits and XP.
-- **Weapons:** you carry one gun per slot - sidearm, primary and heavy - plus fists and a kick. Buy better guns (G-17, D-50 Magnum, AK-47, MP5, P90, SPAS-12 and Striker shotguns), fit attachments (suppressor, extended magazine, stabiliser grip, optic) and pick a finish colour. A live 3D preview shows your soldier with the gun.
+- **Weapons:** you carry one gun per slot - sidearm, primary and heavy - plus fists and a kick. Buy better guns (G-17, D-50 Magnum, AK-47, MP5, P90, SPAS-12 and Striker shotguns, and three more heavy weapons: the M110 Marksman semi-auto scoped rifle, the M249 Squad Gun and the GL-40 Launcher, which fires explosive shells), fit attachments (suppressor, extended magazine, stabiliser grip, optic) and pick a finish colour. A live 3D preview shows your soldier with the gun.
 - **Armour & outfit:** body armour tiers worn at the start of every mission, and an outfit colour for the soldier.
 - **Backpack:** medkits, armour plates, noisemakers, ammo boxes and grenades. Capacity is limited and can be upgraded. Use them in the field with Q, X, T and Y.
 
@@ -160,7 +160,7 @@ Every menu screen is split into sub-tabs (briefing, settings, manual, controls, 
 - **Guns:** each weapon has its own layered sound (crack, blast, thump and an echo tail), louder and sharper up close, duller and echoing far away, panned to where the shot came from. Shotguns pump and the sniper rifle works its bolt. Reloads, empty clicks, weapon swaps, footsteps, bullet impacts and hits have their own sounds.
 - **Vehicles:** the cars and the motorbike use real engine recordings that rise and fall with speed; tyres skid on sharp turns and crashes have an impact sound.
 - **Music:** a splash screen (click or press a key, which browsers require before any sound) starts the music on the home screen. A tense military score is generated live. It is calm in menus, a driving pulse during play, and turns intense when guards are alerted, an alarm sounds or you race. Volume sliders for music and effects are in Settings; **M** mutes everything.
-- **Real gun recordings (optional):** put a short single-shot `.ogg` in `public/sounds/guns/` named after the weapon (`usp ak47 m4a1 mp5 p90 spas12 striker deagle glock l118a`, e.g. `ak47.ogg`) and the game uses it instead of the generated shot. Only add recordings you are allowed to ship.
+- **Real gun recordings (optional):** put a short single-shot `.ogg` in `public/sounds/guns/` named after the weapon (`usp ak47 m4a1 mp5 p90 spas12 striker deagle glock l118a m110 m249 gl40`, e.g. `ak47.ogg`) and the game uses it instead of the generated shot. Only add recordings you are allowed to ship.
 
 ## Stealth movement and cover
 

@@ -15,6 +15,9 @@ export const VARIANTS = {
   m4a1: { slot: 'rifle', name: 'M4A1 Carbine', model: 'm4a1', dmg: 27, rate: 0.1, mag: 30, spread: 0.022, noise: 75, reload: 1.8, recoil: 0.009, auto: true, price: 0, desc: 'Balanced assault rifle' },
   ak47: { slot: 'rifle', name: 'AK-47', model: 'ak47', dmg: 34, rate: 0.12, mag: 30, spread: 0.03, noise: 85, reload: 2.0, recoil: 0.013, auto: true, price: 900, desc: 'Hits hard, kicks harder' },
   l118a: { slot: 'sniper', name: 'L118A Longbow', model: 'l118a', dmg: 160, rate: 1.1, mag: 5, spread: 0.03, noise: 95, reload: 2.5, recoil: 0.05, scope: true, price: 0, desc: 'One-shot long range' },
+  m110: { slot: 'sniper', name: 'M110 Marksman', model: 'l118a', dmg: 95, rate: 0.3, mag: 10, spread: 0.02, noise: 85, reload: 2.2, recoil: 0.03, scope: true, zoom: 20, price: 1200, desc: 'Semi-auto scoped rifle - two hits to kill, fast follow-up' },
+  m249: { slot: 'sniper', name: 'M249 Squad Gun', model: 'ak47', dmg: 28, rate: 0.085, mag: 100, spread: 0.04, noise: 90, reload: 4.5, recoil: 0.012, auto: true, price: 1600, desc: '100-round belt, suppresses a whole room' },
+  gl40: { slot: 'sniper', name: 'GL-40 Launcher', model: 'spas12', dmg: 150, radius: 8, speed: 48, launch: true, rate: 1.1, mag: 4, spread: 0.01, noise: 100, reload: 2.8, recoil: 0.04, price: 1800, desc: 'Fires explosive shells - wrecks cars, groups and cover' },
 };
 
 export const ATTACH = {

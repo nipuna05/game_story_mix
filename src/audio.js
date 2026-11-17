@@ -14,6 +14,9 @@ const VOICES = {
   striker: { crack: 0.65, crackHz: 2000, body: 0.9, bodyHz: 1000, boomHz: 90, dur: 0.36, tail: 0.45, sub: 0.5 },
   ak47: { crack: 0.85, crackHz: 2400, body: 0.85, bodyHz: 1200, boomHz: 120, dur: 0.26, tail: 0.45, sub: 0.35 },
   m4a1: { crack: 0.8, crackHz: 3000, body: 0.6, bodyHz: 1700, boomHz: 150, dur: 0.2, tail: 0.38 },
+  m110: { crack: 0.9, crackHz: 2200, body: 0.8, bodyHz: 1200, boomHz: 110, dur: 0.34, tail: 0.6, sub: 0.35 },
+  m249: { crack: 0.85, crackHz: 2300, body: 0.9, bodyHz: 1100, boomHz: 110, dur: 0.24, tail: 0.45, sub: 0.4 },
+  gl40: { crack: 0.35, crackHz: 1100, body: 1.0, bodyHz: 650, boomHz: 70, dur: 0.38, tail: 0.5, sub: 0.7 },
   l118a: { crack: 1.0, crackHz: 2000, body: 0.95, bodyHz: 1100, boomHz: 100, dur: 0.5, tail: 0.75, sub: 0.5, mech: 'bolt' },
 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

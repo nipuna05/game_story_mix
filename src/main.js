@@ -216,6 +216,12 @@ class Game {
     this.scene.add(mesh); this.grenades.push(gr);
     if (dist2(e.pos.x, e.pos.z, this.player.pos.x, this.player.pos.z) < 45) { this.hud.banner('GRENADE!', 'Get away from where it lands'); this.audio.beep(900); }
   }
+  // a launcher shell: flies nearly straight, bursts on the first thing it touches
+  launchShell(wd, dir, from) {
+    const mesh = new THREE.Mesh(this.world.geo.sph, cmat(0x3a3a30)); mesh.scale.set(0.12, 0.12, 0.3); mesh.lookAt(from.x + dir.x, from.y + dir.y, from.z + dir.z);
+    const gr = { pos: from.clone(), vel: dir.clone().multiplyScalar(wd.speed || 48), t: 4, mesh, kind: 'shell', owner: 'player', rad: wd.radius || 8, dmg: wd.dmg, grav: 3 };
+    this.scene.add(mesh); this.grenades.push(gr);
+  }
   throwGrenade(p, kind = 'frag') {
     this.audio.throwNade();
     this.camera.getWorldDirection(_v);
@@ -680,16 +686,25 @@ class Game {
     }
     for (let i = this.grenades.length - 1; i >= 0; i--) {
       const g = this.grenades[i];
-      g.vel.y -= 20 * dt;
+      g.vel.y -= (g.grav ?? 20) * dt;
       const ox = g.pos.x, oz = g.pos.z;
       g.pos.addScaledVector(g.vel, dt);
-      if (g.pos.y < 0.15) { g.pos.y = 0.15; g.vel.y *= -0.35; g.vel.x *= 0.6; g.vel.z *= 0.6; }
-      if (w.inside(g.pos.x, g.pos.y, g.pos.z)) { g.pos.x = ox; g.pos.z = oz; g.vel.x *= -0.35; g.vel.z *= -0.35; }
+      if (g.kind === 'shell') {
+        const hit = g.pos.y < 0.2 || w.inside(g.pos.x, g.pos.y, g.pos.z)
+          || this.enemies.some((e) => !e.dead && dist2(e.pos.x, e.pos.z, g.pos.x, g.pos.z) < 1.3 && g.pos.y < e.pos.y + 2.2)
+          || this.vehicles.some((v) => !v.dead && v.type === 'car' && dist2(v.pos.x, v.pos.z, g.pos.x, g.pos.z) < 2.6 && g.pos.y < 2.4);
+        if (hit) g.t = 0;
+        g.mesh.lookAt(g.pos.x + g.vel.x, g.pos.y + g.vel.y, g.pos.z + g.vel.z);
+      } else {
+        if (g.pos.y < 0.15) { g.pos.y = 0.15; g.vel.y *= -0.35; g.vel.x *= 0.6; g.vel.z *= 0.6; }
+        if (w.inside(g.pos.x, g.pos.y, g.pos.z)) { g.pos.x = ox; g.pos.z = oz; g.vel.x *= -0.35; g.vel.z *= -0.35; }
+      }
       g.mesh.position.copy(g.pos);
       g.t -= dt;
       if (g.t <= 0) {
         this.scene.remove(g.mesh); this.grenades.splice(i, 1);
         if (g.kind === 'noise') { this.fx.sparks(g.pos.clone(), 0xffd070, 14, 4, 0.5, 0.12); this.audio.beep(1800); this.emitNoise(g.pos, 80, true); this.hud.banner('DECOY', 'Guards are investigating'); }
+        else if (g.kind === 'shell') this.explode(g.pos.clone(), g.rad, g.dmg);
         else if (g.owner === 'enemy') this.explode(g.pos.clone(), 8, 120, 'enemy');
         else this.explode(g.pos.clone(), 9, 170);
       }
