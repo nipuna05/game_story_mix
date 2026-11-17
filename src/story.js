@@ -156,8 +156,8 @@ export const CAMPAIGN = [
       "Pickups are tough but slow to turn. Use the handbrake [SPACE] to slide through the corners.",
     ],
     objectives: [
-      { type: 'race', laps: 2, rivals: 0, timeTrial: 95, kind: 'pickup', text: 'Drive the canyon loop in the pickup before the patrol closes it',
-        radio: [R('{ally}', 'Pickup is on the grid. Two laps in ninety-five seconds and their patrol misses you. Do not roll it.')],
+      { type: 'race', laps: 2, rivals: 0, timeTrial: 75, kind: 'pickup', text: 'Drive the canyon loop in the pickup before the patrol closes it',
+        radio: [R('{ally}', 'Pickup is on the grid. Two laps in seventy-five seconds and their patrol misses you. Do not roll it.')],
         done: [R('{ally}', 'Clean run. The quarry is east of the village. Walk the last stretch.')] },
       { type: 'collect', count: 3, item: 'manifest', text: 'Copy the 3 shipping manifests inside the quarry',
         radio: [R('{hacker}', 'Three manifests, one in each warehouse and cargo yard. Stay in the rocks until you are close.')],

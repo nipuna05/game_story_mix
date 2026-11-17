@@ -111,6 +111,14 @@ class Game {
 
   // ---------------------------------------------------------------- scene
   buildScene(location, time) {
+    if (this.scene) {   // free the old map's geometry on the graphics card (cars, buildings, soldiers); shared pieces simply upload again when next used
+      const seen = new Set();
+      const maps = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'bumpMap', 'alphaMap', 'emissiveMap', 'aoMap'];
+      this.scene.traverse((o) => {
+        const g = o.geometry; if (g && !seen.has(g)) { seen.add(g); g.dispose(); }
+        for (const m of [].concat(o.material || [])) for (const k of maps) { const t = m[k]; if (t && !seen.has(t)) { seen.add(t); t.dispose(); } }
+      });
+    }
     if (this.world) this.world.dispose();
     this.audio.quiet();
     this.scene = new THREE.Scene();
