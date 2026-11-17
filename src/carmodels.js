@@ -83,9 +83,9 @@ function makeWheel(r, w, spokes = 5) {
 // ---------------------------------------------------------------- cars
 const CARS = {
   sedan: { id: 'sedan', L: 4.5, W: 1.84, wb: 2.78, r: 0.38, tw: 0.27, sill: 0.28, floor: 0.32, tail: 0.92, belt: 0.98, nose: 0.74, roof: 1.5, cabRB: -1.22, cabFB: 0.78, cabRT: -0.84, cabFT: 0.28, spokes: 5 },
-  suv: { id: 'suv', L: 4.7, W: 1.94, wb: 2.85, r: 0.46, tw: 0.3, sill: 0.4, floor: 0.46, tail: 1.22, belt: 1.2, nose: 1.0, roof: 1.82, cabRB: -2.05, cabFB: 0.72, cabRT: -1.95, cabFT: 0.3, spokes: 6, dz: -0.55, rz: -1.45, rails: true },
-  pickup: { id: 'pickup', L: 5.2, W: 1.95, wb: 3.1, r: 0.45, tw: 0.3, sill: 0.38, floor: 0.46, tail: 1.1, belt: 1.15, nose: 1.0, roof: 1.85, cabRB: -0.6, cabFB: 0.85, cabRT: -0.5, cabFT: 0.45, spokes: 6, two: true, bed: true },
-  van: { id: 'van', L: 5.2, W: 2.0, wb: 3.2, r: 0.4, tw: 0.28, sill: 0.36, floor: 0.42, tail: 1.22, belt: 1.25, nose: 1.0, roof: 2.3, cabRB: -2.55, cabFB: 0.95, cabRT: -2.5, cabFT: 0.72, spokes: 5, dz: -0.3, rz: -1.2, van: true },
+  suv: { id: 'suv', L: 4.7, W: 1.94, wb: 2.85, r: 0.46, tw: 0.3, sill: 0.4, floor: 0.46, tail: 1.22, belt: 1.2, nose: 0.92, hoodC: 1.02, roof: 1.82, cabRB: -2.05, cabFB: 0.72, cabRT: -1.95, cabFT: 0.3, spokes: 6, dz: -0.55, rz: -1.45, rails: true },
+  pickup: { id: 'pickup', L: 5.2, W: 1.95, wb: 3.1, r: 0.45, tw: 0.3, sill: 0.38, floor: 0.46, tail: 1.1, belt: 1.15, nose: 0.94, hoodC: 1.0, roof: 1.85, cabRB: -0.6, cabFB: 0.85, cabRT: -0.5, cabFT: 0.45, spokes: 6, two: true, bed: true },
+  van: { id: 'van', L: 5.2, W: 2.0, wb: 3.2, r: 0.4, tw: 0.28, sill: 0.36, floor: 0.42, tail: 1.22, belt: 1.25, nose: 0.9, hoodC: 1.02, roof: 2.3, cabRB: -2.55, cabFB: 0.95, cabRT: -2.5, cabFT: 0.72, spokes: 5, dz: -0.3, rz: -1.2, van: true },
   sports: { id: 'sports', L: 4.4, W: 1.96, wb: 2.62, r: 0.37, tw: 0.32, sill: 0.2, floor: 0.22, tail: 0.84, belt: 0.84, nose: 0.52, roof: 1.35, cabRB: -1.12, cabFB: 0.7, cabRT: -0.66, cabFT: 0.02, spokes: 7, sport: true },
 };
 
@@ -101,7 +101,7 @@ function bodyGeo(P) {
     s.lineTo(P.cabRB, P.floor);      // open cabin: floor level between the seats' bulkheads
     s.lineTo(P.cabFB, P.floor);
     s.lineTo(P.cabFB, P.belt + 0.02);
-    s.quadraticCurveTo((P.cabFB + h) / 2, P.belt + 0.0, h - 0.14, P.nose);
+    s.quadraticCurveTo((P.cabFB + h) / 2, P.hoodC ?? P.belt, h - 0.14, P.nose);
     s.quadraticCurveTo(h + 0.01, P.nose - 0.03, h, P.nose - 0.2);
     s.lineTo(h - 0.03, sill + 0.1);
     s.lineTo(h - 0.14, sill);
@@ -194,6 +194,10 @@ function buildCar(kind, color) {
     rbox(g, chrome, 0, P.tail + 0.3, -h + 0.0, 0.3, 0.04, 0.02);
   }
   if (P.van) {   // sliding-door line, roof vent and a side stripe
+    const ch = P.roof - P.belt, zr = P.cabRT - 0.04, zf = -0.75;   // solid cargo area behind the front seats: side panels and a rear wall
+    for (const sx of [-1, 1]) rbox(g, pm, sx * (W * 0.4 - 0.02), P.belt + ch / 2, (zr + zf) / 2, 0.07, ch, zf - zr);
+    rbox(g, pm, 0, P.belt + ch / 2, zr, W * 0.8 - 0.02, ch, 0.08);
+    rbox(g, plastic, 0, P.belt + ch / 2 + 0.1, zr - 0.05, 0.03, ch * 0.7, 0.02);
     rbox(g, plastic, 0, P.roof + 0.07, -0.9, 0.5, 0.07, 0.8);
     for (const sx of [-1, 1]) rbox(g, trim, sx * (W / 2 + 0.006), P.belt - 0.55, -0.6, 0.012, 0.18, 3.6);
   }
