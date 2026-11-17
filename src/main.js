@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { inject } from '@vercel/analytics';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
 import { World } from './world.js';
@@ -20,6 +21,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// Initialize Vercel Web Analytics
+inject();
 
 const SAVE_KEY = 'nightfall_protocol_save_v1';
 const DIFFS = { easy: { acc: 0.7, dmg: 0.65 }, normal: { acc: 1, dmg: 1 }, hard: { acc: 1.25, dmg: 1.4 } };
