@@ -512,7 +512,7 @@ export class World {
   }
   // grass tufts: a cheap, dense ground cover
   tuft(x, z, s = 1, dry = false) { const h = hash01(x, z); this.inst('tuft', pickH(dry ? DRYC : GRASSC, h), x, 0, z, s, s * (0.8 + h * 0.6), s, { ry: h * 6.28 }); }
-  tuftPatch(x, z, dry) { const n = 3 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) this.tuft(x + (Math.random() - 0.5) * 3, z + (Math.random() - 0.5) * 3, 0.8 + Math.random() * 0.7, dry); }
+  tuftPatch(x, z, dry) { const n = 5 + Math.floor(Math.random() * 4); for (let i = 0; i < n; i++) this.tuft(x + (Math.random() - 0.5) * 4, z + (Math.random() - 0.5) * 4, 1.2 + Math.random() * 0.9, dry); }
   // walkable brush: stand in it crouched or prone and guards struggle to see you
   bush(x, z, s = 1) {
     const h = hash01(x, z);
