@@ -131,7 +131,7 @@ During a race a **route map** shows the whole track with numbered checkpoints, y
 
 ## Vehicles
 
-Sedan, street racer, SUV, pickup truck (open load bed), van, jeep, motorbike and boat. Parked cars around each district mix the types, and the new Redrock Canyon district is built for pickups and trucks.
+Sedan, street racer, SUV, pickup truck (open load bed), van, taxi (lit roof sign), police cruiser (light bar, fast), box truck (heavy, slow, 420 hp), jeep, motorbike and boat. Parked cars around each district mix the types, and the new Redrock Canyon district is built for pickups and trucks.
 
 ## Vegetation and cover
 

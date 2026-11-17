@@ -37,7 +37,7 @@ function townGrid(w, o) {
       const sz = rng() < 0.5 ? -1 : 1;
       if (rng() < 0.6) w.bench(bx + (rng() - 0.5) * 16, bz + sz * edge, sz < 0 ? Math.PI : 0);
       if (o.style === 'city' && rng() < 0.18) w.busStop(bx + edge, bz + (rng() - 0.5) * 14, Math.PI / 2);
-      const kinds = o.parkKinds || ['sedan', 'sedan', 'sports', 'suv', 'van', 'pickup'], cols = { sedan: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a], sports: [0xd22b2b, 0xe8b020, 0x2a7ad2], jeep: [0x4d5a3a, 0x6a6048], suv: [0x2b2f33, 0xd8d8d0, 0x4a5a4a, 0x7a2a2a], pickup: [0xb8b0a0, 0x7a3a2a, 0x3f5a3a], van: [0xe8e8e4, 0x9aa4ae, 0x2a3a52] };
+      const kinds = o.parkKinds || ['sedan', 'sedan', 'sports', 'suv', 'van', 'pickup', 'taxi', 'police', 'truck'], cols = { sedan: [0x7a8a9a, 0x8a3030, 0x2f4f6f, 0xd8d8d0, 0x3a3a3a], sports: [0xd22b2b, 0xe8b020, 0x2a7ad2], jeep: [0x4d5a3a, 0x6a6048], taxi: [0xf2c230, 0xe8b020], police: [0xe8e8ec, 0x1c2430], truck: [0xe8e8e4, 0xb04a2a, 0x2a4a7a], suv: [0x2b2f33, 0xd8d8d0, 0x4a5a4a, 0x7a2a2a], pickup: [0xb8b0a0, 0x7a3a2a, 0x3f5a3a], van: [0xe8e8e4, 0x9aa4ae, 0x2a3a52] };
       for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         if (rng() > 0.2) continue;
         const kind = kinds[Math.floor(rng() * kinds.length)], col = cols[kind][Math.floor(rng() * cols[kind].length)], u = (rng() < 0.5 ? -1 : 1) * (12 + rng() * 4);
@@ -409,7 +409,7 @@ export const LOCATIONS = {
     defaultTime: 'day', compound: 'the quarry fortress',
     build(w, rng) {
       w.ground(0xc7935a);
-      const town = townGrid(w, { x0: -300, z0: -260, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['pickup', 'jeep', 'suv', 'van'], hMin: 4, hMax: 9, big: 0.2, roadColor: 0x5a4a3a, walkColor: 0xa5845a, lineColor: 0xd8c8a0, tree: 'palm', skip: (i, j) => i === 1 && j === 1 });
+      const town = townGrid(w, { x0: -300, z0: -260, nx: 3, nz: 3, cell: 62, road: 14, rng, style: 'industrial', parkKinds: ['pickup', 'jeep', 'suv', 'van', 'truck'], hMin: 4, hMax: 9, big: 0.2, roadColor: 0x5a4a3a, walkColor: 0xa5845a, lineColor: 0xd8c8a0, tree: 'palm', skip: (i, j) => i === 1 && j === 1 });
       const C = compound(w, { cx: 130, cz: 120, w: 240, d: 220, wall: 0x9a6a46, floor: 0xa5784f, style: 'industrial', containers: true, rng,
         gates: [{ side: 's', off: -30, width: 14 }, { side: 'w', off: 20, width: 12 }], towers: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
         pattern: ['OCST', 'WC.W', 'TSCC', 'MWTS'] });

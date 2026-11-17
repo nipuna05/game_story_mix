@@ -21,6 +21,9 @@ const M = {
   wood: () => once('wood', () => new THREE.MeshStandardMaterial({ color: 0x6a5238, roughness: 0.85 })),
   head: () => once('head', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.96, 0.82).multiplyScalar(2.6) })),
   tail: () => once('tail', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.1, 0.06).multiplyScalar(2.3) })),
+  sign: () => once('sign', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.92, 0.6).multiplyScalar(1.8) })),
+  beaconR: () => once('beaconR', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(1, 0.08, 0.05).multiplyScalar(2.6) })),
+  beaconB: () => once('beaconB', () => new THREE.MeshBasicMaterial({ color: new THREE.Color(0.1, 0.3, 1).multiplyScalar(2.8) })),
   plate: () => once('plate', () => new THREE.MeshStandardMaterial({ color: 0xe8e6dc, roughness: 0.5 })),
 };
 const radial = () => once('radial', () => {
@@ -85,6 +88,9 @@ const CARS = {
   sedan: { id: 'sedan', L: 4.5, W: 1.84, wb: 2.78, r: 0.38, tw: 0.27, sill: 0.28, floor: 0.32, tail: 0.92, belt: 0.98, nose: 0.74, roof: 1.5, cabRB: -1.22, cabFB: 0.78, cabRT: -0.84, cabFT: 0.28, spokes: 5 },
   suv: { id: 'suv', L: 4.7, W: 1.94, wb: 2.85, r: 0.46, tw: 0.3, sill: 0.4, floor: 0.46, tail: 1.22, belt: 1.2, nose: 0.92, hoodC: 1.02, roof: 1.82, cabRB: -2.05, cabFB: 0.72, cabRT: -1.95, cabFT: 0.3, spokes: 6, dz: -0.55, rz: -1.45, rails: true },
   pickup: { id: 'pickup', L: 5.2, W: 1.95, wb: 3.1, r: 0.45, tw: 0.3, sill: 0.38, floor: 0.46, tail: 1.1, belt: 1.15, nose: 0.94, hoodC: 1.0, roof: 1.85, cabRB: -0.6, cabFB: 0.85, cabRT: -0.5, cabFT: 0.45, spokes: 6, two: true, bed: true },
+  taxi: { id: 'taxi', L: 4.5, W: 1.84, wb: 2.78, r: 0.38, tw: 0.27, sill: 0.28, floor: 0.32, tail: 0.92, belt: 0.98, nose: 0.74, roof: 1.5, cabRB: -1.22, cabFB: 0.78, cabRT: -0.84, cabFT: 0.28, spokes: 5, taxi: true },
+  police: { id: 'police', L: 4.5, W: 1.84, wb: 2.78, r: 0.38, tw: 0.27, sill: 0.28, floor: 0.32, tail: 0.92, belt: 0.98, nose: 0.74, roof: 1.5, cabRB: -1.22, cabFB: 0.78, cabRT: -0.84, cabFT: 0.28, spokes: 5, police: true },
+  truck: { id: 'truck', L: 6.8, W: 2.15, wb: 4.2, r: 0.46, tw: 0.3, sill: 0.42, floor: 0.5, tail: 1.3, belt: 1.3, nose: 0.95, hoodC: 1.05, roof: 2.3, cabRB: -0.78, cabFB: 1.0, cabRT: -0.72, cabFT: 0.7, spokes: 6, dz: -0.1, two: true, box: true },
   van: { id: 'van', L: 5.2, W: 2.0, wb: 3.2, r: 0.4, tw: 0.28, sill: 0.36, floor: 0.42, tail: 1.22, belt: 1.25, nose: 0.9, hoodC: 1.02, roof: 2.3, cabRB: -2.55, cabFB: 0.95, cabRT: -2.5, cabFT: 0.72, spokes: 5, dz: -0.3, rz: -1.2, van: true },
   sports: { id: 'sports', L: 4.4, W: 1.96, wb: 2.62, r: 0.37, tw: 0.32, sill: 0.2, floor: 0.22, tail: 0.84, belt: 0.84, nose: 0.52, roof: 1.35, cabRB: -1.12, cabFB: 0.7, cabRT: -0.66, cabFT: 0.02, spokes: 7, sport: true },
 };
@@ -199,7 +205,27 @@ function buildCar(kind, color) {
     rbox(g, pm, 0, P.belt + ch / 2, zr, W * 0.8 - 0.02, ch, 0.08);
     rbox(g, plastic, 0, P.belt + ch / 2 + 0.1, zr - 0.05, 0.03, ch * 0.7, 0.02);
     rbox(g, plastic, 0, P.roof + 0.07, -0.9, 0.5, 0.07, 0.8);
-    for (const sx of [-1, 1]) rbox(g, trim, sx * (W / 2 + 0.006), P.belt - 0.55, -0.6, 0.012, 0.18, 3.6);
+    for (const sx of [-1, 1]) rbox(g, trim, sx * (W / 2 + 0.006), P.belt - 0.55, P.stripeZ ?? -0.6, 0.012, 0.18, P.stripeL ?? 3.6);
+  }
+  if (P.box) {   // cargo box behind the cab: painted body, rear doors, bottom rail and a roof lip
+    const bz0 = P.cabRB - 0.12, bz1 = -h + 0.02, bb = sill + 0.38, bh = 3.15 - bb;
+    rbox(g, pm, 0, bb + bh / 2, (bz0 + bz1) / 2, W - 0.1, bh, bz0 - bz1);
+    rbox(g, trim, 0, bb + 0.03, (bz0 + bz1) / 2, W - 0.06, 0.07, bz0 - bz1 + 0.04);
+    rbox(g, trim, 0, 3.15 + 0.02, (bz0 + bz1) / 2, W - 0.04, 0.05, bz0 - bz1 + 0.04);
+    sbox(g, plastic, 0, bb + bh / 2, bz1 - 0.006, 0.03, bh - 0.2, 0.02);
+    for (const sx of [-1, 1]) rbox(g, chrome, sx * 0.5, bb + bh / 2, bz1 - 0.012, 0.05, 0.3, 0.03);
+    for (const sx of [-1, 1]) sbox(g, plastic, sx * (W / 2 - 0.045), bb + bh * 0.55, (bz0 + bz1) / 2, 0.012, 0.16, bz0 - bz1 - 0.8);
+  }
+  const rz0 = (P.cabRT + P.cabFT) / 2;
+  if (P.taxi) {   // lit roof sign and a chequered band down both sides
+    rbox(g, M.sign(), 0, P.roof + 0.11, rz0, 0.62, 0.17, 0.26);
+    for (const sx of [-1, 1]) for (let k = 0; k < 14; k++) sbox(g, k % 2 ? M.plate() : plastic, sx * (W / 2 + 0.008), P.belt - 0.43, -1.55 + k * 0.23, 0.012, 0.09, 0.115);
+  }
+  if (P.police) {   // light bar (red and blue), door stripe and push bar
+    rbox(g, plastic, 0, P.roof + 0.07, rz0, 1.0, 0.07, 0.3);
+    for (const sx of [-1, 1]) rbox(g, sx < 0 ? M.beaconR() : M.beaconB(), sx * 0.26, P.roof + 0.15, rz0, 0.4, 0.1, 0.24);
+    for (const sx of [-1, 1]) sbox(g, trim, sx * (W / 2 + 0.008), P.belt - 0.52, -0.2, 0.012, 0.22, 2.7);
+    rbox(g, trim, 0, sill + 0.22, h + 0.03, W * 0.6, 0.3, 0.08);
   }
   if (P.sport) {
     rbox(g, plastic, 0, 0.1, h - 0.15, W * 1.0, 0.05, 0.5);                       // front splitter
@@ -356,7 +382,7 @@ export function parkedParts(kind, color) {
   return { paint: paintParts, shared: sharedCache.get(kind) };
 }
 
-export const HAS_MODEL = { sedan: true, sports: true, suv: true, pickup: true, van: true, jeep: true, boat: true };
+export const HAS_MODEL = { taxi: true, police: true, truck: true, sedan: true, sports: true, suv: true, pickup: true, van: true, jeep: true, boat: true };
 export function buildVehicle(kind, color) {
   if (kind === 'jeep') return mergeStatic(buildJeep(color));
   if (kind === 'boat') return mergeStatic(buildBoat(color));

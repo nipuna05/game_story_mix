@@ -26,9 +26,9 @@ const info = await page.evaluate(async () => {
   return { vehicles: g.vehicles.length };
 });
 console.log(JSON.stringify(info));
-const shots = [['suv', 0.7], ['suv', 2.5], ['pickup', 0.7], ['pickup', 2.5], ['van', 0.7], ['van', 2.5]];
+const shots = [['taxi', 0.7], ['taxi', 2.5], ['police', 0.7], ['police', 2.5], ['truck', 0.7], ['truck', 2.5]];
 for (const [k, a] of shots) {
-  await page.evaluate(([k, a]) => { window.show(k, a, k === 'boat' ? 10 : k === 'bike' ? 4.5 : 8, k === 'bike' ? 1.6 : 2.6); }, [k, a]);
+  await page.evaluate(([k, a]) => { window.show(k, a, k === 'boat' ? 10 : k === 'bike' ? 4.5 : k === 'truck' ? 11 : 8, k === 'bike' ? 1.6 : 2.6); }, [k, a]);
   await page.waitForTimeout(500);
   await page.evaluate(() => { const g = window.game; g.composer.render(); });
   await page.screenshot({ path: `test-shots/car-${k}-${a}.png` });
