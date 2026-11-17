@@ -447,6 +447,7 @@ await run('menu fit', () => {
   const m = window.S.CAMPAIGN; ui.briefing(m[0]); eachTab('brief-m1', 'brief'); ui.briefing(m[4], true); eachTab('brief-m5', 'brief');
   ui.manual(() => {}); eachTab('manual', 'manual');
   ui.settings(() => {}); eachTab('settings', 'settings');
+  ui.feedback(() => {}); measure('feedback'); ui.feedback(() => {}, 'The Last Signal'); measure('feedback with mission');
   ui.builder(); eachTab('builder', 'builder');
   for (const t of ['profile', 'weapons', 'armour', 'pack']) { ui.armory(t, 'rifle', () => {}); if (t === 'profile') eachTab('armory-profile', 'pf'); else if (t === 'weapons') eachTab('armory-weapons', 'wp'); else measure('armory-' + t); }
   ui.armory('weapons', 'sniper', () => {}); eachTab('armory-sniper', 'wp');

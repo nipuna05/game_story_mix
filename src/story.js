@@ -191,6 +191,25 @@ export const CAMPAIGN = [
     outro: ["The shipping logs show where {org} keeps its aircraft. One of them is on the same island."],
   },
   {
+    id: 'm3e', title: 'Hold the Line', location: 'harbor', time: 'night', insertion: 'foot', enemies: 1.0, loadout: ['rifle'],
+    place: 'Harbor district - the loading plaza',
+    brief: [
+      "{hacker} needs ninety seconds of clean uplink to push {org}'s ledgers out of the harbor network. The relay only works from the open plaza, and {org} will know the moment it lights up.",
+      "Reach the plaza marker and hold it. Guards will come in waves from every side - fight from cover and keep close, because the countdown only runs while you are near the relay.",
+      "When the upload finishes, clear the last of them and get out through the extraction point.",
+    ],
+    objectives: [
+      { type: 'reach', at: 'arena', text: 'Reach the relay in the loading plaza',
+        radio: [R('{hacker}', 'Relay is on the plaza. Once you stand on it I start the upload - and so does their alarm.')] },
+      { type: 'defend', at: 'arena', seconds: 90, waves: 4, base: 3, grow: 1, snipers: true, text: 'Hold the relay until the upload finishes',
+        radio: [R('{hacker}', 'Uploading. Do not wander off - I lose the line past thirty metres.')],
+        done: [R('{hacker}', 'Upload complete. Every ledger is out. Go, go!')] },
+      { type: 'reach', at: 'extract', text: 'Escape through the extraction point',
+        done: [R('{ally}', 'The ledgers are already in the right hands. Good work holding that plaza.')] },
+    ],
+    outro: ["With the ledgers public, {org} loses its quiet partners one by one."],
+  },
+  {
     id: 'm4', title: 'Mountain Run', location: 'mountain', time: 'dawn', insertion: 'bike', enemies: 1.0, loadout: ['sniper', 'rifle'],
     place: 'Mountain Road - ridge base',
     brief: [

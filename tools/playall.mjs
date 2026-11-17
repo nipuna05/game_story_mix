@@ -40,6 +40,11 @@ for (const id of ids) {
         }
         else if (o.type === 'kill') { s.boss.damage(99999, {}); tick(3); if (!s.boss.dead) s.boss.die({}); tick(3); }
         else if (o.type === 'fight') { foot(); p.pos.set(P.arena.x, 0, P.arena.z); tick(4); for (const t of s.thugs) t.damage(99999, {}); tick(4); }
+        else if (o.type === 'defend') {
+          foot(); const a = P[o.at || 'arena']; p.pos.set(a.x, 0, a.z); let n = 0, spawned = 0;
+          while (g.state === 'playing' && m.cur === o && n++ < 6000) { tick(1); spawned = Math.max(spawned, s.foes ? s.foes.length : 0); if (n % 20 === 0 && s.foes) for (const e of s.foes) if (!e.dead && Math.random() < 0.5) e.damage(99999, {}); }
+          out.defend = { ticks: n, waves: s.wave, foes: spawned };
+        }
         else if (o.type === 'race') {
           p.enterVehicle(s.car); tick(130);
           for (const c of s.cps) { if (g.state !== 'playing' || m.cur !== o) break; s.car.teleport(c.x, c.z, s.yaw); tick(2); }

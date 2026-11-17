@@ -82,6 +82,7 @@ export class UI {
         <button data-a="cast">Cast &amp; names<small>Rename the hero, villain, city - anyone</small></button>
         <button data-a="manual">Field manual<small>Controls and tips</small></button>
         <button data-a="settings">Settings<small>Audio, graphics, controls</small></button>
+        <button data-a="feedback">Feedback &amp; issues<small>Report a bug or tell us how to improve the game</small></button>
       </div>`, { left: true, wide: true, on: (a) => {
       if (a === 'new') this.castEditor(() => { this.g.newCampaign(); this.intro(0); }, true);
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
@@ -91,6 +92,7 @@ export class UI {
       else if (a === 'cast') this.castEditor(() => this.title());
       else if (a === 'manual') this.manual(() => this.title());
       else if (a === 'settings') this.settings(() => this.title());
+      else if (a === 'feedback') this.feedback(() => this.title());
     } });
   }
 
@@ -210,14 +212,44 @@ export class UI {
     } });
   }
 
+  // feedback: no server, so the report opens as a prefilled GitHub issue the player only has to submit
+  feedback(back, ctx) {
+    const kinds = [['bug', 'Bug - something is broken'], ['hard', 'Too hard'], ['easy', 'Too easy'], ['idea', 'Idea - something to add'], ['other', 'Something else']];
+    const repo = 'https://github.com/nipuna05/game_story_mix';
+    this.show(`<h2><small>HELP US IMPROVE</small>Feedback &amp; issues</h2>
+      <p>${ctx ? `You are sending feedback about <b>${esc(ctx)}</b> - the mission name is added to your report. ` : ''}Found a bug, a mission that is too hard or too easy, or have an idea? Write it here. Sending opens a new issue on GitHub with your text filled in - you just press <b>Submit new issue</b> there (a free GitHub account is needed).</p>
+      <label class="f">What kind of feedback?</label><select id="fb_kind">${kinds.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <label class="f">Your message<em>what happened, which mission, what you expected</em></label><textarea id="fb_msg" maxlength="1500" placeholder="Describe it in a few sentences..."></textarea>
+      <p class="note" id="fb_note"></p>
+      <div class="row"><button class="primary" data-a="send">Open on GitHub</button><button data-a="copy">Copy text</button><button data-a="issues">See existing issues</button><button data-a="back">Back</button></div>`,
+    { on: (a) => {
+      if (a === 'back') return back();
+      const kind = this.q('#fb_kind').value, msg = this.q('#fb_msg').value.trim(), note = this.q('#fb_note');
+      const label = kinds.find((k) => k[0] === kind)[1].split(' - ')[0];
+      if (a === 'issues') return void window.open(repo + '/issues', '_blank', 'noopener');
+      if (!msg) { note.textContent = 'Please write a short message first.'; return; }
+      if (a === 'copy') {
+        const done = () => { note.textContent = 'Copied. Paste it wherever you want to send it.'; };
+        if (navigator.clipboard) navigator.clipboard.writeText(`[${label}] ${msg}${ctx ? ` (Mission: ${ctx})` : ''}`).then(done, () => { note.textContent = 'Could not copy automatically - select the text and copy it.'; }); else note.textContent = 'Could not copy automatically - select the text and copy it.';
+        return;
+      }
+      const NL = String.fromCharCode(10);
+      const body = ctx ? msg + NL + NL + '---' + NL + 'Mission: ' + ctx : msg;
+      const url = `${repo}/issues/new?title=${encodeURIComponent(`[${label}] ${msg.split(NL)[0].slice(0, 60)}`)}&body=${encodeURIComponent(body)}`;
+      window.open(url, '_blank', 'noopener');
+      note.textContent = 'GitHub opened in a new tab. Thank you!';
+    } });
+  }
+
   pause() {
     this.show(`<h2><small>PAUSED</small>${this.T(this.g.def.title)}</h2>
-      <div class="menu"><button class="primary" data-a="resume">Resume</button><button data-a="manual">Field manual</button><button data-a="settings">Settings</button><button data-a="restart">Restart mission</button><button data-a="quit">Quit to main menu</button></div>`,
+      <div class="menu"><button class="primary" data-a="resume">Resume</button><button data-a="manual">Field manual</button><button data-a="settings">Settings</button><button data-a="feedback">Feedback &amp; issues</button><button data-a="restart">Restart mission</button><button data-a="quit">Quit to main menu</button></div>`,
     { left: true, on: (a) => {
       const g = this.g;
       if (a === 'resume') g.resume();
       else if (a === 'manual') this.manual(() => this.pause());
       else if (a === 'settings') this.settings(() => this.pause());
+      else if (a === 'feedback') this.feedback(() => this.pause(), this.T(this.g.def.title));
       else if (a === 'restart') g.startMission(g.def, { approach: g.approach });
       else g.toMenu();
     } });
@@ -227,8 +259,8 @@ export class UI {
     this.show(`<h2 style="color:var(--bad)"><small>MISSION FAILED</small>${esc(reason)}</h2>
       <div class="menu" style="margin-top:18px">
         ${canContinue ? '<button class="primary" data-a="cp">Continue from last objective<small>Enemies you killed stay dead</small></button>' : ''}
-        <button class="${canContinue ? '' : 'primary'}" data-a="restart">Restart mission</button><button data-a="quit">Quit to main menu</button></div>`,
-    { left: true, on: (a) => { const g = this.g; if (a === 'cp') g.continueCheckpoint(); else if (a === 'restart') g.startMission(g.def, { approach: g.approach }); else g.toMenu(); } });
+        <button class="${canContinue ? '' : 'primary'}" data-a="restart">Restart mission</button><button data-a="feedback">Send feedback</button><button data-a="quit">Quit to main menu</button></div>`,
+    { left: true, on: (a) => { const g = this.g; if (a === 'feedback') return this.feedback(() => this.fail(reason, canContinue), this.T(g.def.title)); if (a === 'cp') g.continueCheckpoint(); else if (a === 'restart') g.startMission(g.def, { approach: g.approach }); else g.toMenu(); } });
   }
 
   debrief(r) {
@@ -242,8 +274,9 @@ export class UI {
       <p class="note" style="color:var(--acc)">+${r.credits || 0} credits · +${r.score} XP</p>
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
-      <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="again">Play again</button><button data-a="menu">Main menu</button></div>`,
+      <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div>`,
     { on: (a) => {
+      if (a === 'feedback') return this.feedback(() => this.debrief(r), this.T(def.title));
       if (a === 'again') return g.startMission(def, { approach: g.approach });
       g.toMenu(true);
       if (a === 'menu') return this.title();

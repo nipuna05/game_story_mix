@@ -39,6 +39,7 @@ and endings use whatever you type.
 | 3 | Rust and Chains | Industrial Zone, day | Free three hostages, blow up fuel convoys, eliminate the enemy lieutenant |
 | 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
 | 3c | Redrock Run | Redrock Canyon, day | Pickup time trial through the canyon, copy shipping manifests, burn two fuel trucks |
+| 3e | Hold the Line | Harbor, night | New game type: hold a relay in the plaza for 90 s against four attack waves, then escape |
 | 3d | Saltwind Landing | Saltwind Cay, dusk | Arrive by boat, copy shipping logs, burn three fuel depots, escape from the west dock |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
 | 4b | Dead Drop | Greenwater Forest, day | Arrive by boat, rescue couriers, hunt the Warden |
@@ -210,3 +211,7 @@ Edge or Chrome).
 - Military motorbike - Zsky (Poly Pizza).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
+
+## Feedback
+
+The main menu, pause menu, mission-complete and mission-failed screens all have a **Feedback & issues** button. Players pick a type (bug, too hard, too easy, idea, other) and write a message; it opens a prefilled GitHub issue on this repo (the mission name is added when sent from a mission screen).

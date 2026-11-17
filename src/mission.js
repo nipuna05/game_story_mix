@@ -70,7 +70,24 @@ export class MissionRun {
     const s = o.st;
     if (o.type === 'collect' || o.type === 'rescue' || o.type === 'destroy') return `${s.n || 0}/${o.count}`;
     if (o.type === 'fight' && s.started) return `${s.thugs.filter((t) => t.dead).length}/${o.count}`;
+    if (o.type === 'defend' && s.started) return `wave ${s.wave}/${o.waves}`;
     return '';
+  }
+
+  // one attack wave: guards pour in from random sides of the defended point and head straight for the player
+  spawnWave(o) {
+    const g = this.g, s = o.st, a = g.P[o.at || 'arena'], n = Math.round(((o.base || 3) + s.wave * (o.grow || 1)) * (g.mission.def.enemies || 1));
+    for (let k = 0; k < n; k++) {
+      for (let tries = 0; tries < 14; tries++) {
+        const t = Math.random() * Math.PI * 2, r = 46 + Math.random() * 16, x = a.x + Math.cos(t) * r, z = a.z + Math.sin(t) * r;
+        if (g.world.inside(x, 1, z, 4) || g.world.inWater(x, z)) continue;
+        const type = (s.wave % 3 === 0 && k === 0) ? 'heavy' : (s.wave >= 2 && k === 1 && o.snipers ? 'sniper' : 'guard');
+        const e = g.spawnEnemy(type, x, z, Math.atan2(a.x - x, a.z - z), { noAlarm: true });
+        e.alert(g.player.targetPos()); s.foes.push(e); break;
+      }
+    }
+    g.hud.banner(`WAVE ${s.wave}`, `${n} hostiles inbound`);
+    g.audio.blip(330);
   }
 
   update(dt) {
@@ -104,6 +121,26 @@ export class MissionRun {
         break;
       }
       case 'race': this.updateRace(o, dt); break;
+      case 'defend': {
+        const a = P[o.at || 'arena'];
+        if (!s.started) {
+          if ((p.mode === 'foot' || p.mode === 'car') && dist2(p.pos.x, p.pos.z, a.x, a.z) < 14) {
+            s.started = true; s.t = o.seconds || 90; s.wave = 0; s.next = 5; s.foes = [];
+            g.hud.banner('HOLD THE POSITION', 'Stay near the marker until the timer runs out');
+          }
+        } else {
+          const near = dist2(p.pos.x, p.pos.z, a.x, a.z) < 32;
+          if (near) s.t = Math.max(0, s.t - dt); else g.hint('defendAway', 'You are too far from the position - the countdown is paused. Get back to the marker.');
+          if (s.t > 0) {
+            s.next -= dt;
+            if (s.next <= 0 && s.wave < o.waves) { s.wave++; s.next = (o.seconds || 90) / o.waves; this.spawnWave(o); }
+            g.hud.timer = `HOLD ${fmtTime(s.t)}${near ? '' : '  ·  RETURN!'}`;
+          } else if (s.foes.every((e) => e.dead)) this.complete();
+          else g.hud.timer = 'CLEAR THE LAST HOSTILES';
+          g.hud.objDirty = true;
+        }
+        break;
+      }
       case 'kill': if (s.boss.dead) this.complete(); break;
       case 'rescue': s.n = s.hostages.filter((h) => h.state === 'safe').length; if (s.n >= o.count) this.complete(); else g.hud.objDirty = true; break;
       case 'destroy': s.n = s.targets.filter((t) => t.state === 'dead').length; if (s.n >= o.count) this.complete(); else g.hud.objDirty = true; break;
@@ -136,6 +173,7 @@ export class MissionRun {
       case 'kill': return { x: s.boss.pos.x, y: s.boss.pos.y + 2.4, z: s.boss.pos.z, label: s.boss.name.toUpperCase() };
       case 'rescue': return nearest(s.hostages.filter((h) => h.state === 'captive'), 'HOSTAGE') || at(g.rescueZone, 'SAFE ZONE', 1.5, 10);
       case 'destroy': return nearest(s.targets.filter((t) => t.state === 'idle'), 'TARGET');
+      case 'defend': return s.started && s.t <= 0 ? nearest((s.foes || []).filter((e) => !e.dead), 'HOSTILE') : at(P[o.at || 'arena'], 'HOLD', 1.5, 30);
       case 'flyout': {
         if (p.mode === 'plane') return at(P.flyout, 'EXIT VECTOR', P.flyout.y, 60);
         const pl = g.vehicles.find((x) => x.type === 'plane' && !x.dead && !x.autopilot);
