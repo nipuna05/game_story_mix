@@ -40,6 +40,8 @@ and endings use whatever you type.
 | 3b | Riverline | Greenwater Forest, day | Cross two rivers (wade, boat or bridge), steal codebooks, blow up jammer masts |
 | 3c | Redrock Run | Redrock Canyon, day | Pickup time trial through the canyon, copy shipping manifests, burn two fuel trucks |
 | 3e | Hold the Line | Harbor, night | New game type: hold a relay in the plaza for 90 s against four attack waves, then escape |
+| 3f | Redrock Stand | Redrock Canyon, dusk | Hold a radio mast for 2 minutes against five attack waves, then escape |
+| 3g | Saltwind Beacon | Saltwind Cay, night | Hold a beacon for 90 seconds against four waves so a ferry can slip away |
 | 3d | Saltwind Landing | Saltwind Cay, dusk | Arrive by boat, copy shipping logs, burn three fuel depots, escape from the west dock |
 | 4 | Mountain Run | Mountain Road, dawn | Motorbike time trial, recover decoders, rescue your friend, steal a plane and fly out |
 | 4b | Dead Drop | Greenwater Forest, day | Arrive by boat, rescue couriers, hunt the Warden |

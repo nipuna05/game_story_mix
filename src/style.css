@@ -146,7 +146,7 @@ button em { margin-left: 10px; }
 .logo { font-size: 50px; } .tag { margin: 8px 0 18px; }
 
 table.best td { padding: 2px 8px; font-size: 13px; }
-.menu.mlist.two button { padding: 8px 14px; }
+.menu.mlist.two button { padding: 5px 12px; }
 
 #tip { position: absolute; left: 50%; bottom: 172px; transform: translateX(-50%); max-width: min(680px, 80vw); display: none; background: rgba(8, 22, 30, 0.9); border: 1px solid var(--acc2); padding: 7px 14px 7px 52px; font-size: 14px; line-height: 1.4; }
 #tip::before { content: 'TIP'; position: absolute; left: 12px; top: 8px; font: 700 11px var(--mono); letter-spacing: 2px; color: var(--acc2); }

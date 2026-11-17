@@ -210,6 +210,44 @@ export const CAMPAIGN = [
     outro: ["With the ledgers public, {org} loses its quiet partners one by one."],
   },
   {
+    id: 'm3f', title: 'Redrock Stand', location: 'desert', time: 'dusk', insertion: 'foot', enemies: 1.05, loadout: ['rifle', 'sniper'],
+    place: 'Redrock Canyon - the old trading post',
+    brief: [
+      "{ally}'s convoy is stranded on the far side of Redrock Canyon and the only radio mast in range stands in the old trading post. {hacker} can patch a rescue call through it - but the signal takes two full minutes to go out.",
+      "{org} will hear it the moment it starts. Hold the post. Waves will come from every direction, so use the stone walls and wrecks for cover and keep close - the call only runs while you stand near the mast.",
+      "When the call is out and the last of them is down, drive or run for the extraction point.",
+    ],
+    objectives: [
+      { type: 'reach', at: 'arena', text: 'Reach the radio mast at the trading post',
+        radio: [R('{hacker}', 'Mast is in the middle of the post. Stand on it and I start the call.')] },
+      { type: 'defend', at: 'arena', seconds: 120, waves: 5, base: 3, grow: 1, snipers: true, text: 'Hold the mast until the rescue call goes out',
+        radio: [R('{hacker}', 'Call is going out. Two minutes. Do not leave the post.')],
+        done: [R('{hacker}', 'Call sent - help is on the way. Get out of there.')] },
+      { type: 'reach', at: 'extract', text: 'Escape through the extraction point',
+        done: [R('{ally}', 'We heard it. The convoy is moving again - thank you.')] },
+    ],
+    outro: ["The convoy reaches the coast by morning. {org} has one fewer hold-out in the desert."],
+  },
+  {
+    id: 'm3g', title: 'Saltwind Beacon', location: 'island', time: 'night', insertion: 'foot', enemies: 1.1, loadout: ['rifle', 'sniper'],
+    place: 'Saltwind Cay - the signal tower',
+    brief: [
+      "{org}'s patrol boats are hunting a refugee ferry in the dark. The only way to lure them off is to switch on the old beacon on Saltwind Cay, so they chase the light instead of the ship.",
+      "The beacon needs ninety seconds to warm up and the island will answer it with everything it has. Hold the beacon until the ferry is clear.",
+      "Clear the last attackers, then leave by the western dock.",
+    ],
+    objectives: [
+      { type: 'reach', at: 'arena', text: 'Reach the beacon in the middle of the island',
+        radio: [R('{hacker}', 'The beacon is in the old market square. Light it and they will turn toward you.')] },
+      { type: 'defend', at: 'arena', seconds: 90, waves: 4, base: 4, grow: 1, snipers: true, text: 'Hold the beacon until the ferry is clear',
+        radio: [R('{hacker}', 'Beacon is warming. Ninety seconds and the ferry is out of range.')],
+        done: [R('{hacker}', 'The ferry is clear. Every boat is chasing your light - leave it.')] },
+      { type: 'reach', at: 'extract', text: 'Escape to the west dock',
+        done: [R('{ally}', 'The ferry is safe. You bought them the whole night.')] },
+    ],
+    outro: ["The ferry's passengers carry {org}'s secrets with them: names, ledgers, ship routes."],
+  },
+  {
     id: 'm4', title: 'Mountain Run', location: 'mountain', time: 'dawn', insertion: 'bike', enemies: 1.0, loadout: ['sniper', 'rifle'],
     place: 'Mountain Road - ridge base',
     brief: [
