@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { dist2, fmtTime } from './util.js';
 import { fill } from './story.js';
 
@@ -30,6 +31,7 @@ export class MissionRun {
         }
         case 'rescue': s.hostages = take(P.hostages, o.count).map((p) => g.spawnHostage(p.x, p.z)); o.count = s.hostages.length; break;
         case 'destroy': s.targets = take(P.targets, o.count).map((p) => g.spawnTarget(p.x, p.z, o.kind || 'fuel')); o.count = s.targets.length; break;
+        case 'defuse': s.targets = take(P.targets, o.count).map((p) => g.spawnTarget(p.x, p.z, 'bomb')); o.count = s.targets.length; break;
         case 'kill': {
           const b = P.boss;
           s.boss = g.spawnEnemy(o.enemy || 'boss', b.x, b.z, Math.PI, { name: fill(o.name || 'Target', g.cast) });
@@ -55,6 +57,7 @@ export class MissionRun {
     const o = this.cur, g = this.g;
     if (!o) return g.missionComplete();
     for (const [who, text] of o.radio || []) g.hud.radio(fill(who, g.cast), fill(text, g.cast));
+    if (o.type === 'defuse') for (const t of o.st.targets) g.armBomb(t);
     if (o.type === 'rescue' || o.type === 'escort') g.rescueZone = g.P[o.at || 'extract'];
     // guards stand down while you are racing, brawling or still in the air
     g.truce = o.type === 'race' || o.type === 'fight' || o.type === 'fly';
@@ -72,7 +75,7 @@ export class MissionRun {
 
   progress(o) {
     const s = o.st;
-    if (o.type === 'collect' || o.type === 'rescue' || o.type === 'destroy') return `${s.n || 0}/${o.count}`;
+    if (o.type === 'collect' || o.type === 'rescue' || o.type === 'destroy' || o.type === 'defuse') return `${s.n || 0}/${o.count}`;
     if (o.type === 'fight' && s.started) return `${s.thugs.filter((t) => t.dead).length}/${o.count}`;
     if (o.type === 'defend' && s.started) return `wave ${s.wave}/${o.waves}`;
     if (o.type === 'escort' && s.vip) return s.vip.state === 'captive' ? '' : `VIP ${Math.round(s.vip.hp)}%`;
@@ -100,7 +103,10 @@ export class MissionRun {
     if (o.timeLimit) {
       s.t = (s.t ?? o.timeLimit) - dt;
       g.hud.timer = 'TIME ' + fmtTime(s.t);
-      if (s.t <= 0) return g.fail(fill(o.failText || 'You ran out of time.', g.cast));
+      if (s.t <= 0) {
+        if (o.type === 'defuse') for (const t of s.targets) if (t.state === 'live') { t.state = 'dead'; t.lamp.visible = false; g.explode(new THREE.Vector3(t.pos.x, 1, t.pos.z), 12, 200); }
+        return g.fail(fill(o.failText || 'You ran out of time.', g.cast));
+      }
     }
     if (o.noAlarm && g.alarm) return g.fail(fill(o.failText || 'The alarm was raised - the plaza is locked down.', g.cast));
     switch (o.type) {
@@ -165,6 +171,7 @@ export class MissionRun {
       case 'kill': if (s.boss.dead) this.complete(); break;
       case 'rescue': s.n = s.hostages.filter((h) => h.state === 'safe').length; if (s.n >= o.count) this.complete(); else g.hud.objDirty = true; break;
       case 'destroy': s.n = s.targets.filter((t) => t.state === 'dead').length; if (s.n >= o.count) this.complete(); else g.hud.objDirty = true; break;
+      case 'defuse': s.n = s.targets.filter((t) => t.state === 'dead').length; if (s.n >= o.count) this.complete(); else g.hud.objDirty = true; break;
       case 'flyout': {
         const v = p.vehicle;
         if (p.mode === 'plane' && v.airborne) { const f = P.flyout; if (dist2(v.pos.x, v.pos.z, f.x, f.z) < 170 && v.pos.y > 50) this.complete(); }
@@ -194,6 +201,7 @@ export class MissionRun {
       case 'kill': return { x: s.boss.pos.x, y: s.boss.pos.y + 2.4, z: s.boss.pos.z, label: s.boss.name.toUpperCase() };
       case 'rescue': return nearest(s.hostages.filter((h) => h.state === 'captive'), 'HOSTAGE') || at(g.rescueZone, 'SAFE ZONE', 1.5, 10);
       case 'destroy': return nearest(s.targets.filter((t) => t.state === 'idle'), 'TARGET');
+      case 'defuse': return nearest(s.targets.filter((t) => t.state === 'live'), 'BOMB');
       case 'escort': return s.vip.dead ? null : s.vip.state === 'captive' ? nearest([s.vip], 'VIP') : at(g.rescueZone, 'SAFE ZONE', 1.5, 10);
       case 'defend': return s.started && s.t <= 0 ? nearest((s.foes || []).filter((e) => !e.dead), 'HOSTILE') : at(P[o.at || 'arena'], 'HOLD', 1.5, 30);
       case 'flyout': {

@@ -40,6 +40,10 @@ for (const id of ids) {
         }
         else if (o.type === 'kill') { s.boss.damage(99999, {}); tick(3); if (!s.boss.dead) s.boss.die({}); tick(3); }
         else if (o.type === 'fight') { foot(); p.pos.set(P.arena.x, 0, P.arena.z); tick(4); for (const t of s.thugs) t.damage(99999, {}); tick(4); }
+        else if (o.type === 'defuse') {
+          foot(); const live = s.targets.filter((t) => t.state === 'live').length; out.bombsLive = live;
+          for (const t of s.targets.filter((q) => q.state === 'live')) { p.pos.set(t.pos.x + 3, 0, t.pos.z); tick(1); g.defuseBomb(t); tick(1); }
+        }
         else if (o.type === 'escort') {
           foot(); const v = s.vip, z = g.rescueZone; p.pos.set(v.pos.x, 0, v.pos.z + 1); tick(2); v.free(); tick(2);
           let n = 0, hit = 0; const hp0 = v.hp;

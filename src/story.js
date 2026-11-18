@@ -264,6 +264,27 @@ export const CAMPAIGN = [
     outro: ["The auditor's books go to every newsroom in the city before the night is over."],
   },
   {
+    id: 'm3i', title: "Dead Man's Switch", location: 'industrial', time: 'night', insertion: 'foot', enemies: 0.95, loadout: ['rifle'],
+    place: 'Industrial district - the chemical yards',
+    brief: [
+      "{org} knows its chemical yards are about to be exposed, so it has wired three bombs to the tanks. If the yards burn, so does the evidence - and half the neighbourhood with it.",
+      "{hacker} found the bomb schematics in a guard post. Copy them first: they show where each charge sits. When you have them, the timers start - find all three bombs and defuse them before the clock runs out.",
+      "Hold [E] at a bomb to defuse it. The beeping speeds up as time runs low. Then get out.",
+    ],
+    objectives: [
+      { type: 'collect', count: 1, item: 'intel', text: 'Copy the bomb schematics from the guard post',
+        radio: [R('{hacker}', 'The schematics are in the guard post by the gate. Copy them and I can tell you where the charges are.')],
+        done: [R('{hacker}', 'Got it. Three bombs, three tanks - and the timers just started. Move!')] },
+      { type: 'defuse', count: 3, timeLimit: 150, text: 'Defuse the 3 bombs before they go off',
+        failText: 'The bombs went off.',
+        radio: [R('{hacker}', 'Bombs are on the marked tanks. Hold [E] at each one to defuse it. You have two and a half minutes.')],
+        done: [R('{hacker}', 'All three are cold. The yards are safe.')] },
+      { type: 'reach', at: 'extract', text: 'Escape through the extraction point',
+        done: [R('{ally}', 'The evidence survived and so did the neighbourhood.')] },
+    ],
+    outro: ["With the evidence intact, the yards' owners cannot hide behind {org} any longer."],
+  },
+  {
     id: 'm4', title: 'Mountain Run', location: 'mountain', time: 'dawn', insertion: 'bike', enemies: 1.0, loadout: ['sniper', 'rifle'],
     place: 'Mountain Road - ridge base',
     brief: [

@@ -189,7 +189,10 @@ class Game {
   spawnTarget(x, z, kind) {
     const grp = new THREE.Group(), u = this.world.geo.box;
     const add = (geo, color, sx, sy, sz, px, py, pz, rz) => { const m = new THREE.Mesh(geo, cmat(color)); m.scale.set(sx, sy, sz); m.position.set(px, py, pz); if (rz) m.rotation.x = rz; m.castShadow = true; grp.add(m); return m; };
-    if (kind === 'uplink' || kind === 'jammer') {
+    if (kind === 'bomb') {
+      add(u, 0x4a5a3a, 1.5, 0.9, 1.1, 0, 0.45, 0); add(u, 0x1c1e22, 1.55, 0.14, 1.15, 0, 0.7, 0); add(this.world.geo.cyl, 0xb0372a, 0.35, 0.9, 0.35, 0.35, 1.05, 0.1); add(u, 0xd8d8d0, 0.5, 0.18, 0.3, -0.3, 0.99, -0.1);
+      this.world.solid(x, z, 1.5, 1.2, 1.0);
+    } else if (kind === 'uplink' || kind === 'jammer') {
       add(u, 0x4a525c, 2.4, 2.2, 2.4, 0, 1.1, 0); add(this.world.geo.cyl, 0x8a929c, 0.25, 3.4, 0.25, 0, 3.9, 0);
       add(this.world.geo.cone, 0xd8dde2, 2.6, 1, 2.6, 0, 5.6, 0.3, 1.9);
       this.world.solid(x, z, 2.4, 2.4, 2.2);
@@ -199,9 +202,15 @@ class Game {
       this.world.solid(x, z, 2.7, 8.2, 3.1);
     }
     grp.position.set(x, 0, z); this.scene.add(grp);
-    const lamp = new THREE.Mesh(this.world.geo.sph, new THREE.MeshBasicMaterial({ color: 0xff3030 })); lamp.scale.setScalar(0.45); lamp.position.set(0, kind === 'uplink' ? 2.6 : 3.5, 0); lamp.visible = false; grp.add(lamp);
+    const lamp = new THREE.Mesh(this.world.geo.sph, new THREE.MeshBasicMaterial({ color: 0xff3030 })); lamp.scale.setScalar(0.45); lamp.position.set(0, kind === 'uplink' ? 2.6 : kind === 'bomb' ? 1.25 : 3.5, 0); lamp.visible = false; grp.add(lamp);
     const t = { pos: new THREE.Vector3(x, 0, z), kind, state: 'idle', t: 0, beepT: 0, mesh: grp, lamp };
     this.targets.push(t); return t;
+  }
+  // a defusal bomb starts ticking when its objective begins; holding E at it makes it safe
+  armBomb(t) { t.state = 'live'; t.beepT = 0; t.lamp.visible = true; }
+  defuseBomb(t) {
+    if (t.state !== 'live') return;
+    t.state = 'dead'; t.lamp.visible = true; t.lamp.material.color.setHex(0x40ff80); this.audio.blip(1200); this.hud.banner('BOMB DEFUSED', '');
   }
   armTarget(t) {
     if (t.state !== 'idle') return;
@@ -508,9 +517,13 @@ class Game {
       if (d < 0.8 && d < bd) { bd = d; best = { obj: h, hold: 1.1, text: `Hold [${this.input.label('KeyE')}] Cut them free`, act: () => { h.free(); this.audio.blip(700); this.hud.banner('HOSTAGE FREED', 'They will follow you'); } }; }
     }
     for (const t of this.targets) {
-      if (t.state !== 'idle') continue;
+      if (t.state !== 'idle' && t.state !== 'live') continue;
       const d = dist2(t.pos.x, t.pos.z, p.pos.x, p.pos.z) - 2;
-      if (d < 3.6 && d < bd) { bd = d; best = { obj: t, hold: 1.5, text: `Hold [${this.input.label('KeyE')}] ${t.kind === 'uplink' || t.kind === 'jammer' ? 'Plant uplink' : 'Plant charge'}`, act: () => this.armTarget(t) }; }
+      if (d < 3.6 && d < bd) {
+        bd = d;
+        best = t.state === 'live' ? { obj: t, hold: 2.5, text: `Hold [${this.input.label('KeyE')}] Defuse the bomb`, act: () => this.defuseBomb(t) }
+          : { obj: t, hold: 1.5, text: `Hold [${this.input.label('KeyE')}] ${t.kind === 'uplink' || t.kind === 'jammer' ? 'Plant uplink' : 'Plant charge'}`, act: () => this.armTarget(t) };
+      }
     }
     return best;
   }
@@ -676,6 +689,12 @@ class Game {
       if (d.key) this.hud.banner(d.label.toUpperCase(), '');
     }
     for (const t of this.targets) {
+      if (t.state === 'live') {   // a live bomb blinks and beeps, faster as the clock runs down
+        const left = this.mission && this.mission.cur && this.mission.cur.st.t != null ? this.mission.cur.st.t : 99;
+        t.beepT -= dt;
+        if (t.beepT <= 0) { t.beepT = left < 20 ? 0.25 : left < 45 ? 0.5 : 1; t.lamp.visible = !t.lamp.visible; if (dist2(t.pos.x, t.pos.z, p.pos.x, p.pos.z) < 70) this.audio.beep(left < 20 ? 2100 : 1700); }
+        continue;
+      }
       if (t.state !== 'armed') continue;
       t.t -= dt; t.beepT -= dt;
       if (t.beepT <= 0) { t.beepT = Math.max(0.12, t.t / 8); t.lamp.visible = !t.lamp.visible; this.audio.beep(1500); }
