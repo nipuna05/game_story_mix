@@ -83,7 +83,11 @@ export class UI {
         <button data-a="manual">Field manual<small>Controls and tips</small></button>
         <button data-a="settings">Settings<small>Audio, graphics, controls</small></button>
         <button data-a="feedback">Feedback &amp; issues<small>Report a bug or tell us how to improve the game</small></button>
-      </div>`, { left: true, wide: true, on: (a) => {
+        <button data-a="invite">Invite a friend<small>Copy the link to share the game</small></button>
+      </div>
+      ${hasGame ? '' : '<p class="note">Quick start: WASD move · mouse aim · click fire · E use · C crouch · H manual. Stay in the shadows - the guards are watching.</p>'}
+      <p class="note" id="inviteNote"></p>`, { left: true, wide: true, on: (a) => {
+      if (a === 'invite') return this.invite();
       if (a === 'new') this.castEditor(() => { this.g.newCampaign(); this.intro(0); }, true);
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
       else if (a === 'select') this.select();
@@ -274,8 +278,9 @@ export class UI {
       <p class="note" style="color:var(--acc)">+${r.credits || 0} credits · +${r.score} XP</p>
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
-      <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div>`,
+      <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p>`,
     { on: (a) => {
+      if (a === 'share') return this.shareResult(r, def);
       if (a === 'feedback') return this.feedback(() => this.debrief(r), this.T(def.title));
       if (a === 'again') return g.startMission(def, { approach: g.approach });
       g.toMenu(true);
@@ -284,6 +289,47 @@ export class UI {
       if (last) return this.ending(g.save.flags.ending || 'savior');
       this.briefing(CAMPAIGN[idx + 1]);
     } });
+  }
+
+  // ---------------------------------------------------------------- sharing
+  gameUrl() { return location.origin + location.pathname; }
+  sheet() { return !!navigator.share && matchMedia('(pointer: coarse)').matches; }   // the system share sheet is for phones and tablets; desktops copy instead
+  invite() {
+    const note = this.q('#inviteNote'), text = `Nightfall Protocol - a free 3D stealth, shooting and flying game that runs in your browser. ${this.gameUrl()}`;
+    if (this.sheet()) return navigator.share({ title: 'Nightfall Protocol', text, url: this.gameUrl() }).catch(() => {});
+    const done = () => { if (note) note.textContent = 'Link copied - paste it to a friend.'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => { if (note) note.textContent = this.gameUrl(); }); else if (note) note.textContent = this.gameUrl();
+  }
+  // draws the result card (1200x630) for the share image
+  shareCard(r, def) {
+    const c = document.createElement('canvas'); c.width = 1200; c.height = 630; const x = c.getContext('2d'), st = r.stats;
+    const g = x.createLinearGradient(0, 0, 1200, 630); g.addColorStop(0, '#0b1220'); g.addColorStop(1, '#1d2b45'); x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
+    x.fillStyle = '#ffb23e'; x.fillRect(0, 0, 14, 630);
+    x.textBaseline = 'alphabetic'; x.fillStyle = '#ffb23e'; x.font = 'bold 30px system-ui, sans-serif'; x.fillText('NIGHTFALL PROTOCOL', 60, 80);
+    x.fillStyle = '#8fa3c4'; x.font = '24px system-ui, sans-serif'; x.fillText('MISSION COMPLETE', 60, 125);
+    x.fillStyle = '#ffffff'; x.font = 'bold 58px system-ui, sans-serif'; x.fillText(String(this.T(def.title)).replace(/&amp;/g, '&').replace(/&#39;/g, "'").slice(0, 28), 60, 205);
+    x.fillStyle = '#ffb23e'; x.font = 'bold 300px system-ui, sans-serif'; x.textAlign = 'right'; x.fillText(r.rank, 1140, 420); x.textAlign = 'left';
+    const rows = [['TIME', fmtTime(st.time)], ['SCORE', String(r.score)], ['KILLS', String(st.kills)], ['ACCURACY', (st.shots ? Math.round(st.hits / st.shots * 100) : 0) + '%'], ['ALARMS', String(st.alarms)]];
+    rows.forEach(([k, v], i) => { const px = 60 + (i % 3) * 230, py = 300 + Math.floor(i / 3) * 120; x.fillStyle = '#8fa3c4'; x.font = '20px system-ui, sans-serif'; x.fillText(k, px, py); x.fillStyle = '#fff'; x.font = 'bold 48px system-ui, sans-serif'; x.fillText(v, px, py + 50); });
+    x.fillStyle = st.alarms === 0 ? '#5be38a' : '#8fa3c4'; x.font = 'bold 26px system-ui, sans-serif'; x.fillText(st.alarms === 0 ? 'GHOST - no alarm raised' : '', 60, 520);
+    x.fillStyle = '#8fa3c4'; x.font = '24px system-ui, sans-serif'; x.fillText('Play free in your browser: ' + this.gameUrl().replace(/^https?:\/\//, ''), 60, 590);
+    return c;
+  }
+  async shareResult(r, def) {
+    const note = this.q('#shareNote'), say = (t) => { if (note) note.textContent = t; };
+    const title = String(this.T(def.title)).replace(/&amp;/g, '&').replace(/&#39;/g, "'"), st = r.stats;
+    const text = `I cleared "${title}" in Nightfall Protocol - rank ${r.rank}, ${fmtTime(st.time)}, score ${r.score}${st.alarms === 0 ? ', no alarms (Ghost)' : ''}. Can you beat it?`;
+    const canvas = this.shareCard(r, def);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    try {
+      const file = blob && new File([blob], 'nightfall-result.png', { type: 'image/png' });
+      if (this.sheet() && navigator.canShare && file && navigator.canShare({ files: [file] })) return await navigator.share({ title: 'Nightfall Protocol', text, url: this.gameUrl(), files: [file] });
+      if (this.sheet()) return await navigator.share({ title: 'Nightfall Protocol', text, url: this.gameUrl() });
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    // no share sheet (desktop): copy the text and save the picture
+    if (navigator.clipboard) await navigator.clipboard.writeText(`${text} ${this.gameUrl()}`).catch(() => {});
+    if (blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nightfall-result.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+    say('Result text copied and the card image saved - paste both into your chat or post.');
   }
 
   ending(key) {

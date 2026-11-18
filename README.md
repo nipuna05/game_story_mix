@@ -216,6 +216,12 @@ Edge or Chrome).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
 
+## Sharing
+
+- **Share result** on the mission debrief builds a 1200x630 result card (rank, time, score, accuracy, Ghost badge). On phones it opens the share sheet; on desktop it copies the text and saves the PNG.
+- **Invite a friend** on the title screen copies the game link.
+- Link previews (Open Graph / Twitter card) use `public/preview.png`; regenerate it with `node tools/preview.mjs` (dev server running). `node tools/sharecheck.mjs` tests the share card.
+
 ## Feedback
 
 The main menu, pause menu, mission-complete and mission-failed screens all have a **Feedback & issues** button. Players pick a type (bug, too hard, too easy, idea, other) and write a message; it opens a prefilled GitHub issue on this repo (the mission name is added when sent from a mission screen).
