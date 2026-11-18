@@ -40,6 +40,17 @@ for (const id of ids) {
         }
         else if (o.type === 'kill') { s.boss.damage(99999, {}); tick(3); if (!s.boss.dead) s.boss.die({}); tick(3); }
         else if (o.type === 'fight') { foot(); p.pos.set(P.arena.x, 0, P.arena.z); tick(4); for (const t of s.thugs) t.damage(99999, {}); tick(4); }
+        else if (o.type === 'escort') {
+          foot(); const v = s.vip, z = g.rescueZone; p.pos.set(v.pos.x, 0, v.pos.z + 1); tick(2); v.free(); tick(2);
+          let n = 0, hit = 0; const hp0 = v.hp;
+          while (g.state === 'playing' && m.cur === o && n++ < 3000) {   // walk toward the safe zone in steps, pausing so ambushes trigger
+            const dx = z.x - p.pos.x, dz = z.z - p.pos.z, d = Math.hypot(dx, dz) || 1, st = Math.min(1.2, d);
+            p.pos.set(p.pos.x + dx / d * st, 0, p.pos.z + dz / d * st); tick(2);
+            if (n === 60) { v.damage(30); hit = 1; }
+            if (v.state === 'follow' && Math.hypot(v.pos.x - p.pos.x, v.pos.z - p.pos.z) > 8) v.pos.set(p.pos.x, 0, p.pos.z);
+          }
+          out.escort = { ticks: n, ambushes: s.ambushes, vipHp: Math.round(v.hp), tookHit: hit, hp0 };
+        }
         else if (o.type === 'defend') {
           foot(); const a = P[o.at || 'arena']; p.pos.set(a.x, 0, a.z); let n = 0, spawned = 0;
           while (g.state === 'playing' && m.cur === o && n++ < 6000) { tick(1); spawned = Math.max(spawned, s.foes ? s.foes.length : 0); if (n % 20 === 0 && s.foes) for (const e of s.foes) if (!e.dead && Math.random() < 0.5) e.damage(99999, {}); }

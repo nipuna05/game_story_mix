@@ -24,6 +24,10 @@ export class MissionRun {
           s.items = spots.map((p) => g.spawnPickup(o.item || 'intel', p.x, p.z));
           break;
         }
+        case 'escort': {
+          const q = P.hostages[0]; s.vip = g.spawnHostage(q.x, q.z, { vip: true }); s.hostages = [s.vip]; s.foes = []; g.vip = s.vip; s.t = 0; s.ambushes = 0; s.warned = false;
+          break;
+        }
         case 'rescue': s.hostages = take(P.hostages, o.count).map((p) => g.spawnHostage(p.x, p.z)); o.count = s.hostages.length; break;
         case 'destroy': s.targets = take(P.targets, o.count).map((p) => g.spawnTarget(p.x, p.z, o.kind || 'fuel')); o.count = s.targets.length; break;
         case 'kill': {
@@ -51,7 +55,7 @@ export class MissionRun {
     const o = this.cur, g = this.g;
     if (!o) return g.missionComplete();
     for (const [who, text] of o.radio || []) g.hud.radio(fill(who, g.cast), fill(text, g.cast));
-    if (o.type === 'rescue') g.rescueZone = g.P[o.at || 'extract'];
+    if (o.type === 'rescue' || o.type === 'escort') g.rescueZone = g.P[o.at || 'extract'];
     // guards stand down while you are racing, brawling or still in the air
     g.truce = o.type === 'race' || o.type === 'fight' || o.type === 'fly';
     g.hud.objDirty = true;
@@ -71,12 +75,13 @@ export class MissionRun {
     if (o.type === 'collect' || o.type === 'rescue' || o.type === 'destroy') return `${s.n || 0}/${o.count}`;
     if (o.type === 'fight' && s.started) return `${s.thugs.filter((t) => t.dead).length}/${o.count}`;
     if (o.type === 'defend' && s.started) return `wave ${s.wave}/${o.waves}`;
+    if (o.type === 'escort' && s.vip) return s.vip.state === 'captive' ? '' : `VIP ${Math.round(s.vip.hp)}%`;
     return '';
   }
 
   // one attack wave: guards pour in from random sides of the defended point and head straight for the player
-  spawnWave(o) {
-    const g = this.g, s = o.st, a = g.P[o.at || 'arena'], n = Math.round(((o.base || 3) + s.wave * (o.grow || 1)) * (g.mission.def.enemies || 1));
+  spawnWave(o, center) {
+    const g = this.g, s = o.st, a = center || g.P[o.at || 'arena'], n = Math.round(((o.base || 3) + s.wave * (o.grow || 1)) * (g.mission.def.enemies || 1));
     for (let k = 0; k < n; k++) {
       for (let tries = 0; tries < 14; tries++) {
         const t = Math.random() * Math.PI * 2, r = 46 + Math.random() * 16, x = a.x + Math.cos(t) * r, z = a.z + Math.sin(t) * r;
@@ -86,8 +91,7 @@ export class MissionRun {
         e.alert(g.player.targetPos()); s.foes.push(e); break;
       }
     }
-    g.hud.banner(`WAVE ${s.wave}`, `${n} hostiles inbound`);
-    g.audio.blip(330);
+    if (!center) { g.hud.banner(`WAVE ${s.wave}`, `${n} hostiles inbound`); g.audio.blip(330); }
   }
 
   update(dt) {
@@ -121,6 +125,23 @@ export class MissionRun {
         break;
       }
       case 'race': this.updateRace(o, dt); break;
+      case 'escort': {
+        const v = s.vip;
+        if (v.dead) return g.fail(fill(o.failText || 'The VIP was killed.', g.cast));
+        if (v.state === 'safe') { this.complete(); break; }
+        if (v.state === 'follow' || v.state === 'riding') {
+          s.t += dt;
+          const zone = g.rescueZone;
+          if (s.ambushes < (o.ambushes || 3) && s.t > (o.every || 28) * (s.ambushes + 1) && dist2(p.pos.x, p.pos.z, zone.x, zone.z) > 70) {
+            s.ambushes++; s.wave = s.ambushes; o.base = o.base || 2; o.grow = o.grow || 0.5;
+            this.spawnWave(o, { x: p.pos.x + Math.sin(p.yaw) * 30, z: p.pos.z + Math.cos(p.yaw) * 30 });
+            g.hud.banner('AMBUSH', 'Protect the VIP'); g.audio.blip(330);
+          }
+          if (v.hp < 40 && !s.warned) { s.warned = true; g.hud.banner('VIP HURT', 'Get them out of the fire'); }
+        }
+        g.hud.objDirty = true;
+        break;
+      }
       case 'defend': {
         const a = P[o.at || 'arena'];
         if (!s.started) {
@@ -173,6 +194,7 @@ export class MissionRun {
       case 'kill': return { x: s.boss.pos.x, y: s.boss.pos.y + 2.4, z: s.boss.pos.z, label: s.boss.name.toUpperCase() };
       case 'rescue': return nearest(s.hostages.filter((h) => h.state === 'captive'), 'HOSTAGE') || at(g.rescueZone, 'SAFE ZONE', 1.5, 10);
       case 'destroy': return nearest(s.targets.filter((t) => t.state === 'idle'), 'TARGET');
+      case 'escort': return s.vip.dead ? null : s.vip.state === 'captive' ? nearest([s.vip], 'VIP') : at(g.rescueZone, 'SAFE ZONE', 1.5, 10);
       case 'defend': return s.started && s.t <= 0 ? nearest((s.foes || []).filter((e) => !e.dead), 'HOSTILE') : at(P[o.at || 'arena'], 'HOLD', 1.5, 30);
       case 'flyout': {
         if (p.mode === 'plane') return at(P.flyout, 'EXIT VECTOR', P.flyout.y, 60);

@@ -248,6 +248,22 @@ export const CAMPAIGN = [
     outro: ["The ferry's passengers carry {org}'s secrets with them: names, ledgers, ship routes."],
   },
   {
+    id: 'm3h', title: 'Safe Passage', location: 'downtown', time: 'dusk', insertion: 'foot', enemies: 0.85, loadout: ['rifle'],
+    place: 'Downtown - the financial district',
+    brief: [
+      "{org}'s own auditor wants out. She is being held in an office block downtown and has the original books with her. If she reaches the extraction point alive, {org} cannot deny a thing.",
+      "Find her, cut her free and bring her out. She will follow you on foot, or climb into any vehicle you drive up to. Guards will fire at her as well as at you, and {org} will send ambush squads once you start moving.",
+      "If she dies, the books die with her.",
+    ],
+    objectives: [
+      { type: 'escort', at: 'extract', ambushes: 3, every: 26, base: 2, grow: 0.5, text: 'Free the auditor and escort her to the extraction point',
+        failText: 'The auditor was killed. The books are lost.',
+        radio: [R('{hacker}', 'She is inside the compound - look for the kneeling figure. Cut her free with [E], then keep her close and out of the line of fire.')],
+        done: [R('{ally}', 'She is safe, and so are the books. {org} is finished.')] },
+    ],
+    outro: ["The auditor's books go to every newsroom in the city before the night is over."],
+  },
+  {
     id: 'm4', title: 'Mountain Run', location: 'mountain', time: 'dawn', insertion: 'bike', enemies: 1.0, loadout: ['sniper', 'rifle'],
     place: 'Mountain Road - ridge base',
     brief: [

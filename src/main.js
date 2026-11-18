@@ -89,7 +89,7 @@ class Game {
     requestAnimationFrame((t) => this.frame(t));
   }
 
-  resetLists() { this.racePath = null; this.enemies = []; this.hostages = []; this.vehicles = []; this.pickups = []; this.targets = []; this.grenades = []; this.interact = null; this.markerTarget = null; }
+  resetLists() { this.vip = null; this.racePath = null; this.enemies = []; this.hostages = []; this.vehicles = []; this.pickups = []; this.targets = []; this.grenades = []; this.interact = null; this.markerTarget = null; }
   persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.save)); } catch { /* storage may be blocked */ } }
   wipe() { Object.assign(this.save, { unlocked: 1, started: false, flags: {}, best: {} }); this.persist(); }
   newCampaign() { Object.assign(this.save, { unlocked: 1, started: true, flags: {} }); this.persist(); }
@@ -175,7 +175,7 @@ class Game {
 
   // ---------------------------------------------------------------- spawning
   spawnEnemy(type, x, z, yaw, o) { const e = new Enemy(this, type, x, z, yaw, o); this.enemies.push(e); return e; }
-  spawnHostage(x, z) { const h = new Hostage(this, x, z); this.hostages.push(h); return h; }
+  spawnHostage(x, z, o) { const h = new Hostage(this, x, z, o); this.hostages.push(h); return h; }
   spawnCar(x, z, yaw, kind, color) { const c = new Car(this, x, z, yaw, kind, color); this.vehicles.push(c); return c; }
   spawnPlane(x, y, z, yaw, air) { const p = new Plane(this, x, y, z, yaw, air); this.vehicles.push(p); return p; }
   spawnPickup(type, x, z) {
@@ -365,6 +365,7 @@ class Game {
     this.audio.explosion(clamp(1.25 - pos.distanceTo(p.pos) / 160, 0, 1), this.spatial(pos, 220).pan);
     for (const e of this.enemies) { if (e.dead || owner === 'enemy') continue; const d = e.pos.distanceTo(pos); if (d < r) e.damage(dmg * (1 - d / r) + 25, { from: 'player', explosion: true }); }
     for (const v of this.vehicles) { if (v.dead || v.type !== 'car') continue; const d = v.pos.distanceTo(pos); if (d < r) v.hit(dmg * (1 - d / r)); }
+    if (this.vip && !this.vip.dead) { const dv = this.vip.pos.distanceTo(pos); if (dv < r) this.vip.damage(dmg * 0.6 * (1 - dv / r)); }
     const dp = p.pos.distanceTo(pos);
     if (dp < r && !p.vehicle) p.damage(dmg * 0.5 * (1 - dp / r), pos, 'explosion');
     this.emitNoise(pos, 130, true);

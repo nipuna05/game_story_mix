@@ -226,6 +226,11 @@ export class Enemy extends Walker {
     g.fx.flash(mz, 0xffb060, 30, 0.06);
     { const sp = g.spatial(this.pos, 170); g.audio.gun(VOICE_OF[this.type] || 'ak47', sp.vol * 0.9, sp.pan, sp.far, false); }
     if (hit) p.damage(def.dmg * g.diff.dmg, this.pos, 'gun');
+    const vip = g.vip;   // an escorted VIP in range draws fire too
+    if (vip && !vip.dead && vip.state !== 'safe' && vip.state !== 'captive' && dist2(this.pos.x, this.pos.z, vip.pos.x, vip.pos.z) < def.range * 0.7 && Math.random() < 0.22) {
+      const ve = new THREE.Vector3(vip.pos.x, 1.2, vip.pos.z); g.fx.tracer(mz, ve, 0xffc070);
+      if (Math.random() < 0.5) vip.damage(def.dmg * 0.7);
+    }
     if (this.burstN === 0) g.shout(this, 45, tp);
   }
 
@@ -290,14 +295,26 @@ export class Enemy extends Walker {
 }
 
 export class Hostage extends Walker {
-  constructor(g, x, z) {
+  constructor(g, x, z, o = {}) {
     super();
     this.g = g; this.pos = new THREE.Vector3(x, 0, z); this.yaw = Math.random() * 6.28;
     this.state = 'captive'; this.initWalk();
-    this.h = makeHumanoid({ shirt: oneOf(CIV_SHIRT), pants: oneOf(CIV_PANTS), tint: oneOf(TONES), scale: 0.94 + Math.random() * 0.12, gearList: Math.random() < 0.3 ? [['cap', oneOf([0x2a4a7a, 0x7a2a2a, 0x3a3a3a])]] : [] });
+    this.vip = !!o.vip; this.hp = 100; this.dead = false;
+    this.h = makeHumanoid(this.vip ? { shirt: 0x1c2a4a, pants: 0x1c1c24, tint: 0xe8d4b8, scale: 1.0, gearList: [] }
+      : { shirt: oneOf(CIV_SHIRT), pants: oneOf(CIV_PANTS), tint: oneOf(TONES), scale: 0.94 + Math.random() * 0.12, gearList: Math.random() < 0.3 ? [['cap', oneOf([0x2a4a7a, 0x7a2a2a, 0x3a3a3a])]] : [] });
     this.h.group.position.copy(this.pos); g.scene.add(this.h.group);
   }
   free() { if (this.state === 'captive') this.state = 'follow'; }
+  // only the escort VIP can be hurt; other hostages are never targeted
+  damage(n) {
+    if (!this.vip || this.dead || this.state === 'safe' || this.state === 'captive') return;
+    this.hp -= n; this.g.audio.hurt(n);
+    if (this.hp <= 0) {
+      this.hp = 0; this.dead = true; this.state = 'dead';
+      if (this.ridingIn) this.getOff();
+      this.state = 'dead'; this.h.group.visible = true; this.h.group.rotation.set(-Math.PI / 2, this.yaw, 0); this.h.group.position.set(this.pos.x, 0.25, this.pos.z);
+    }
+  }
   getOff() {
     const v = this.ridingIn; this.ridingIn = null;
     if (v) {
@@ -309,6 +326,7 @@ export class Hostage extends Walker {
   update(dt) {
     const g = this.g, p = g.player;
     this.speedNow = 0;
+    if (this.dead) return;
     if (this.state === 'follow' || this.state === 'riding') {
       const z = g.rescueZone, v = p.vehicle;
       const canBoard = p.mode === 'car' && v && !v.dead && (this.state === 'riding' || (dist2(this.pos.x, this.pos.z, p.pos.x, p.pos.z) < 9 && v.seatsFree() > 0));
