@@ -3,6 +3,7 @@ import { armoryScreen, controlsScreen } from './armory.js';
 import { GAME_TITLE, CAMPAIGN, INTRO, DECISIONS, ENDINGS, APPROACHES, DEFAULT_CAST, CAST_LABELS, BUILDER_OBJECTIVES, fill, buildCustom, dailyDef, dayNumber } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { THEMES } from './world.js';
+import { encodeOp, decodeOp } from './opcode.js';
 
 const controlsList = (L) => [
   ['On foot', [[`${L('KeyW')} ${L('KeyA')} ${L('KeyS')} ${L('KeyD')}`, 'Move'], ['Mouse', 'Look / aim'], [L('ShiftLeft'), 'Sprint (noisy)'], [L('KeyC'), 'Crouch - crouch-walking is slow and quiet'], [L('KeyZ'), 'Crawl - lie prone: slowest, quietest, hardest to see'], [L('KeyV'), 'Hold to sneak-walk while standing'], [L('Space'), 'Jump · stand up from crawling'],
@@ -60,7 +61,11 @@ export class UI {
   splash() {
     this.show(`<h1 class="logo">NIGHTFALL<br><span>PROTOCOL</span></h1><div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING</div>
       <p class="blink">Click anywhere or press any key to start</p><p class="note">Sound on. Press M at any time to mute.</p>`, { left: true });
-    const go = () => { window.removeEventListener('keydown', go, true); this.el.removeEventListener('click', go); this.g.audio.init(); this.title(); };
+    const go = () => {
+      window.removeEventListener('keydown', go, true); this.el.removeEventListener('click', go); this.g.audio.init();
+      const m = location.hash.match(/#op=(NFP[12]-[A-Za-z0-9_-]+)/);   // a shared operation link
+      if (m) { history.replaceState(null, '', location.pathname + location.search); this.importCode(m[1], null); } else this.title();
+    };
     window.addEventListener('keydown', go, true); this.el.addEventListener('click', go);
   }
   armory(tab, slot, back) { armoryScreen(this, tab, slot, back); }
@@ -311,6 +316,25 @@ export class UI {
     } });
   }
 
+  // ---------------------------------------------------------------- mission codes
+  async shareOp(form, note) {
+    const say = (t) => { if (note) note.textContent = t; };
+    const code = await encodeOp(form), link = `${this.gameUrl()}#op=${code}`;
+    if (navigator.clipboard) await navigator.clipboard.writeText(link).then(() => say(`Link copied - send it to a friend, they open it and play "${form.title || 'your operation'}". (Code only: ${code.slice(0, 24)}... - the link already contains it.)`), () => say(link));
+    else say(link);
+  }
+  // a pasted code or link: sanitise, keep a copy in the saved list and open its briefing
+  async importCode(text, note) {
+    try {
+      const form = await decodeOp(text);
+      const key = (f) => JSON.stringify([f.title, f.story, f.radio, f.leader, f.location, f.time, f.insertion, f.exit, f.count, f.enemies, f.objectives]);
+      const have = this.g.save.custom.find((f) => key(f) === key(form));   // the same operation twice is kept once
+      if (have) Object.assign(form, have); else { this.g.save.custom.push(form); this.g.persist(); }
+      this._bOpen = false;
+      this.briefing(buildCustom(form));
+    } catch (e) { if (note) note.textContent = e.message || 'Could not read that code.'; else this.title(); }
+  }
+
   // ---------------------------------------------------------------- sharing
   gameUrl() { return location.origin + location.pathname; }
   sheet() { return !!navigator.share && matchMedia('(pointer: coarse)').matches; }   // the system share sheet is for phones and tablets; desktops copy instead
@@ -379,12 +403,15 @@ export class UI {
           <div><label class="f">Items / hostages / targets each</label>${sel('b_count', [['1', '1'], ['2', '2'], ['3', '3']], f.count)}</div>
           <div><label class="f">Enemy presence</label>${sel('b_en', [['0.6', 'Light'], ['1', 'Normal'], ['1.4', 'Heavy']], f.enemies)}</div></div>`],
         ['todo', 'Objectives', `<label class="f">What must be done<em>played in this order</em></label><div class="checks">${BUILDER_OBJECTIVES.map(([k, l]) => `<label><input type="checkbox" data-o="${k}" ${f.objectives.includes(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div>`],
-        ['saved', `Saved (${list.length})`, list.length ? `<div class="menu mlist">${list.map((m, i) => `<div style="display:flex;gap:8px"><button style="flex:1" data-a="play:${i}"><b>▶</b>${esc(m.title || 'Untitled Operation')}<small>${esc(LOCATIONS[m.location].name)} · ${THEMES[m.time].label}</small></button><button data-a="edit:${i}">Edit</button><button data-a="del:${i}">Delete</button></div>`).join('')}</div>` : '<p class="note">Nothing saved yet. Fill in the other tabs and press Save &amp; play.</p>'],
+        ['saved', `Saved (${list.length})`, `<div class="row2"><input type="text" id="b_code" placeholder="Paste a mission code or link from a friend" style="flex:1"><button data-a="import">Play a code</button></div><p class="note" id="opNote"></p>`
+          + (list.length ? `<div class="menu mlist">${list.map((m, i) => `<div style="display:flex;gap:8px"><button style="flex:1" data-a="play:${i}"><b>▶</b>${esc(m.title || 'Untitled Operation')}<small>${esc(LOCATIONS[m.location].name)} · ${THEMES[m.time].label}</small></button><button data-a="share:${i}">Share</button><button data-a="edit:${i}">Edit</button><button data-a="del:${i}">Delete</button></div>`).join('')}</div>` : '<p class="note">Nothing saved yet. Fill in the other tabs and press Save &amp; play.</p>')],
       ])}
       <div class="row"><button class="primary" data-a="save">${edit ? 'Save changes &amp; play' : 'Save &amp; play'}</button><button data-a="back">Back</button></div>`,
     { on: (a) => {
       if (a === 'back') { this._bOpen = false; return this.title(); }
       const [cmd, i] = a.split(':');
+      if (a === 'import') return this.importCode(this.q('#b_code').value, this.q('#opNote'));
+      if (cmd === 'share') return this.shareOp(list[+i], this.q('#opNote'));
       if (cmd === 'play') { this._bOpen = false; return this.briefing(buildCustom(list[+i])); }
       if (cmd === 'edit') { this.tabMem.builder = 'story'; return this.builder({ ...list[+i], _i: +i }); }
       if (cmd === 'del') { list.splice(+i, 1); g.persist(); return this.builder(); }

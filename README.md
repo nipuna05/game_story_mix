@@ -216,6 +216,10 @@ Edge or Chrome).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
 
+## Mission codes
+
+Operation builder > Saved: **Share** copies a link (`#op=NFP2-...`) that contains your whole operation; a friend opens it, clicks past the title and lands on its briefing, and it is saved to their list. **Play a code** accepts a pasted code or link. Codes are compressed text (`src/opcode.js`), and everything imported is sanitised (district, time, objectives and lengths are checked). `node tools/opcheck.mjs` tests them.
+
 ## Daily challenge
 
 Title screen > Daily challenge. One mission per UTC day (the same for every player, picked from the campaign by the date) with a rule twist: **Swarm** (about twice the guards), **Ghost run** (an alarm fails the mission), **Glass cannon** (double damage taken) or **Bare essentials** (no armour, empty backpack). The first clear each day pays 300 credits plus 50 per streak day (up to 10); the streak counts consecutive days. It never changes campaign progress. Code: `dailyDef` in `src/story.js`, `recordDaily` in `src/main.js`; `node tools/dailycheck.mjs` tests it.
