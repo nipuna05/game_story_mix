@@ -1,6 +1,7 @@
 // Profile, armory (weapons, attachments, finishes, armour, outfit), backpack and key-binding screens.
 import { esc } from './util.js';
 import { CAMPAIGN } from './story.js';
+import { MEDALS } from './medals.js';
 import { ACTIONS, keyName } from './input.js';
 import {
   VARIANTS, SLOTS, SLOT_NAMES, ATTACH, FINISHES, OUTFITS, ARMORS, PACK_ITEMS, PACK_CAPS,
@@ -37,7 +38,9 @@ export function armoryScreen(ui, tab = 'profile', slot = 'rifle', back) {
     const row = (m) => { const b = g.save.best[m.id]; return `<tr><td style="width:auto">${ui.T(m.title)}</td><td style="width:70px;color:${b ? 'var(--ok)' : 'var(--dim)'}">${b ? 'Rank ' + b.rank : '-'}</td></tr>`; };
     const half = Math.ceil(CAMPAIGN.length / 2);
     const best = `<div style="display:flex;gap:18px"><table class="best" style="flex:1">${CAMPAIGN.slice(0, half).map(row).join('')}</table><table class="best" style="flex:1">${CAMPAIGN.slice(half).map(row).join('')}</table></div>`;
-    body = ui.tabbed('pf', [['rank', 'Rank', rank], ['rec', 'Service record', rec], ['best', 'Mission ranks', best]]);
+    const have = prof.medals || [];
+    const medals = `<p class="note">${have.length} of ${MEDALS.length} medals earned</p><div class="medals">${MEDALS.map((m) => `<div class="medal ${have.includes(m.id) ? 'on' : ''}"><b>${have.includes(m.id) ? '&#9733; ' : ''}${m.name}</b><span>${m.desc}</span></div>`).join('')}</div>`;
+    body = ui.tabbed('pf', [['rank', 'Rank', rank], ['rec', 'Service record', rec], ['medals', 'Medals', medals], ['best', 'Mission ranks', best]]);
   } else if (tab === 'weapons') {
     const eqd = weaponDef(eq[slot], prof, true);
     const guns = `

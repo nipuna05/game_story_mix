@@ -153,3 +153,15 @@ table.best td { padding: 2px 8px; font-size: 13px; }
 
 /* long mission lists scroll inside the panel instead of overflowing it */
 .menu.mlist { max-height: calc(100vh - 320px); overflow-y: auto; padding-right: 4px; }
+
+/* medals */
+.medals { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.medal { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; opacity: 0.5; }
+.medal b { display: block; font-size: 14px; }
+.medal span { font-size: 12px; color: var(--dim); }
+.medal.on { opacity: 1; border-color: var(--acc); background: rgba(255, 178, 62, 0.08); }
+.medal.on b { color: var(--acc); }
+.medals.new { grid-template-columns: 1fr; }
+@media (max-width: 700px) { .medals { grid-template-columns: 1fr; } }
+.medals:not(.new) { max-height: calc(100vh - 380px); min-height: 150px; overflow-y: auto; padding-right: 4px; }
+.medal { padding: 5px 10px; }

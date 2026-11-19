@@ -216,6 +216,10 @@ Edge or Chrome).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
 
+## Medals
+
+16 medals (`src/medals.js`) are awarded when a mission is completed and kept in the profile: per-mission feats (Ghost, Shadow, Sharpshooter, Headhunter, Silent Blade, Untouchable, S-Rank, Speed Run) and career goals (First Blood, Veteran, Hard Target, One-Man Army, Dead Eye, Elite, Shadow Operative, Nightfall). New medals show on the debrief; the full list is under Profile & armory > Profile > Medals. `node tools/medalcheck.mjs` tests them.
+
 ## Sharing
 
 - **Share result** on the mission debrief builds a 1200x630 result card (rank, time, score, accuracy, Ghost badge). On phones it opens the share sheet; on desktop it copies the text and saves the PNG.

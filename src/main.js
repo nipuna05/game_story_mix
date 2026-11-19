@@ -5,7 +5,8 @@ import { World } from './world.js';
 import { LOCATIONS } from './locations.js';
 import { FX } from './fx.js';
 import { Player } from './player.js';
-import { VARIANTS, ARMORS, PACK_ITEMS, MAX_GRENADES, defaultProfile, mergeProfile, clampCarry, capOf } from './gear.js';
+import { VARIANTS, ARMORS, PACK_ITEMS, MAX_GRENADES, defaultProfile, mergeProfile, clampCarry, capOf, levelOf } from './gear.js';
+import { awardMedals } from './medals.js';
 import { Enemy, Hostage } from './enemies.js';
 import { Car, Plane } from './vehicles.js';
 import { MissionRun } from './mission.js';
@@ -334,10 +335,11 @@ class Game {
       this.save.unlocked = Math.max(this.save.unlocked, idx + 2); this.save.started = true;
       const b = this.save.best[def.id];
       if (!b || score > b.score) this.save.best[def.id] = { score, rank };
-      this.persist();
     }
+    const medals = awardMedals(prof, { st, rank, score, def, t, lvl: levelOf(prof.xp), ranksS: Object.values(this.save.best).filter((b) => b.rank === 'S').length, cleared: this.save.unlocked > CAMPAIGN.length });
+    this.persist();
     this.hud.banner('MISSION COMPLETE', '');
-    this.pendingUI = () => this.ui.debrief({ stats: st, score, rank, credits });
+    this.pendingUI = () => this.ui.debrief({ stats: st, score, rank, credits, medals });
   }
 
   // ---------------------------------------------------------------- combat helpers

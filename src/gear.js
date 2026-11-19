@@ -64,7 +64,7 @@ export const rankOf = (xp) => RANKS[Math.min(RANKS.length - 1, levelOf(xp) - 1)]
 
 export function defaultProfile() {
   return {
-    credits: 600, xp: 0,
+    credits: 600, xp: 0, medals: [],
     own: { variants: ['usp', 'm4a1', 'l118a'], att: [], armor: [0], pack: 0 },
     equip: { pistol: 'usp', rifle: 'm4a1', sniper: 'l118a', att: { pistol: [], rifle: [], sniper: [] }, finish: { pistol: 0, rifle: 0, sniper: 0 }, armor: 0, outfit: 0 },
     stock: { med: 2, plate: 1, noise: 2, ammo: 1, nade: 2 },

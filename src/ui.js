@@ -276,6 +276,7 @@ export class UI {
         <div><b>${st.shots ? Math.round(st.hits / st.shots * 100) : 0}%</b><span>ACCURACY</span></div><div><b>${st.alarms}</b><span>ALARMS</span></div><div><b>${st.deaths}</b><span>DEATHS</span></div><div><b>${r.score}</b><span>SCORE</span></div>
       </div>
       <p class="note" style="color:var(--acc)">+${r.credits || 0} credits · +${r.score} XP</p>
+      ${(r.medals || []).length ? `<div class="medals new">${r.medals.map((m) => `<div class="medal on"><b>&#9733; ${m.name}</b><span>${m.desc}</span></div>`).join('')}</div>` : ''}
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
       <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p>`,
