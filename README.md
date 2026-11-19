@@ -216,6 +216,33 @@ Edge or Chrome).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
 
+## Leaderboard (optional, Supabase)
+
+Online best scores per mission and for each day's challenge. It stays hidden until `src/config.js` has a Supabase project URL and anon key. Setup (free tier):
+
+1. Create a project at supabase.com, then open **SQL Editor** and run:
+
+```sql
+create table scores (
+  id bigint generated always as identity primary key,
+  created_at timestamptz default now(),
+  board text not null check (char_length(board) between 1 and 40),
+  name text not null check (char_length(name) between 1 and 16),
+  score int not null check (score between 0 and 30000),
+  rank text check (char_length(rank) <= 2),
+  time numeric check (time >= 0 and time < 100000)
+);
+create index on scores (board, score desc);
+alter table scores enable row level security;
+create policy "anyone can read" on scores for select to anon using (true);
+create policy "anyone can post" on scores for insert to anon with check (true);
+```
+
+2. **Project Settings > API**: copy the Project URL and the `anon` public key into `src/config.js`, rebuild and deploy. The anon key is meant to be public; the policies above only allow reading and adding rows (no edits or deletes).
+3. Moderation: delete rows in the Supabase Table Editor. Scores come from the browser, so a determined cheater can post fake ones - fine for a casual game.
+
+The game posts a score when a mission is completed (only if it beats that player's earlier post for that board) under the callsign from Profile & armory. `node tools/boardcheck.mjs` tests it against a mock server.
+
 ## Mission codes
 
 Operation builder > Saved: **Share** copies a link (`#op=NFP2-...`) that contains your whole operation; a friend opens it, clicks past the title and lands on its briefing, and it is saved to their list. **Play a code** accepts a pasted code or link. Codes are compressed text (`src/opcode.js`), and everything imported is sanitised (district, time, objectives and lengths are checked). `node tools/opcheck.mjs` tests them.

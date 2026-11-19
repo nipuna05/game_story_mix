@@ -4,6 +4,7 @@ import { GAME_TITLE, CAMPAIGN, INTRO, DECISIONS, ENDINGS, APPROACHES, DEFAULT_CA
 import { LOCATIONS } from './locations.js';
 import { THEMES } from './world.js';
 import { encodeOp, decodeOp } from './opcode.js';
+import { boardOn, postScore, topScores } from './board.js';
 
 const controlsList = (L) => [
   ['On foot', [[`${L('KeyW')} ${L('KeyA')} ${L('KeyS')} ${L('KeyD')}`, 'Move'], ['Mouse', 'Look / aim'], [L('ShiftLeft'), 'Sprint (noisy)'], [L('KeyC'), 'Crouch - crouch-walking is slow and quiet'], [L('KeyZ'), 'Crawl - lie prone: slowest, quietest, hardest to see'], [L('KeyV'), 'Hold to sneak-walk while standing'], [L('Space'), 'Jump · stand up from crawling'],
@@ -83,6 +84,7 @@ export class UI {
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
         ${hasGame ? '<button data-a="select">Mission select</button>' : ''}
         <button data-a="daily">Daily challenge<small>${this.dailyBlurb()}</small></button>
+        ${boardOn() ? '<button data-a="board">Leaderboards<small>Best scores from players everywhere</small></button>' : ''}
         <button data-a="armory">Profile &amp; armory<small>Credits, weapons, armour, outfit and backpack</small></button>
         <button data-a="builder">Operation builder<small>Write your own story and mission</small></button>
         <button data-a="cast">Cast &amp; names<small>Rename the hero, villain, city - anyone</small></button>
@@ -98,6 +100,7 @@ export class UI {
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
       else if (a === 'select') this.select();
       else if (a === 'daily') this.daily();
+      else if (a === 'board') this.leaderboard(null, () => this.title());
       else if (a === 'armory') this.armory('profile', 'rifle', () => this.title());
       else if (a === 'builder') this.builder();
       else if (a === 'cast') this.castEditor(() => this.title());
@@ -119,8 +122,10 @@ export class UI {
       <div class="medals new"><div class="medal on"><b>Today's twist: ${dl.name}</b><span>${dl.desc}</span></div></div>
       <p>${this.T(def.brief[0])}</p>
       <p class="note">${done ? `Cleared today with rank ${d.rank} (${d.score} points). Beat your score for fun - the bonus is paid once a day.` : 'The first clear each day pays a bonus: 300 credits, plus 50 for every day in your streak (up to 10).'}${st ? ` Current streak: ${st} day${st > 1 ? 's' : ''}.` : ''} New challenge at 00:00 UTC. It does not change your campaign progress.</p>
-      <div class="row"><button class="primary" data-a="go">${done ? 'Play again' : 'Start the challenge'}</button><button data-a="back">Back</button></div>`,
-    { on: (a) => { if (a === 'go') g.startMission(def, { approach: 'ghost' }); else this.title(); } });
+      ${boardOn() ? '<h3>TODAY TOP SCORES</h3><div id="dailyBoard" class="note">Loading...</div>' : ''}
+      <div class="row"><button class="primary" data-a="go">${done ? 'Play again' : 'Start the challenge'}</button>${boardOn() ? '<button data-a="lb">All leaderboards</button>' : ''}<button data-a="back">Back</button></div>`,
+    { on: (a) => { if (a === 'go') g.startMission(def, { approach: 'ghost' }); else if (a === 'lb') this.leaderboard('daily-' + today, () => this.daily()); else this.title(); } });
+    if (boardOn()) this.fillBoard(this.q('#dailyBoard'), 'daily-' + today, 5);
   }
 
   castEditor(next, isNew) {
@@ -303,9 +308,10 @@ export class UI {
       ${(r.medals || []).length ? `<div class="medals new">${r.medals.map((m) => `<div class="medal on"><b>&#9733; ${m.name}</b><span>${m.desc}</span></div>`).join('')}</div>` : ''}
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
-      <div class="row"><button class="primary" data-a="next">${def.daily ? 'Back to menu' : def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p>`,
+      <div class="row"><button class="primary" data-a="next">${def.daily ? 'Back to menu' : def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button>${boardOn() && !def.custom ? '<button data-a="lb">Leaderboard</button>' : ''}<button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p><p class="note" id="boardNote"></p>`,
     { on: (a) => {
       if (a === 'share') return this.shareResult(r, def);
+      if (a === 'lb') return this.leaderboard(def.daily ? 'daily-' + def.daily.day : def.id, () => this.debrief(r));
       if (a === 'feedback') return this.feedback(() => this.debrief(r), this.T(def.title));
       if (a === 'again') return g.startMission(def, { approach: g.approach });
       g.toMenu(true);
@@ -314,6 +320,7 @@ export class UI {
       if (last) return this.ending(g.save.flags.ending || 'savior');
       this.briefing(CAMPAIGN[idx + 1]);
     } });
+    this.postResult(r, def);
   }
 
   // ---------------------------------------------------------------- mission codes
@@ -374,6 +381,41 @@ export class UI {
     if (navigator.clipboard) await navigator.clipboard.writeText(`${text} ${this.gameUrl()}`).catch(() => {});
     if (blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nightfall-result.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
     say('Result text copied and the card image saved - paste both into your chat or post.');
+  }
+
+  // ---------------------------------------------------------------- online leaderboard
+  boardId(def) { return def.daily ? 'daily-' + def.daily.day : !def.custom && CAMPAIGN.some((m) => m.id === def.id) ? def.id : null; }
+  // posts a finished mission once, and only when it beats what this player already posted to that board
+  async postResult(r, def) {
+    const note = this.q('#boardNote'), id = this.boardId(def);
+    if (!boardOn() || !id || !note) return;
+    const best = this.g.save.boardBest || (this.g.save.boardBest = {});
+    if (r.posted) { note.textContent = r.posted; return; }
+    if (best[id] != null && r.score <= best[id]) { note.textContent = 'Your best score on this board is ' + best[id] + ' - not posted again.'; return; }
+    note.textContent = 'Posting your score...';
+    try {
+      await postScore({ board: id, name: this.g.save.cast.hero, score: r.score, rank: r.rank, time: r.stats.time });
+      best[id] = r.score; this.g.persist(); r.posted = 'Score posted to the leaderboard.';
+    } catch { r.posted = 'Could not reach the leaderboard - your result is saved on this device.'; }
+    const n = this.q('#boardNote'); if (n) n.textContent = r.posted;
+  }
+  async fillBoard(el, board, n = 10) {
+    if (!el) return;
+    try {
+      const rows = await topScores(board, n), me = String(this.g.save.cast.hero || '').slice(0, 16);
+      if (!el.isConnected) return;
+      el.innerHTML = rows.length ? `<table class="best">${rows.map((x, i) => `<tr${x.name === me ? ' style="color:var(--acc)"' : ''}><td style="width:34px">${i + 1}.</td><td style="width:auto">${esc(x.name)}</td><td style="width:50px">${esc(x.rank || '')}</td><td style="width:70px">${x.score}</td><td style="width:60px">${fmtTime(x.time || 0)}</td></tr>`).join('')}</table>` : 'No scores yet - be the first.';
+    } catch { if (el.isConnected) el.textContent = 'The leaderboard is not reachable right now.'; }
+  }
+  leaderboard(board, back) {
+    const day = dayNumber(), boards = [['daily-' + day, "Today's daily challenge"], ...CAMPAIGN.map((m) => [m.id, this.T(m.title)])], cur = board || boards[0][0];
+    this.show(`<h2><small>ONLINE</small>Leaderboards</h2>
+      <select id="lb_sel">${boards.map(([k, l]) => `<option value="${esc(k)}" ${k === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <div id="lb_rows" class="note" style="margin-top:10px">Loading...</div>
+      <p class="note">Scores are posted automatically when you finish a mission, under your callsign (Profile &amp; armory). Only your best per mission is posted.</p>
+      <div class="row"><button class="primary" data-a="back">Back</button></div>`, { on: () => back() });
+    const sel = this.q('#lb_sel'), load = () => { const el = this.q('#lb_rows'); el.textContent = 'Loading...'; this.fillBoard(el, sel.value, 10); };
+    sel.addEventListener('change', load); load();
   }
 
   ending(key) {
