@@ -1,5 +1,9 @@
 # Nightfall Protocol
 
+**Play free in your browser:** https://nipuna05.github.io/game_story_mix/ (also https://game-story-mix.vercel.app)
+
+![Nightfall Protocol gameplay](docs/demo.gif)
+
 A 3D story-driven stealth/action game that runs in the browser. One campaign mixes every play style:
 sneaking, shooting, bare-knuckle fighting, street racing, motorbike riding, flying a plane and
 parachuting into a blacked-out city.
@@ -264,3 +268,7 @@ Title screen > Daily challenge. One mission per UTC day (the same for every play
 ## Feedback
 
 The main menu, pause menu, mission-complete and mission-failed screens all have a **Feedback & issues** button. Players pick a type (bug, too hard, too easy, idea, other) and write a message; it opens a prefilled GitHub issue on this repo (the mission name is added when sent from a mission screen).
+
+## Recording the demo clip
+
+`node tools/gif.mjs [district]` records `docs/demo.gif` (dev server running): a scripted walk-and-shoot scene, with the game loop driven frame by frame so the clip is smooth. Pass `harbor` (the committed one), `downtown` or `industrial`.
