@@ -476,3 +476,17 @@ export function buildCustom(f) {
     enemies: +f.enemies || 1, place: '', loadout: ['rifle', 'sniper'], brief: String(f.story || 'No briefing written.').split(/\n+/).filter(Boolean), objectives: objs, outro: [], form: f,
   };
 }
+
+// ---------------------------------------------------------------- daily challenge
+// One mission per UTC day (the same for everybody) with a rule twist. It never touches campaign progress.
+export const DAILY_MODS = [
+  { id: 'swarm', name: 'Swarm', desc: 'Nearly twice as many guards.' },
+  { id: 'ghost', name: 'Ghost run', desc: 'If the alarm goes up, you fail.' },
+  { id: 'glass', name: 'Glass cannon', desc: 'You take double damage.' },
+  { id: 'bare', name: 'Bare essentials', desc: 'No armour and an empty backpack.' },
+];
+export const dayNumber = () => Math.floor(Date.now() / 864e5);
+export function dailyDef(day = dayNumber()) {
+  const pool = CAMPAIGN.filter((m) => m.id !== 'm5'), base = pool[(day * 5 + 3) % pool.length], mod = DAILY_MODS[(day * 3 + 1) % DAILY_MODS.length];
+  return { ...base, enemies: (base.enemies || 1) * (mod.id === 'swarm' ? 1.8 : 1), daily: { day, mod: mod.id, name: mod.name, desc: mod.desc } };
+}

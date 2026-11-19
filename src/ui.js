@@ -1,6 +1,6 @@
 import { esc, fmtTime } from './util.js';
 import { armoryScreen, controlsScreen } from './armory.js';
-import { GAME_TITLE, CAMPAIGN, INTRO, DECISIONS, ENDINGS, APPROACHES, DEFAULT_CAST, CAST_LABELS, BUILDER_OBJECTIVES, fill, buildCustom } from './story.js';
+import { GAME_TITLE, CAMPAIGN, INTRO, DECISIONS, ENDINGS, APPROACHES, DEFAULT_CAST, CAST_LABELS, BUILDER_OBJECTIVES, fill, buildCustom, dailyDef, dayNumber } from './story.js';
 import { LOCATIONS } from './locations.js';
 import { THEMES } from './world.js';
 
@@ -77,6 +77,7 @@ export class UI {
         ${hasGame ? `<button class="primary" data-a="continue">Continue campaign<small>${done ? 'Campaign complete - replay any mission' : this.T('Mission ' + s.unlocked + ': ' + CAMPAIGN[s.unlocked - 1].title)}</small></button>` : ''}
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
         ${hasGame ? '<button data-a="select">Mission select</button>' : ''}
+        <button data-a="daily">Daily challenge<small>${this.dailyBlurb()}</small></button>
         <button data-a="armory">Profile &amp; armory<small>Credits, weapons, armour, outfit and backpack</small></button>
         <button data-a="builder">Operation builder<small>Write your own story and mission</small></button>
         <button data-a="cast">Cast &amp; names<small>Rename the hero, villain, city - anyone</small></button>
@@ -91,6 +92,7 @@ export class UI {
       if (a === 'new') this.castEditor(() => { this.g.newCampaign(); this.intro(0); }, true);
       else if (a === 'continue') (done ? this.select() : this.briefing(CAMPAIGN[s.unlocked - 1]));
       else if (a === 'select') this.select();
+      else if (a === 'daily') this.daily();
       else if (a === 'armory') this.armory('profile', 'rifle', () => this.title());
       else if (a === 'builder') this.builder();
       else if (a === 'cast') this.castEditor(() => this.title());
@@ -98,6 +100,22 @@ export class UI {
       else if (a === 'settings') this.settings(() => this.title());
       else if (a === 'feedback') this.feedback(() => this.title());
     } });
+  }
+
+  dailyBlurb() {
+    const d = this.g.dailyState(), today = dayNumber(), st = d.last >= today - 1 ? d.streak : 0;
+    return (d.last === today ? 'Cleared today' : 'New mission and twist every day') + (st ? ' · ' + st + '-day streak' : '');
+  }
+  daily() {
+    const g = this.g, def = dailyDef(), dl = def.daily, loc = LOCATIONS[def.location], d = g.dailyState(), today = dayNumber();
+    const st = d.last >= today - 1 ? d.streak : 0, done = d.last === today;
+    this.show(`<h2><small>DAILY CHALLENGE · ${new Date(today * 864e5).toUTCString().slice(0, 16).toUpperCase()}</small>${this.T(def.title)}</h2>
+      <p class="note">${esc(loc.name)} · ${THEMES[def.time].label} · the same mission for every player today</p>
+      <div class="medals new"><div class="medal on"><b>Today's twist: ${dl.name}</b><span>${dl.desc}</span></div></div>
+      <p>${this.T(def.brief[0])}</p>
+      <p class="note">${done ? `Cleared today with rank ${d.rank} (${d.score} points). Beat your score for fun - the bonus is paid once a day.` : 'The first clear each day pays a bonus: 300 credits, plus 50 for every day in your streak (up to 10).'}${st ? ` Current streak: ${st} day${st > 1 ? 's' : ''}.` : ''} New challenge at 00:00 UTC. It does not change your campaign progress.</p>
+      <div class="row"><button class="primary" data-a="go">${done ? 'Play again' : 'Start the challenge'}</button><button data-a="back">Back</button></div>`,
+    { on: (a) => { if (a === 'go') g.startMission(def, { approach: 'ghost' }); else this.title(); } });
   }
 
   castEditor(next, isNew) {
@@ -276,16 +294,17 @@ export class UI {
         <div><b>${st.shots ? Math.round(st.hits / st.shots * 100) : 0}%</b><span>ACCURACY</span></div><div><b>${st.alarms}</b><span>ALARMS</span></div><div><b>${st.deaths}</b><span>DEATHS</span></div><div><b>${r.score}</b><span>SCORE</span></div>
       </div>
       <p class="note" style="color:var(--acc)">+${r.credits || 0} credits · +${r.score} XP</p>
+      ${r.daily ? `<p class="note" style="color:var(--acc)">Daily challenge (${r.daily.name})${r.daily.first ? ` - first clear: +${r.daily.bonus} bonus credits · ${r.daily.streak}-day streak` : ' - bonus already paid today'}</p>` : ''}
       ${(r.medals || []).length ? `<div class="medals new">${r.medals.map((m) => `<div class="medal on"><b>&#9733; ${m.name}</b><span>${m.desc}</span></div>`).join('')}</div>` : ''}
       <p class="note">${st.alarms === 0 ? 'Ghost bonus: no alarm was raised.' : 'An alarm was raised - no ghost bonus.'}</p>
       ${(def.outro || []).map((t) => `<p>${this.T(t)}</p>`).join('')}
-      <div class="row"><button class="primary" data-a="next">${def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p>`,
+      <div class="row"><button class="primary" data-a="next">${def.daily ? 'Back to menu' : def.custom ? 'Back to builder' : last ? 'See how it ends' : 'Next mission'}</button><button data-a="share">Share result</button><button data-a="again">Play again</button><button data-a="feedback">Send feedback</button><button data-a="menu">Main menu</button></div><p class="note" id="shareNote"></p>`,
     { on: (a) => {
       if (a === 'share') return this.shareResult(r, def);
       if (a === 'feedback') return this.feedback(() => this.debrief(r), this.T(def.title));
       if (a === 'again') return g.startMission(def, { approach: g.approach });
       g.toMenu(true);
-      if (a === 'menu') return this.title();
+      if (a === 'menu' || def.daily) return this.title();
       if (def.custom) return this.builder();
       if (last) return this.ending(g.save.flags.ending || 'savior');
       this.briefing(CAMPAIGN[idx + 1]);
@@ -307,7 +326,7 @@ export class UI {
     const g = x.createLinearGradient(0, 0, 1200, 630); g.addColorStop(0, '#0b1220'); g.addColorStop(1, '#1d2b45'); x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
     x.fillStyle = '#ffb23e'; x.fillRect(0, 0, 14, 630);
     x.textBaseline = 'alphabetic'; x.fillStyle = '#ffb23e'; x.font = 'bold 30px system-ui, sans-serif'; x.fillText('NIGHTFALL PROTOCOL', 60, 80);
-    x.fillStyle = '#8fa3c4'; x.font = '24px system-ui, sans-serif'; x.fillText('MISSION COMPLETE', 60, 125);
+    x.fillStyle = '#8fa3c4'; x.font = '24px system-ui, sans-serif'; x.fillText(def.daily ? 'DAILY CHALLENGE - ' + def.daily.name.toUpperCase() : 'MISSION COMPLETE', 60, 125);
     x.fillStyle = '#ffffff'; x.font = 'bold 58px system-ui, sans-serif'; x.fillText(String(this.T(def.title)).replace(/&amp;/g, '&').replace(/&#39;/g, "'").slice(0, 28), 60, 205);
     x.fillStyle = '#ffb23e'; x.font = 'bold 300px system-ui, sans-serif'; x.textAlign = 'right'; x.fillText(r.rank, 1140, 420); x.textAlign = 'left';
     const rows = [['TIME', fmtTime(st.time)], ['SCORE', String(r.score)], ['KILLS', String(st.kills)], ['ACCURACY', (st.shots ? Math.round(st.hits / st.shots * 100) : 0) + '%'], ['ALARMS', String(st.alarms)]];

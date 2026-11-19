@@ -216,6 +216,10 @@ Edge or Chrome).
 - Medieval Village MegaKit (cottage walls, roofs, crates, wagon) - Quaternius - CC0.
 - Engine, skid and impact sounds - Kenney (CC0); skid sound by Landeplage (CC0).
 
+## Daily challenge
+
+Title screen > Daily challenge. One mission per UTC day (the same for every player, picked from the campaign by the date) with a rule twist: **Swarm** (about twice the guards), **Ghost run** (an alarm fails the mission), **Glass cannon** (double damage taken) or **Bare essentials** (no armour, empty backpack). The first clear each day pays 300 credits plus 50 per streak day (up to 10); the streak counts consecutive days. It never changes campaign progress. Code: `dailyDef` in `src/story.js`, `recordDaily` in `src/main.js`; `node tools/dailycheck.mjs` tests it.
+
 ## Medals
 
 16 medals (`src/medals.js`) are awarded when a mission is completed and kept in the profile: per-mission feats (Ghost, Shadow, Sharpshooter, Headhunter, Silent Blade, Untouchable, S-Rank, Speed Run) and career goals (First Blood, Veteran, Hard Target, One-Man Army, Dead Eye, Elite, Shadow Operative, Nightfall). New medals show on the debrief; the full list is under Profile & armory > Profile > Medals. `node tools/medalcheck.mjs` tests them.

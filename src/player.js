@@ -329,6 +329,7 @@ export class Player {
   damage(d, from, kind) {
     if (this.dead || this.g.god) return;
     if (this.armor > 0 && kind !== 'fall') { const a = Math.min(this.armor, d * 0.6); this.armor -= a; d -= a; }
+    if (this.g.def && this.g.def.daily && this.g.def.daily.mod === 'glass') d *= 2;
     this.hp -= d; this.regenT = 6;
     this.g.stats.damage += d;
     this.g.hud.hurt(from, this);

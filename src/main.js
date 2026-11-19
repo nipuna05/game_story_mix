@@ -258,6 +258,7 @@ class Game {
     p.grenades = storm ? 4 : 2;
     p.armor = Math.max(storm ? 100 : 0, (ARMORS[prof.equip.armor] || ARMORS[0]).start);
     p.pack = { ...prof.carry }; p.packStock = { ...prof.carry }; p.packCap = capOf(prof);
+    if (def.daily && def.daily.mod === 'bare') { p.armor = 0; for (const k of Object.keys(p.pack)) p.pack[k] = 0; p.packStock = { ...p.pack }; }
     if (storm) p.give('rifle', 120);
     for (const w of def.loadout || []) if (!p.inv[w]) p.give(w);
     if (p.inv.rifle && storm) p.cur = 'rifle';
@@ -307,7 +308,15 @@ class Game {
     this.save.profile.totals.deaths++; this.persist();
     this.state = 'over'; this.overT = 1.6; this.audio.quiet(); this.audio.lose();
     const t = this.mission.cur ? this.mission.cur.type : '';
-    this.pendingUI = () => this.ui.fail(reason, t !== 'fly' && t !== 'land' && t !== 'flyout' && !!this.mission.checkpoint);
+    this.pendingUI = () => this.ui.fail(reason, t !== 'fly' && t !== 'land' && t !== 'flyout' && !!this.mission.checkpoint && !(this.def.daily && this.def.daily.mod === 'ghost'));
+  }
+  // daily challenge bookkeeping: streak counts consecutive days; the first clear of a day pays a bonus
+  dailyState() { return this.save.daily || (this.save.daily = { last: 0, streak: 0, score: 0, rank: '' }); }
+  recordDaily(score, rank) {
+    const dl = this.def.daily; if (!dl) return null;
+    const d = this.dailyState(), first = d.last !== dl.day;
+    if (first) { d.streak = d.last === dl.day - 1 ? d.streak + 1 : 1; d.last = dl.day; d.score = score; d.rank = rank; } else if (score > d.score) { d.score = score; d.rank = rank; }
+    return { first, streak: d.streak, bonus: first ? 300 + 50 * Math.min(d.streak, 10) : 0, name: dl.name };
   }
   continueCheckpoint() {
     const cp = this.mission.checkpoint, p = this.player, o = this.mission.cur;
@@ -326,7 +335,8 @@ class Game {
     st.time = this.time;
     const score = Math.max(0, Math.round(n * 1000 + Math.max(0, 1500 - st.time * 2) + (st.alarms === 0 ? 1500 : 0) + (st.shots ? (st.hits / st.shots) * 500 : 250) + st.takedowns * 100 + st.headshots * 50 - st.deaths * 600));
     const k = score / (n * 1000 + 3500), rank = k >= 0.82 ? 'S' : k >= 0.68 ? 'A' : k >= 0.5 ? 'B' : 'C';
-    const prof = this.save.profile, t = prof.totals, credits = Math.round(score / 6);
+    const prof = this.save.profile, t = prof.totals; let credits = Math.round(score / 6);
+    const daily = this.recordDaily(score, rank); if (daily) credits += daily.bonus;
     prof.credits += credits; prof.xp += score; t.missions++; t.kills += st.kills; t.headshots += st.headshots; t.takedowns += st.takedowns;
     t.deaths += st.deaths; t.alarms += st.alarms; t.playSec += Math.round(st.time); t.shots += st.shots; t.hits += st.hits; t.earned += credits;
     this.persist();
@@ -339,7 +349,7 @@ class Game {
     const medals = awardMedals(prof, { st, rank, score, def, t, lvl: levelOf(prof.xp), ranksS: Object.values(this.save.best).filter((b) => b.rank === 'S').length, cleared: this.save.unlocked > CAMPAIGN.length });
     this.persist();
     this.hud.banner('MISSION COMPLETE', '');
-    this.pendingUI = () => this.ui.debrief({ stats: st, score, rank, credits, medals });
+    this.pendingUI = () => this.ui.debrief({ stats: st, score, rank, credits, medals, daily });
   }
 
   // ---------------------------------------------------------------- combat helpers
@@ -638,7 +648,9 @@ class Game {
     if (anyAlert) {
       this.alertHold += dt; this.alarmT = 0;
       if (!this.alarm && this.alertHold > this.mods.alarmDelay) {
-        this.alarm = true; this.stats.alarms++; this.audio.alarm(true);
+        this.alarm = true; this.stats.alarms++;
+        if (this.def.daily && this.def.daily.mod === 'ghost') { this.fail('The alarm went up - today is a ghost run.'); return; }
+        this.audio.alarm(true);
         this.hud.banner('ALARM RAISED', 'Reinforcements are converging on you');
         for (const e of this.enemies) if (!e.dead && !e.noAlarm && dist2(e.pos.x, e.pos.z, p.pos.x, p.pos.z) < 120) e.hear(p.pos, true);
       }
