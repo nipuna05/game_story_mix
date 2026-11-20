@@ -520,7 +520,7 @@ class Game {
     if (!p.lockFists) for (const k of this.pickups) {
       if (k.taken || k.type !== 'weapon') continue;
       const d = dist2(k.pos.x, k.pos.z, p.pos.x, p.pos.z);
-      if (d < 2.1 && d < bd) {
+      if (d < (this.input.touchMode ? 3.3 : 2.1) && d < bd) {   // a thumb can't line up as precisely as a mouse: bigger reach on touch
         bd = d; const v = VARIANTS[k.variant], same = p.inv[v.slot] && p.var[v.slot] === k.variant;
         best = { obj: k, text: `[${this.input.label('KeyE')}] ${same ? 'Take ammo for ' : p.inv[v.slot] ? 'Swap for ' : 'Pick up '}${v.name}`, act: () => this.takeWeaponPickup(k) };
       }
@@ -695,7 +695,7 @@ class Game {
       if (k.taken) continue;
       k.mesh.rotation.y += dt * 2; k.mesh.position.y = k.pos.y + Math.sin(this.time * 2.5 + k.seed) * 0.12;
       if (k.type === 'weapon') continue; // guns are picked up with the use key, never by walking over them
-      if (p.mode !== 'foot' || p.dead || Math.abs(p.pos.y - 0) > 2.5 || dist2(k.pos.x, k.pos.z, p.pos.x, p.pos.z) > 1.7) continue;
+      if (p.mode !== 'foot' || p.dead || Math.abs(p.pos.y - 0) > 2.5 || dist2(k.pos.x, k.pos.z, p.pos.x, p.pos.z) > (this.input.touchMode ? 2.5 : 1.7)) continue;
       const d = PICKUPS[k.type];
       if (k.type === 'med') { if (p.addPack('med')) this.hud.banner('MEDKIT +1', `Press ${this.input.label('KeyQ')} to use it`); else if (p.hp < 100) p.hp = Math.min(100, p.hp + 50); else continue; }
       else if (k.type === 'armor') { if (p.addPack('plate')) this.hud.banner('ARMOUR PLATE +1', `Press ${this.input.label('KeyX')} to fit it`); else if (p.armor < 100) p.armor = 100; else continue; }

@@ -380,7 +380,7 @@ export class Player {
         const t = w.raycast(px, py, pz, -_d.x, -_d.y, -_d.z, dist + 0.3);
         const dd = Math.max(0.3, Math.min(dist, t - 0.25));
         cam.position.set(px - _d.x * dd, py - _d.y * dd, pz - _d.z * dd);
-        fov = this.aiming ? (wdc.zoom || wdc.aimFov || 46) : 68;
+        fov = this.aiming ? (wdc.zoom || wdc.aimFov || 46) * (g.input.touchMode ? 0.72 : 1) : 68;   // a phone screen is small: zoom in a little more when aiming
       }
       cam.lookAt(cam.position.x + _d.x, cam.position.y + _d.y, cam.position.z + _d.z);
     }

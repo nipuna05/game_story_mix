@@ -143,6 +143,7 @@ export class Touch {
     const g = this.g, on = g.state === 'playing' && g.input.active;
     if (on !== this.on) { this.on = on; this.root.style.display = on ? 'block' : 'none'; if (!on) { this.releaseAll(); this.mode = null; } }
     if (!on) return;
+    this.btnEl.use.classList.toggle('ready', !!g.interact);   // glows when there is something to use, pick up or enter
     const m = g.player && g.player.mode;
     if (m !== this.mode) {
       this.mode = m; const air = this.air(), foot = m === 'foot' || !m;
