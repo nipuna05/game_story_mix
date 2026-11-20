@@ -165,3 +165,4 @@ table.best td { padding: 2px 8px; font-size: 13px; }
 @media (max-width: 700px) { .medals { grid-template-columns: 1fr; } }
 .medals:not(.new) { max-height: calc(100vh - 380px); min-height: 150px; overflow-y: auto; padding-right: 4px; }
 .medal { padding: 5px 10px; }
+.menu.titlemenu { gap: 6px; } .menu.titlemenu button { padding: 7px 14px; }

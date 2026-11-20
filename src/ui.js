@@ -79,7 +79,7 @@ export class UI {
     this.show(`
       <h1 class="logo">NIGHTFALL<br><span>PROTOCOL</span></h1>
       <div class="tag">STEALTH · SHOOTING · FIGHTING · RACING · FLYING · RIVERS</div>
-      <div class="menu two">
+      <div class="menu two titlemenu">
         ${hasGame ? `<button class="primary" data-a="continue">Continue campaign<small>${done ? 'Campaign complete - replay any mission' : this.T('Mission ' + s.unlocked + ': ' + CAMPAIGN[s.unlocked - 1].title)}</small></button>` : ''}
         <button class="${hasGame ? '' : 'primary'}" data-a="new">New campaign<small>${this.T('The story of {hero} and {project}')}</small></button>
         ${hasGame ? '<button data-a="select">Mission select</button>' : ''}

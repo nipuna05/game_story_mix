@@ -244,6 +244,7 @@ create index on scores (board, score desc);
 alter table scores enable row level security;
 create policy "anyone can read" on scores for select to anon using (true);
 create policy "anyone can post" on scores for insert to anon with check (true);
+grant select, insert on public.scores to anon;   -- newer Supabase projects do not grant this automatically
 ```
 
 2. **Project Settings > API**: copy the Project URL and the `anon` public key into `src/config.js`, rebuild and deploy. The anon key is meant to be public; the policies above only allow reading and adding rows (no edits or deletes).
