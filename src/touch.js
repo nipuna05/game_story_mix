@@ -23,7 +23,7 @@ const BUTTONS = [
   { id: 'swap',   label: 'SWAP',   cls: 'swap',   kind: 'wheel' },
   { id: 'thr',    label: 'THR +',  cls: 'thr',    kind: 'hold',   key: 'ShiftLeft', airOnly: true },
   { id: 'prone',  label: 'PRONE',  cls: 'prone',  kind: 'tap',    key: 'KeyZ' },
-  { id: 'med',    label: '+',      cls: 'pk',     kind: 'tap',    key: 'KeyQ', title: 'Medkit' },
+  { id: 'med',    label: 'MED',    cls: 'pk',     kind: 'tap',    key: 'KeyQ', title: 'Medkit' },
   { id: 'plate',  label: 'ARM',    cls: 'pk',     kind: 'tap',    key: 'KeyX', title: 'Armour plate' },
   { id: 'noise',  label: 'NOISE',  cls: 'pk',     kind: 'tap',    key: 'KeyT', title: 'Noisemaker' },
   { id: 'ammo',   label: 'AMMO',   cls: 'pk',     kind: 'tap',    key: 'KeyY', title: 'Ammo box' },
@@ -143,6 +143,8 @@ export class Touch {
     const g = this.g, on = g.state === 'playing' && g.input.active;
     if (on !== this.on) { this.on = on; this.root.style.display = on ? 'block' : 'none'; if (!on) { this.releaseAll(); this.mode = null; } }
     if (!on) return;
+    const pack = g.player && g.player.pack;   // backpack buttons show how many you carry and dim when empty
+    if (pack) for (const id of ['med', 'plate', 'noise', 'ammo']) { const el = this.btnEl[id], n = pack[id] || 0, d = BUTTONS.find((x) => x.id === id); if (el.dataset.n !== String(n)) { el.dataset.n = n; el.textContent = d.label + '\n' + n; el.classList.toggle('empty', !n); } }
     this.btnEl.use.classList.toggle('ready', !!g.interact);   // glows when there is something to use, pick up or enter
     const m = g.player && g.player.mode;
     if (m !== this.mode) {
