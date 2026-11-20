@@ -94,6 +94,24 @@ function compound(w, o) {
       const yaw = Math.atan2(nx, nz);
       for (const e of [-1, 1]) P.guards.push({ x: gp.x + nx * 2.5 + tx * e * (g.w / 2 - 1.5), z: gp.z + nz * 2.5 + tz * e * (g.w / 2 - 1.5), yaw });
       P.gates.push({ ...gp, nx, nz });
+      // cover either side of the gate (never in the driving lane): outside to creep up and trade fire from, inside to fall back behind
+      const at = (d, l) => [gp.x + nx * d + tx * l, gp.z + nz * d + tz * l], hw = g.w / 2;
+      const g0 = w.groundAt(gp.x, gp.z, 6), ok = (x, z) => !w.inWater(x, z) && Math.abs(w.groundAt(x, z, 6) - g0) < 1.2;   // not in the sea, not on a cliff
+      for (const e of [-1, 1]) {
+        let [px, pz] = at(6, e * (hw + 5)); w.sandbags(px, pz, 5, s.horiz);
+        [px, pz] = at(12, e * (hw + 8)); w.block(px, pz, s.horiz ? 5 : 0.8, s.horiz ? 0.8 : 5, 1.15, 0x8d9097);   // concrete barrier
+        [px, pz] = at(18, e * (hw + 4)); w.crate(px, pz, 1.5); [px, pz] = at(18.3, e * (hw + 5.6)); w.crate(px, pz, 1.2); [px, pz] = at(17.4, e * (hw + 5.4)); w.barrel(px, pz);
+        [px, pz] = at(-4.5, e * (hw + 3)); w.crate(px, pz, 1.5); [px, pz] = at(-6.2, e * (hw + 3.2)); w.sandbags(px, pz, 4, s.horiz);
+        for (const [d, l, k] of [[2.5, 4, 1.3], [5, 9, 1.5], [9, 3.5, 1.4], [10, 8, 1.7], [15, 5.5, 1.5], [3, 13, 1.4], [14, 12, 1.6]]) { [px, pz] = at(d, e * (hw + l)); if (ok(px, pz)) w.bush(px, pz, k); }   // brush to crouch in right up to the gate
+        // a second and third band further out, so the open ground in front of the gate is never a long dash: brush, boulders, crate stacks, sandbag nests and barriers, staggered either side
+        for (const [d, l, kind, k] of [[22, 3, 'b', 1.6], [22, 10, 'r', 4], [24, 17, 'b', 1.7], [27, 5, 'c', 1.5], [28, 12, 'b', 1.5], [30, 20, 's', 5], [32, 3.5, 'r', 3.6], [33, 9, 'b', 1.8], [35, 15, 'k', 5], [37, 6, 'b', 1.6],
+          [7, 18, 'r', 3.4], [12, 22, 'b', 1.6], [18, 14, 's', 5], [20, 24, 'c', 1.4], [26, 25, 'b', 1.7], [2, 20, 'b', 1.5], [2, 27, 's', 5]]) {
+          [px, pz] = at(d, e * (hw + l)); if (!ok(px, pz)) continue;
+          if (kind === 'b') w.bush(px, pz, k); else if (kind === 'r') w.boulder(px, pz, k); else if (kind === 'c') { w.crate(px, pz, k); const [qx, qz] = at(d + 0.4, e * (hw + l + 1.7)); w.crate(qx, qz, k * 0.8); const [rx, rz] = at(d - 1.6, e * (hw + l + 0.6)); w.barrel(rx, rz); }
+          else if (kind === 's') w.sandbags(px, pz, k, s.horiz); else w.block(px, pz, s.horiz ? k : 0.8, s.horiz ? 0.8 : k, 1.15, 0x8d9097);
+        }
+        [px, pz] = at(-10, e * (hw + 2)); w.barrel(px, pz); [px, pz] = at(-10.8, e * (hw + 3.2)); w.barrel(px, pz, 0x4a5a3a);
+      }
     }
     seg(cur, s.b);
   }

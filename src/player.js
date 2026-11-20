@@ -44,8 +44,14 @@ export class Player {
     // slower turning when zoomed in, so the scope and aim-down-sights stay controllable
     const zoom = Math.tan(this.fov * Math.PI / 360) / Math.tan(34 * Math.PI / 180);
     const sens = g.settings.sens * 0.0022 * clamp(zoom, 0.12, 1);
-    this.yaw -= inp.dx * sens;
-    this.pitch = clamp(this.pitch - inp.dy * sens * (g.settings.invertY ? -1 : 1), -1.25, 1.2);
+    // touch aim assist: turning slows down when a visible enemy is near the crosshair, and the aim drifts a little onto them while you aim or fire
+    const as = inp.touchMode && this.mode === 'foot' && this.cur !== 'fists' ? this.assistTarget() : null, fr = as ? 0.55 : 1;
+    this.yaw -= inp.dx * sens * fr;
+    this.pitch = clamp(this.pitch - inp.dy * sens * fr * (g.settings.invertY ? -1 : 1), -1.25, 1.2);
+    if (as && (inp.buttons[0] || this.aiming)) {
+      const k = Math.min(1, 3.2 * dt), dy = Math.atan2(Math.sin(as.yaw - this.yaw), Math.cos(as.yaw - this.yaw));
+      this.yaw += dy * k; this.pitch = clamp(this.pitch + (as.pitch - this.pitch) * k, -1.25, 1.2);
+    }
     // recoil kicks the aim up, then settles back instead of stacking forever
     if (this.recoil > 0) { const back = Math.min(this.recoil, (this.recoil * 7 + 0.004) * dt); this.recoil -= back; this.pitch -= back; }
     this.fireCd -= dt; this.meleeCd -= dt;
@@ -72,6 +78,7 @@ export class Player {
     this.wet = w.waters.length > 0 && this.pos.y < 0.3 && w.inWater(this.pos.x, this.pos.z);
     if (this.wet) { sp = Math.min(sp, 2.6); this.prone = false; }
     this.hidden = w.bushes.length > 0 && this.pos.y < 0.3 && w.inBush(this.pos.x, this.pos.z);
+    w.uClear.value.set(this.pos.x, this.pos.z, 3.4, this.hidden ? 1 : 0);
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), rx = -fz, rz = fx;
     let mx = fx * f + rx * s, mz = fz * f + rz * s; const ml = Math.hypot(mx, mz);
     if (ml > 0) { mx /= ml; mz /= ml; }
@@ -152,6 +159,20 @@ export class Player {
     this.chute.visible = false;
   }
 
+  // the visible enemy closest to where the camera points (within about 6 degrees, narrower when zoomed), or null
+  assistTarget() {
+    const g = this.g, cam = g.camera, f = _f; cam.getWorldDirection(f);
+    const cosT = Math.cos(0.105 * clamp(this.fov / 68, 0.3, 1)); let best = null, bc = cosT;
+    for (const e of g.enemies) {
+      if (e.dead || e.neutral) continue;
+      const dx = e.pos.x - cam.position.x, dy = e.pos.y + 1.3 - cam.position.y, dz = e.pos.z - cam.position.z, d = Math.hypot(dx, dy, dz);
+      if (d > 90 || d < 3) continue;
+      const c = (dx * f.x + dy * f.y + dz * f.z) / d; if (c > bc) { bc = c; best = e; }
+    }
+    if (!best || !g.world.los(cam.position.x, cam.position.y, cam.position.z, best.pos.x, best.pos.y + 1.3, best.pos.z)) return null;
+    const dx = best.pos.x - this.pos.x, dz = best.pos.z - this.pos.z, d = Math.hypot(dx, dz);
+    return { yaw: Math.atan2(dx, dz), pitch: Math.atan2((best.pos.y + 1.35) - (this.pos.y + 1.6), d) };
+  }
   // zooming in lets you identify enemies: anything near the crosshair in line of sight gets tagged for a few seconds
   scanTargets(wd) {
     const g = this.g, cam = g.camera, w = g.world, f = _f;

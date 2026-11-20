@@ -53,6 +53,7 @@ export class World {
     this.renderer = opts.renderer || null;
     this.time = 0;
     this.waters = []; this.bridges = [];
+    this.uClear = { value: new THREE.Vector4(0, 0, 3.4, 0) };   // x, z, radius, on: where the player's bush is cleared
     this.bushes = []; this.interiors = []; this.models = new Map(); this.bmerge = new Map(); this.custom = {}; this.parkedCache = {}; this.nat = getNature();
     this._env();
   }
@@ -621,6 +622,22 @@ export class World {
         const alpha = nk === 'leaf' || nk === 'pine' || nk === 'frond' || nk === 'grass';
         mat = nk === 'rock' ? new THREE.MeshStandardMaterial({ color: b.color, map: this.nat.tex.rock, bumpMap: this.nat.tex.rock, bumpScale: 2.2, roughness: 0.95, metalness: 0 })
           : new THREE.MeshLambertMaterial({ color: b.color, map: this.nat.tex[nk], alphaTest: alpha ? 0.45 : 0, side: alpha ? THREE.DoubleSide : THREE.FrontSide });
+        if (b.geo === 'bush') {   // the player's own bush thins out around them, so you can look and shoot out of it instead of through leaves
+          mat.onBeforeCompile = (sh) => {
+            sh.uniforms.uClear = this.uClear;
+            sh.vertexShader = `varying vec3 vWP;
+` + sh.vertexShader.replace(`#include <begin_vertex>`, `#include <begin_vertex>
+#ifdef USE_INSTANCING
+vWP = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+#else
+vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;
+#endif`);
+            sh.fragmentShader = `varying vec3 vWP;
+uniform vec4 uClear;
+` + sh.fragmentShader.replace(`#include <alphatest_fragment>`, `#include <alphatest_fragment>
+if (uClear.w > 0.5 && vWP.y > 0.5 && distance(vWP.xz, uClear.xy) < uClear.z) discard;`);
+          };
+        }
       } else if (o.add) mat = new THREE.MeshBasicMaterial({ color: b.color, map: this.radial(), transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
       else if (o.glow) { mat = new THREE.MeshBasicMaterial({ color: b.color }); mat.color.multiplyScalar(2.6); }
       else mat = new THREE.MeshLambertMaterial({ color: b.color, map: b.geo === 'box' && !o.layer ? this.grain() : null, flatShading: b.geo === 'ico' });
