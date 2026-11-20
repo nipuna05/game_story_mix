@@ -184,7 +184,7 @@ table.best td { padding: 2px 8px; font-size: 13px; }
 .tbtn.reload { right: 128px; bottom: 98px; width: 52px; height: 52px; font-size: 10px; }
 .tbtn.use { right: 198px; bottom: 56px; width: 56px; height: 56px; }
 .tbtn.crouch { right: 198px; bottom: 122px; width: 52px; height: 52px; font-size: 10px; }
-.tbtn.prone { right: 262px; bottom: 24px; width: 44px; height: 44px; font-size: 9px; }
+.tbtn.prone { right: 262px; bottom: 130px; width: 44px; height: 44px; font-size: 9px; }
 .tbtn.thr { right: 198px; bottom: 188px; width: 52px; height: 52px; font-size: 10px; }
 .tbtn.kick { right: 40px; bottom: 204px; width: 46px; height: 46px; font-size: 10px; }
 .tbtn.gren { right: 100px; bottom: 178px; width: 46px; height: 46px; font-size: 10px; }
@@ -205,9 +205,10 @@ body.touch #detect { top: 52px; width: 140px; }
 body.touch #status { left: 50%; bottom: 6px; transform: translateX(-104%); width: 118px; padding: 5px 7px; }
 body.touch #status .stat { margin-bottom: 3px; } body.touch #status .stat label { font-size: 9px; }
 body.touch #weapon { left: 50%; right: auto; bottom: 6px; transform: translateX(4%); min-width: 0; text-align: left; padding: 4px 9px; }
+body.touch #weapon { max-width: 220px; } body.touch #wPack { white-space: normal; line-height: 1.25; }
 body.touch #wAmmo { font-size: 20px; } body.touch #wName, body.touch #wExtra { font-size: 10px; } body.touch #wPack { font-size: 10px; }
 body.touch #vehicle { bottom: 62px; font-size: 13px; padding: 5px 10px; }
-body.touch #radio { bottom: 84px; max-width: 40vw; font-size: 12px; padding: 5px 10px; }
+body.touch #radio { left: 222px; bottom: 92px; transform: none; max-width: 300px; font-size: 11px; line-height: 1.3; padding: 4px 9px; }
 body.touch #prompt { top: 56%; font-size: 12px; padding: 4px 10px; }
 body.touch #bannerTitle { font-size: 22px; letter-spacing: 4px; } body.touch #bannerSub { font-size: 12px; }
 body.touch #big { font-size: 80px; }
@@ -220,3 +221,6 @@ body.touch .panel.left { margin-left: 3vw; }
 body.touch .logo { font-size: 40px; } body.touch .tag { margin: 6px 0 14px; }
 body.touch h2 { font-size: 24px; }
 @media (orientation: portrait) { body.touch #rotate { display: flex; position: fixed; inset: 0; z-index: 50; background: #05070a; align-items: center; justify-content: center; text-align: center; font: 800 24px var(--font); letter-spacing: 3px; } body.touch #rotate small { display: block; font: 600 12px var(--mono); color: var(--dim); letter-spacing: 2px; margin-top: 10px; } }
+body.touch #tip { pointer-events: auto; left: 222px; transform: none; bottom: auto; top: 78px; max-width: 300px; font-size: 11px; padding: 5px 10px 5px 40px; line-height: 1.3; touch-action: none; }
+body.touch #tip::before { left: 8px; top: 6px; font-size: 9px; }
+body.touch #tip::after { content: 'tap to close'; display: block; font: 9px var(--mono); color: var(--dim); margin-top: 2px; }

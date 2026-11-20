@@ -22,6 +22,7 @@ export class Hud {
     this.queue = []; this.radioT = 0; this.bannerT = 0; this.hitT = 0; this.hurtK = 0;
     this.timer = ''; this.big = ''; this.objDirty = true; this.showObj = true; this.frame = 0; this.keysOn = false; this.keysT = 0;
     this.cache = {}; this.tagEls = []; this.tipQueue = []; this.tipT = 0;
+    $('tip').addEventListener('pointerdown', (e) => { e.preventDefault(); this.tipQueue = []; this.tipT = 0; $('tip').style.display = 'none'; });   // touch: tap a tip to close it (and skip the queued ones)
   }
   show(on) { this.el.classList.toggle('hidden', !on); }
   reset() { this.tipQueue = []; this.tipT = 0; $('tip').style.display = 'none'; this.keysT = 20; this.cache.keysSet = null; this.queue = []; this.radioT = 0; this.bannerT = 0; this.timer = ''; this.big = ''; this.objDirty = true; $('radio').style.display = 'none'; $('banner').style.opacity = 0; this.hurtK = 0; }
@@ -51,7 +52,7 @@ export class Hud {
     this.tipT -= dt;
     if (this.tipT <= 0) {
       const n = this.tipQueue.shift();
-      if (n) { const el = $('tip'); el.textContent = n; el.style.display = 'block'; this.tipT = clamp(3.5 + n.length * 0.06, 5, 10); } else $('tip').style.display = 'none';
+      if (n) { const el = $('tip'); el.textContent = n; el.style.display = 'block'; this.tipT = g.input.touchMode ? clamp(2.5 + n.length * 0.04, 3.5, 6) : clamp(3.5 + n.length * 0.06, 5, 10); } else $('tip').style.display = 'none';
     }
     // radio queue
     this.radioT -= dt;

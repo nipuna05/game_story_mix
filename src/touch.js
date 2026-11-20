@@ -74,8 +74,14 @@ export class Touch {
   }
 
   // ---- move stick
+  // the HUD sits under the touch layer, so a tap on a tip popup is caught here and closes it
+  tipTap(e) {
+    const t = document.getElementById('tip'); if (!t || t.style.display !== 'block') return false;
+    const r = t.getBoundingClientRect(); if (e.clientX < r.left - 10 || e.clientX > r.right + 10 || e.clientY < r.top - 10 || e.clientY > r.bottom + 10) return false;
+    const h = this.g.hud; h.tipQueue = []; h.tipT = 0; t.style.display = 'none'; return true;
+  }
   stickDown(e) {
-    e.preventDefault(); const s = this.stick; if (s.id != null) return;
+    e.preventDefault(); if (this.tipTap(e)) return; const s = this.stick; if (s.id != null) return;
     s.id = e.pointerId; s.ox = e.clientX; s.oy = e.clientY;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
     this.base.classList.remove('rest'); this.base.style.left = s.ox + 'px'; this.base.style.top = s.oy + 'px'; this.knob.style.transform = 'translate(-50%,-50%)';
@@ -96,7 +102,7 @@ export class Touch {
 
   // ---- look
   lookDown(e) {
-    e.preventDefault(); if (this.look.id != null) return;
+    e.preventDefault(); if (this.tipTap(e)) return; if (this.look.id != null) return;
     this.look.id = e.pointerId; this.look.x = e.clientX; this.look.y = e.clientY;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
   }
