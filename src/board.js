@@ -6,7 +6,8 @@ let cfg = { url: SUPABASE_URL.replace(/\/+$/, ''), key: SUPABASE_KEY };
 export const setBoardConfig = (url, key) => { cfg = { url: String(url || '').replace(/\/+$/, ''), key: key || '' }; };   // tests
 export const boardOn = () => !!(cfg.url && cfg.key);
 
-const head = () => ({ apikey: cfg.key, Authorization: 'Bearer ' + cfg.key, 'Content-Type': 'application/json' });
+// the older anon key is a JWT and also goes in Authorization; the newer sb_publishable_ keys are not JWTs and only go in apikey
+const head = () => ({ apikey: cfg.key, ...(cfg.key.startsWith('eyJ') ? { Authorization: 'Bearer ' + cfg.key } : {}), 'Content-Type': 'application/json' });
 const clean = (n) => String(n || 'Operative').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 16) || 'Operative';
 const guard = (p) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]);
 

@@ -212,6 +212,10 @@ tools/smoke.mjs     headless test that plays through every mission
 To run the automated test, start `npm run dev` and then run `node tools/smoke.mjs` (uses the installed
 Edge or Chrome).
 
+## Mobile / App Store
+
+See [docs/APP_STORE_PLAN.md](docs/APP_STORE_PLAN.md): the game needs touch controls before any phone release; the plan covers PWA, Android, iOS (Capacitor) and Steam routes with costs and review risks.
+
 ## Credits
 
 - Soldier Cole - Grigory Petrov - royalty-free for games, do not resell the raw model.
