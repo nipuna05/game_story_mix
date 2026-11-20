@@ -166,3 +166,57 @@ table.best td { padding: 2px 8px; font-size: 13px; }
 .medals:not(.new) { max-height: calc(100vh - 380px); min-height: 150px; overflow-y: auto; padding-right: 4px; }
 .medal { padding: 5px 10px; }
 .menu.titlemenu { gap: 6px; } .menu.titlemenu button { padding: 7px 14px; }
+
+/* ---------- touch / phone ---------- */
+#rotate { display: none; }
+#touch { position: fixed; inset: 0; z-index: 5; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.tzone { position: absolute; top: 0; bottom: 0; pointer-events: auto; touch-action: none; }
+.tzone.l { left: 0; width: 40%; top: 25%; } .tzone.r { right: 0; width: 60%; }
+.tbase { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.08); pointer-events: none; }
+.tbase.rest { left: 96px; top: auto; bottom: 36px; margin: 0; opacity: 0.35; }
+.tbase i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); border: 2px solid rgba(255, 255, 255, 0.6); transform: translate(-50%, -50%); }
+.tbtn { position: absolute; pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(10, 16, 24, 0.5); color: #fff; font: 700 11px var(--mono); letter-spacing: 0; -webkit-tap-highlight-color: transparent; text-shadow: 0 1px 2px #000; }
+.tbtn.down, .tbtn.on { background: rgba(255, 178, 62, 0.65); border-color: var(--acc); color: #111; text-shadow: none; }
+.tbtn.fire { right: 28px; bottom: 40px; width: 84px; height: 84px; font-size: 14px; background: rgba(255, 77, 77, 0.38); border-color: rgba(255, 120, 120, 0.8); }
+.tbtn.aim { right: 128px; bottom: 30px; width: 58px; height: 58px; }
+.tbtn.jump { right: 36px; bottom: 138px; width: 58px; height: 58px; }
+.tbtn.reload { right: 128px; bottom: 98px; width: 52px; height: 52px; font-size: 10px; }
+.tbtn.use { right: 198px; bottom: 56px; width: 56px; height: 56px; }
+.tbtn.crouch { right: 198px; bottom: 122px; width: 52px; height: 52px; font-size: 10px; }
+.tbtn.prone { right: 262px; bottom: 24px; width: 44px; height: 44px; font-size: 9px; }
+.tbtn.thr { right: 198px; bottom: 188px; width: 52px; height: 52px; font-size: 10px; }
+.tbtn.kick { right: 40px; bottom: 204px; width: 46px; height: 46px; font-size: 10px; }
+.tbtn.gren { right: 100px; bottom: 178px; width: 46px; height: 46px; font-size: 10px; }
+.tbtn.swap { right: 154px; bottom: 168px; width: 42px; height: 42px; font-size: 9px; }
+.tbtn.pk { top: 6px; width: 40px; height: 40px; font-size: 9px; border-radius: 10px; }
+.tbtn.pk[data-id=med] { left: calc(50% + 86px); } .tbtn.pk[data-id=plate] { left: calc(50% + 132px); } .tbtn.pk[data-id=noise] { left: calc(50% + 178px); } .tbtn.pk[data-id=ammo] { left: calc(50% + 224px); }
+.tbtn.pause { top: 6px; left: calc(50% - 128px); width: 40px; height: 40px; border-radius: 10px; font-size: 14px; }
+
+body.touch { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+body.touch input, body.touch textarea, body.touch select { -webkit-user-select: text; user-select: text; font-size: 16px; }   /* 16px stops iOS zooming into fields */
+body.touch #ui { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+body.touch #hint, body.touch #keys { display: none !important; }
+body.touch #objectives { top: 6px; left: 6px; width: 215px; padding: 6px 8px; font-size: 11px; }
+body.touch #minimap { top: 6px; right: 6px; width: 104px; height: 104px; }
+body.touch #alarm { top: 114px; right: 6px; width: 104px; font-size: 10px; letter-spacing: 2px; }
+body.touch #timer { top: 8px; font-size: 16px; }
+body.touch #detect { top: 52px; width: 140px; }
+body.touch #status { left: 50%; bottom: 6px; transform: translateX(-104%); width: 118px; padding: 5px 7px; }
+body.touch #status .stat { margin-bottom: 3px; } body.touch #status .stat label { font-size: 9px; }
+body.touch #weapon { left: 50%; right: auto; bottom: 6px; transform: translateX(4%); min-width: 0; text-align: left; padding: 4px 9px; }
+body.touch #wAmmo { font-size: 20px; } body.touch #wName, body.touch #wExtra { font-size: 10px; } body.touch #wPack { font-size: 10px; }
+body.touch #vehicle { bottom: 62px; font-size: 13px; padding: 5px 10px; }
+body.touch #radio { bottom: 84px; max-width: 40vw; font-size: 12px; padding: 5px 10px; }
+body.touch #prompt { top: 56%; font-size: 12px; padding: 4px 10px; }
+body.touch #bannerTitle { font-size: 22px; letter-spacing: 4px; } body.touch #bannerSub { font-size: 12px; }
+body.touch #big { font-size: 80px; }
+body.touch #racemap { width: 120px; height: 120px; }
+/* menus: bigger touch targets, no hover shift, compact panels for a landscape phone */
+@media (hover: none) { button:hover { padding-left: 18px; background: rgba(255, 255, 255, 0.05); color: var(--ink); border-color: var(--line); } button.primary:hover { background: var(--acc); color: #111; filter: none; } .tab.on:hover { background: var(--acc); color: #111; } }
+body.touch button { min-height: 44px; }
+body.touch .panel { padding: 16px 20px; max-height: 100vh; }
+body.touch .panel.left { margin-left: 3vw; }
+body.touch .logo { font-size: 40px; } body.touch .tag { margin: 6px 0 14px; }
+body.touch h2 { font-size: 24px; }
+@media (orientation: portrait) { body.touch #rotate { display: flex; position: fixed; inset: 0; z-index: 50; background: #05070a; align-items: center; justify-content: center; text-align: center; font: 800 24px var(--font); letter-spacing: 3px; } body.touch #rotate small { display: block; font: 600 12px var(--mono); color: var(--dim); letter-spacing: 2px; margin-top: 10px; } }

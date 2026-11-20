@@ -214,7 +214,15 @@ Edge or Chrome).
 
 ## Mobile / App Store
 
-See [docs/APP_STORE_PLAN.md](docs/APP_STORE_PLAN.md): the game needs touch controls before any phone release; the plan covers PWA, Android, iOS (Capacitor) and Steam routes with costs and review risks.
+**Touch controls are in** (`src/touch.js`). On a phone or tablet the game switches on by itself (or add `?touch=1` to the address to try it on a PC):
+
+- Left thumb: floating move stick (push it to the rim to sprint). Right thumb: drag anywhere to look.
+- Buttons: FIRE (also looks while held), AIM (tap to toggle), JUMP, RELOAD, USE (hold to free hostages or plant), CROUCH, PRONE, KICK, GREN, SWAP, and medkit / armour / decoy / ammo along the top. In cars the buttons become BRAKE and EXIT; in aircraft they become throttle up and down.
+- Goes full screen in landscape on the first tap (Android Chrome); a "rotate your phone" screen shows in portrait. Graphics default to the medium preset on touch devices.
+
+Check it with `node tools/touchcheck.mjs` (emulated phone) and `node tools/phonemenus.mjs` (menu screenshots at phone size). Real-phone feel and speed are not tested yet.
+
+See [docs/APP_STORE_PLAN.md](docs/APP_STORE_PLAN.md) for the rest of the route (PWA, Android via Capacitor, iOS, Steam) with costs and review risks.
 
 ## Credits
 

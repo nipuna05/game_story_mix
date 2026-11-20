@@ -1,0 +1,33 @@
+// Emulates a phone (touch, 844x390) and checks the on-screen controls: node tools/touchcheck.mjs  (needs the dev server)
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'msedge', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+const page = await ctx.newPage();
+const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR/.test(m.text())) errs.push(m.text()); });
+await page.goto('http://localhost:5173/'); await page.waitForFunction(() => window.game, null, { timeout: 60000 });
+console.log('touch mode:', await page.evaluate(() => [window.game.input.touchMode, document.body.classList.contains('touch'), !!document.getElementById('touch')]));
+await page.screenshot({ path: 'test-shots/touch-splash.png' });
+await page.evaluate(async () => {
+  const S = await import('/src/story.js'), g = window.game;
+  g.startMission(S.CAMPAIGN[0], {}); g.ui.clear(); g.hud.show(true);
+});
+await page.waitForTimeout(1500);
+const ev = (sel, type, x, y, id = 1) => page.evaluate(([sel, type, x, y, id]) => { const el = document.querySelector(sel); el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch' })); }, [sel, type, x, y, id]);
+const st = () => page.evaluate(() => { const i = window.game.input, p = window.game.player; return { on: document.getElementById('touch').style.display, keys: Object.keys(i.keys).filter((k) => i.keys[k]).join(','), b0: !!i.buttons[0], b2: !!i.buttons[2], yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3), state: window.game.state }; });
+console.log('visible in mission:', (await st()).on, (await st()).state);
+await ev('.tzone.l', 'pointerdown', 120, 300, 1); await ev('.tzone.l', 'pointermove', 120, 250, 1); console.log('stick up    :', (await st()).keys);
+await ev('.tzone.l', 'pointermove', 120, 235, 1); console.log('stick rim   :', (await st()).keys);
+await ev('.tzone.l', 'pointermove', 170, 300, 1); console.log('stick right-back:', (await st()).keys);
+await ev('.tzone.l', 'pointerup', 170, 300, 1); console.log('stick off   :', JSON.stringify((await st()).keys));
+const y0 = (await st()).yaw;
+await ev('.tzone.r', 'pointerdown', 500, 200, 2); await ev('.tzone.r', 'pointermove', 560, 200, 2); await page.waitForTimeout(200); const y1 = (await st()).yaw; await ev('.tzone.r', 'pointerup', 560, 200, 2);
+console.log('look drag right -> yaw changed:', y0 !== y1, y0, '->', y1);
+await ev('.tbtn.fire', 'pointerdown', 780, 330, 3); console.log('fire down:', (await st()).b0); await ev('.tbtn.fire', 'pointerup', 780, 330, 3); console.log('fire up  :', (await st()).b0);
+await ev('.tbtn.aim', 'pointerdown', 700, 340, 4); await ev('.tbtn.aim', 'pointerup', 700, 340, 4); console.log('aim toggled on:', (await st()).b2);
+await ev('.tbtn.aim', 'pointerdown', 700, 340, 4); await ev('.tbtn.aim', 'pointerup', 700, 340, 4); console.log('aim toggled off:', (await st()).b2);
+await ev('.tbtn.use', 'pointerdown', 600, 330, 5); console.log('use held:', (await st()).keys); await ev('.tbtn.use', 'pointerup', 600, 330, 5);
+await page.screenshot({ path: 'test-shots/touch-hud.png' });
+await ev('.tbtn.pause', 'pointerdown', 300, 20, 6); await page.waitForTimeout(400); const ps = await st(); console.log('pause button -> state:', ps.state, 'controls hidden:', ps.on);
+await page.screenshot({ path: 'test-shots/touch-pause.png' });
+console.log('errors:', errs.length, errs.slice(0, 3).join(' | '));
+await b.close();

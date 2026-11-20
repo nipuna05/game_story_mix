@@ -10,8 +10,8 @@ Feasible, but it is a project, not a switch. The game is a browser game that nee
 
 | Blocker | Detail | Size |
 |---|---|---|
-| **No touch input at all** | `src/input.js` reads keyboard, mouse (pointer lock) and gamepad only. A phone can't move, aim, shoot, drive or fly. | Large - the main task |
-| Menus not touch-tuned | Menus work with clicks, but some are dense (armory, builder text fields, mission list). Needs a pass on small screens. | Medium |
+| ~~No touch input~~ **Done 2026-11-20** | `src/touch.js` adds a move stick, drag-look and action buttons (foot, vehicle, aircraft). Emulated-phone checks pass; real-phone feel is untested. | Needs a real Android test |
+| Menus on small screens | First pass done: bigger tap targets, no hover shift, panels scroll in landscape, 16px fields, rotate-to-landscape screen. Dense screens (armory, builder, controls) just scroll. | Small polish left |
 | Performance unmeasured on phones | Only tested with a software renderer. Downtown is ~1200 draw calls; phones may need a lower quality tier (fewer shadows, lower render scale). | Medium - needs a real device |
 | Asset licence | Soldier "Cole" is "royalty-free for games, do not resell the raw model". Shipping it inside an app bundle puts the raw file in every download. Check the licence text, or swap the model. | Small, but check first |
 | Privacy | The leaderboard sends a callsign and score; feedback opens GitHub. A store listing needs a privacy policy URL and privacy answers. | Small |

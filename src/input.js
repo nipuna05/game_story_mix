@@ -14,6 +14,8 @@ const IDS = new Set(ACTIONS.map((a) => a[0]));
 // keys that would trigger browser shortcuts or the OS; not allowed for binding
 const FORBIDDEN = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'ContextMenu', 'F5', 'F11', 'F12']);
 
+const TOUCH_NAMES = { KeyE: 'USE', KeyR: 'RELOAD', KeyF: 'KICK', KeyG: 'GREN', KeyQ: 'medkit (+)', KeyX: 'ARM', KeyT: 'NOISE', KeyY: 'AMMO', Space: 'JUMP', KeyC: 'CROUCH', KeyZ: 'PRONE', KeyJ: 'EXIT' };
+
 export function keyName(code) {
   if (!code) return '—';
   if (code.startsWith('Key')) return code.slice(3);
@@ -33,6 +35,7 @@ export class Input {
     this.dx = 0; this.dy = 0; this.wheel = 0; this.lockedAt = 0;
     this.locked = false;
     this.active = false; // true while gameplay wants input
+    this.touchMode = false;   // set by main.js on phones: no pointer lock, and key hints name the on-screen buttons
     this.onLockLost = null; this.onPad = null;
     this._pk = {}; this._pb = {}; this._pw = {}; this.padOn = false;
     this.setBindings(null);
@@ -89,7 +92,7 @@ export class Input {
     if (IDS.has(code)) return null;
     return code;
   }
-  label(id) { return keyName(this.bind[id] || id); }
+  label(id) { return this.touchMode && TOUCH_NAMES[id] ? TOUCH_NAMES[id] : keyName(this.bind[id] || id); }
   // returns the new bindings map, or an error string
   rebind(map, id, code) {
     if (FORBIDDEN.has(code)) return { error: code === 'Escape' ? 'Esc is reserved for pausing' : 'That key triggers browser or system shortcuts' };
@@ -127,7 +130,7 @@ export class Input {
   _release() { for (const act in this._pk) if (this._pk[act]) { this.keys[act] = false; this._pk[act] = false; } for (const bt in this._pb) if (this._pb[bt]) { this.buttons[bt] = false; this._pb[bt] = false; } }
   lock() {
     // automated test browsers must never capture the real mouse (it can trap the user's cursor on the desktop)
-    if (navigator.webdriver) return;
+    if (navigator.webdriver || this.touchMode) return;
     try { const p = this.canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch { /* ignore */ }
   }
   unlock() { if (document.pointerLockElement) document.exitPointerLock(); }

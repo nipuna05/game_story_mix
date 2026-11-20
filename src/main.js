@@ -1,3 +1,4 @@
+import { Touch, isTouchDevice } from './touch.js';
 import * as THREE from 'three';
 import { Input } from './input.js';
 import { Sfx } from './audio.js';
@@ -35,7 +36,7 @@ const SPHERES = [[1.62, 0.21, true], [1.15, 0.4, false], [0.55, 0.36, false]];
 const _v = new THREE.Vector3();
 
 function loadSave() {
-  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, tips: true, shadows: true, quality: 'high', invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
+  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, tips: true, shadows: true, quality: isTouchDevice() ? 'medium' : 'high', invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (s) return { ...base, ...s, settings: { ...base.settings, ...s.settings }, cast: { ...base.cast, ...s.cast }, profile: mergeProfile(s.profile) };
@@ -61,6 +62,7 @@ class Game {
     this.hud = new Hud(this); this.ui = new UI(this);
     this.state = 'menu'; this.time = 0; this.last = 0;
     this.resetLists();
+    if (isTouchDevice()) { this.input.touchMode = true; document.body.classList.add('touch'); this.touch = new Touch(this); }
     this.input.onLockLost = () => { if (this.state === 'playing') this.pause(); };
     this.input.onPad = (ev) => { if (ev === 'pause') { if (this.state === 'playing') this.pause(); } else if (this.state === 'playing') this.hud.banner('GAMEPAD CONNECTED', 'Sticks move and look, RT fire, LT aim, A jump, B crouch'); };
     // never keep the mouse captured when the window loses focus, the tab is hidden or the page closes
@@ -606,6 +608,7 @@ class Game {
     if (this.settings.shadows) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     if (this.previewOn && this.pFig && this.state === 'menu') this.renderPreview(dt);
     if (this.audio.ctx) { if (!this.music.started) this.music.start(); this.music.setMode(this.musicMode()); }
+    if (this.touch) this.touch.sync();
     this.input.frameEnd();
   }
 
