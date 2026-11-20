@@ -33,7 +33,7 @@ const BUTTONS = [
 export class Touch {
   constructor(game) {
     this.g = game; this.on = false; this.mode = null; this._k = {}; this.btnEl = {}; this.toggled = {};
-    this.stick = { id: null, ox: 0, oy: 0 }; this.look = { id: null, x: 0, y: 0 }; this.fsTries = 0;
+    this.stick = { id: null, ox: 0, oy: 0 }; this.pend = { x: 0, y: 0 }; this.look = { id: null, x: 0, y: 0 }; this.fsTries = 0;
     const mk = (cls, html = '') => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; return d; };
     const root = this.root = mk('', ''); root.id = 'touch'; root.style.display = 'none';
     const zl = this.zl = mk('tzone l'), zr = this.zr = mk('tzone r');
@@ -108,7 +108,12 @@ export class Touch {
   }
   lookMove(e) {
     const l = this.look, i = this.input;
-    i.dx += (e.clientX - l.x) * LOOK; i.dy += (e.clientY - l.y) * LOOK; l.x = e.clientX; l.y = e.clientY;
+    this.pend.x += (e.clientX - l.x) * LOOK; this.pend.y += (e.clientY - l.y) * LOOK; l.x = e.clientX; l.y = e.clientY;
+  }
+  // feeds the finger movement to the camera a little smoothed (about 30 ms), so shaky thumbs and uneven touch events don't make the aim jitter
+  feed(dt) {
+    const p = this.pend, k = 1 - Math.exp(-Math.min(dt, 0.1) * 32), i = this.input;
+    const x = p.x * k, y = p.y * k; p.x -= x; p.y -= y; i.dx += x; i.dy += y;
   }
   move(e) { if (e.pointerId === this.stick.id) this.stickMove(e); else if (e.pointerId === this.look.id) this.lookMove(e); }
   up(e) { if (e.pointerId === this.stick.id) this.stickUp(); else if (e.pointerId === this.look.id) this.look.id = null; }
