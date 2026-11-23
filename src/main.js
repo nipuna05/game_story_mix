@@ -36,13 +36,14 @@ const SPHERES = [[1.62, 0.21, true], [1.15, 0.4, false], [0.55, 0.36, false]];
 const _v = new THREE.Vector3();
 
 function loadSave() {
-  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, tips: true, shadows: true, quality: isTouchDevice() ? 'low' : 'high', touchTuned: isTouchDevice(), invertY: false, difficulty: 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
+  const base = { settings: { sens: 1, vol: 0.6, bright: 1.3, music: 0.6, tips: true, shadows: true, quality: isTouchDevice() ? 'low' : 'high', touchTuned: isTouchDevice(), touchEasy: isTouchDevice(), invertY: false, difficulty: isTouchDevice() ? 'easy' : 'normal', keys: {} }, profile: defaultProfile(), cast: { ...DEFAULT_CAST }, unlocked: 1, started: false, flags: {}, best: {}, custom: [], approach: 'ghost' };
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
     if (s) {
       const out = { ...base, ...s, settings: { ...base.settings, ...s.settings }, cast: { ...base.cast, ...s.cast }, profile: mergeProfile(s.profile) };
       // phones: one-time switch to the light preset (no shadows or glow pass) for smooth play; the player can raise it again in Settings
       if (isTouchDevice() && !out.settings.touchTuned) { out.settings.quality = 'low'; out.settings.touchTuned = true; }
+      if (isTouchDevice() && !out.settings.touchEasy) { out.settings.difficulty = 'easy'; out.settings.touchEasy = true; }   // new on a phone: guards miss more and hit softer (Settings > Gameplay changes it)
       return out;
     }
   } catch { /* corrupt or unavailable storage - start fresh */ }

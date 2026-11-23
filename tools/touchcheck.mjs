@@ -20,7 +20,7 @@ await ev('.tzone.l', 'pointermove', 120, 235, 1); console.log('stick rim   :', (
 await ev('.tzone.l', 'pointermove', 170, 300, 1); console.log('stick right-back:', (await st()).keys);
 await ev('.tzone.l', 'pointerup', 170, 300, 1); console.log('stick off   :', JSON.stringify((await st()).keys));
 const y0 = (await st()).yaw;
-await ev('.tzone.r', 'pointerdown', 500, 200, 2); await ev('.tzone.r', 'pointermove', 560, 200, 2); await page.waitForTimeout(200); const y1 = (await st()).yaw; await ev('.tzone.r', 'pointerup', 560, 200, 2);
+await ev('.tzone.r', 'pointerdown', 500, 200, 2); await ev('.tzone.r', 'pointermove', 560, 200, 2); await page.waitForTimeout(4000); const y1 = (await st()).yaw; await ev('.tzone.r', 'pointerup', 560, 200, 2);
 console.log('look drag right -> yaw changed:', y0 !== y1, y0, '->', y1);
 await ev('.tbtn.fire', 'pointerdown', 780, 330, 3); console.log('fire down:', (await st()).b0); await ev('.tbtn.fire', 'pointerup', 780, 330, 3); console.log('fire up  :', (await st()).b0);
 await ev('.tbtn.aim', 'pointerdown', 700, 340, 4); await ev('.tbtn.aim', 'pointerup', 700, 340, 4); console.log('aim toggled on:', (await st()).b2);
