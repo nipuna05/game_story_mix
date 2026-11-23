@@ -87,7 +87,7 @@ export class Enemy extends Walker {
 
   viewRange(p) {
     const g = this.g;
-    let r = g.world.theme.view * (this.type === 'sniper' ? 2.2 : 1) * g.mods.view;
+    let r = g.world.theme.view * (this.type === 'sniper' ? 2.2 : 1) * g.mods.view * g.diff.view;
     if (p.crouch && p.mode === 'foot') r *= 0.6;
     if (p.prone && p.mode === 'foot') r *= 0.55;
     if (p.sneaking) r *= 0.85;
@@ -116,7 +116,7 @@ export class Enemy extends Walker {
       if (this.losT <= 0) { this.losT = 0.12 + Math.random() * 0.06; this.sees = this.canSee(p, tp, d, dx, dz); }
       if (this.sees) {
         const range = this.viewRange(p);
-        this.aw += dt * (0.4 + 2.3 * (1 - d / range)) * (this.state === 'search' || this.state === 'suspicious' ? 1.8 : 1);
+        this.aw += dt * (0.4 + 2.3 * (1 - d / range)) * (this.state === 'search' || this.state === 'suspicious' ? 1.8 : 1) * g.diff.notice;
         if (d < 3) this.aw = 1;
       } else this.aw -= dt * 0.22;
       this.aw = clamp(this.aw, 0, 1);

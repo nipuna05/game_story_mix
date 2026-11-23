@@ -24,7 +24,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const SAVE_KEY = 'nightfall_protocol_save_v1';
-const DIFFS = { easy: { acc: 0.7, dmg: 0.65 }, normal: { acc: 1, dmg: 1 }, hard: { acc: 1.25, dmg: 1.4 } };
+const DIFFS = { easy: { acc: 0.7, dmg: 0.65, view: 0.75, notice: 0.6 }, normal: { acc: 1, dmg: 1, view: 1, notice: 1 }, hard: { acc: 1.25, dmg: 1.4, view: 1, notice: 1 } };   // view = how far guards see you, notice = how fast they become suspicious
 const PICKUPS = {
   intel: { color: 0x4fd1c5, key: true, label: 'Evidence drive secured' }, keycard: { color: 0xffd23c, key: true, label: 'Keycard secured' },
   decoder: { color: 0xd070ff, key: true, label: 'Signal decoder secured' },
